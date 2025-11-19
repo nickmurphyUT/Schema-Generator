@@ -665,6 +665,6 @@ def get_subscription_info(subscription_id):
         app.logger.error("Error fetching subscription info: %s", str(e))
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
-
+# Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
