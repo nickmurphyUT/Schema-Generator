@@ -35,11 +35,11 @@ SCOPES = os.getenv(
     "SHOPIFY_SCOPES",
     "read_customers,write_orders,read_orders,read_own_subscription_contracts,write_own_subscription_contracts,manage_orders_information,read_orders,write_orders,read_discounts,write_discounts,read_shopify_payments_disputes",
 )
-ACCESS_TOKEN = "xxx"  # Can be retrieved dynamically on calls, where do we store for each client or do we fetch each time with our auth callback flow? More calls but more secure
+ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN") # Can be retrieved dynamically on calls, where do we store for each client or do we fetch each time with our auth callback flow? More calls but more secure
 
 
 # Hardcoded Admin API credentials (ONLY FOR SERVER-SIDE USAGE)
-SHOPIFY_ADMIN_ACCESS_TOKEN = "xxx"
+SHOPIFY_ADMIN_ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN")
 SHOPIFY_API_VERSION = "2024-01"  # or current stable version
 
 # Initialize Flask app
