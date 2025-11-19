@@ -17,13 +17,10 @@ from flask_cors import CORS
 import uuid
 import pytz
 
-
+# Store Locally?
 allowed_origins = [
-    "https://www.prostore.localhost",
-    "https://qa2.resideo.com",
-    "https://www.hotfix.rde.resideo.com",
-    "https://www.resideo.com",
-    "https://firstalert-prod-preview.vercel.app"
+    "https://www.xxx",
+    "https://xxx",
 ]
 
 # Load environment variables
@@ -33,11 +30,12 @@ load_dotenv()
 SHOPIFY_API_KEY = os.getenv("SHOPIFY_API_KEY")
 SHOPIFY_API_SECRET = os.getenv("SHOPIFY_API_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
+#Likely just need read/write products, metafields, and metaobjects
 SCOPES = os.getenv(
     "SHOPIFY_SCOPES",
     "read_customers,write_orders,read_orders,read_own_subscription_contracts,write_own_subscription_contracts,manage_orders_information,read_orders,write_orders,read_discounts,write_discounts,read_shopify_payments_disputes",
 )
-ACCESS_TOKEN = "xxx"  # Store access token after OAuth
+ACCESS_TOKEN = "xxx"  # Can be retrieved dynamically on calls, where do we store for each client or do we fetch each time with our auth callback flow? More calls but more secure
 
 
 # Hardcoded Admin API credentials (ONLY FOR SERVER-SIDE USAGE)
@@ -88,7 +86,7 @@ def query_shopify_graphql(shop, access_token, query):
         logging.error(f"An error occurred: {str(e)}")
         raise Exception(f"An error occurred: {str(e)}")
 
-
+#three parameter graphql helper
 def query_shopify_graphql_webhook(shop, access_token, query, variables=None):
     """
     Function to send a GraphQL query to Shopify API for webhook-related requests.
@@ -119,8 +117,8 @@ def query_shopify_graphql_webhook(shop, access_token, query, variables=None):
 
     # Return the response as JSON
     return response.json()
-import requests
 
+#four parameter graphql helper
 def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
     """
     Function to send a GraphQL query to Shopify API for webhook-related requests.
@@ -166,11 +164,11 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
         return {"error": str(e), "details": str(e)}  # Return a more readable error
 
 
-
+#app status check? Remove?
 @app.route("/")
 def home():
     return "Shopify OAuth App is running!"
-
+#access token gen
 @app.route("/auth")
 def authenticate():
     shop = request.args.get("shop")
@@ -216,7 +214,7 @@ def auth_callback():
             "access_token": access_token,
         }
     )
-
+#list of needed webhooks: products/update, products/create, products/delete, collections/create, collections/delete, collections/update no page/blog webhooks, maybe a sync button in the app interface?
 @app.route("/createWebhook", methods=["POST"])
 def create_webhook():
     # Ensure shop parameter is available
@@ -473,7 +471,7 @@ def create_webhook_from_body():
         app.logger.error(f"Error creating webhook: {e}")
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-
+#template route for populating app GUI
 @app.route("/contracts")
 def list_all_contracts():
     shop = request.args.get("shop")
@@ -588,7 +586,7 @@ def list_all_contracts():
         app.logger.error("Error fetching subscription contracts: %s", str(e))
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
-
+#helper function for app GUI
 @app.route("/<subscription_id>/subscription-info", methods=["GET"])
 def get_subscription_info(subscription_id):
     shop = request.args.get("shop")
