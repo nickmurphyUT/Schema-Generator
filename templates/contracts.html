@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Subscription Contracts</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #f2f2f2; cursor: pointer; }
+        a { text-decoration: none; color: #0366d6; }
+    </style>
+</head>
+<body>
+    <p>Contracts count: {{ contracts | length }}</p>
+    <h1>Subscription Contracts</h1>
+
+    <!-- Table -->
+    <table>
+        <thead>
+            <tr>
+                {% set field, direction = sort_by.split() %}
+                {% set toggle_dir = 'asc' if direction == 'desc' else 'desc' %}
+
+                {% macro sort_link(field_name, label) %}
+                    {% set icon = '▲' if sort_by == field_name ~ ' asc' else ('▼' if sort_by == field_name ~ ' desc' else '') %}
+                    <a href="?shop={{ shop }}&sort_by={{ field_name }} {{ toggle_dir }}&page=1">
+                        {{ label }} {{ icon }}
+                    </a>
+                {% endmacro %}
+
+                <th>{{ sort_link('createdAt', 'Created At') }}</th>
+                <th>{{ sort_link('status', 'Status') }}</th>
+                <th>Customer</th>
+                <th>Email</th>
+                <th>{{ sort_link('nextBillingDate', 'Next Billing') }}</th>
+                <th>Items</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contract in contracts %}
+            <tr>
+                <td>{{ contract.createdAt }}</td>
+                <td>{{ contract.status }}</td>
+                <td>{{ contract.customer.firstName }} {{ contract.customer.lastName }}</td>
+                <td>{{ contract.customer.email }}</td>
+                <td>{{ contract.nextBillingDate }}</td>
+                <td>
+                    <ul>
+                        {% for line in contract.lines.edges %}
+                        <li>{{ line.node.title }} (x{{ line.node.quantity }})</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                    <a href="https://admin.shopify.com/store/sandbox-resideo-pro/apps/hotfix-usage-billing/subscriptions?customer_id={{ contract.customer.id | replace('gid://shopify/Customer/', '') }}&shop={{ shop }}&id={{ contract.id | replace('gid://shopify/SubscriptionContract/', '') }}" target="_blank">
+                        View
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination Controls -->
+    <div style="margin-top: 1em;">
+        <strong>Page {{ page }}</strong>
+        <div>
+            {% if prev_cursor %}
+                <a href="?shop={{ shop }}&after={{ prev_cursor }}&page={{ page - 1 }}&before_stack={{ prev_stack | urlencode }}&sort_by={{ sort_by }}">Previous</a>
+            {% endif %}
+            {% if has_next_page %}
+                <a href="?shop={{ shop }}&after={{ next_cursor }}&page={{ page + 1 }}&before_stack={{ before_stack | urlencode }}&sort_by={{ sort_by }}">Next</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

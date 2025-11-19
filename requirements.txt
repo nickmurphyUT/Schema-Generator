@@ -1,0 +1,11 @@
+flask
+requests
+gunicorn
+python-dotenv
+toml
+python-dateutil
+certifi>=2023.11.11
+pip-system-certs
+Flask-Cors==4.0.0
+pytz
+

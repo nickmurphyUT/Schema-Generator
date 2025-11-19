@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title or "USAA Admin" }}</title>
+  <style>
+    nav {
+      background: #1b365d;
+      padding: 1rem;
+    }
+    nav a {
+      color: white;
+      margin-right: 20px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    nav a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/">Home</a>
+  <a href="/subscriptions">Subscriptions</a>
+  <a href="/selling-plans">Selling Plans</a>
+</nav>
+
+<div>
+  {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

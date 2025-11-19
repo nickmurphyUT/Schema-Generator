@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Subscription Contract</h1>
+
+  <div class="section">
+    <h2>Customer</h2>
+    <p><strong>Name:</strong> {{ subscription.customer.firstName }} {{ subscription.customer.lastName }}</p>
+    <p><strong>Email:</strong> {{ subscription.customer.email }}</p>
+  </div>
+
+  <div class="section">
+    <h2>Subscription Info</h2>
+    <p><strong>ID:</strong> {{ subscription.id }}</p>
+    <p><strong>Status:</strong> {{ subscription.status }}</p>
+    <p><strong>Created:</strong> {{ subscription.createdAt }}</p>
+    <p><strong>Updated:</strong> {{ subscription.updatedAt }}</p>
+    <p><strong>Next Billing Date:</strong> {{ subscription.nextBillingDate }}</p>
+  </div>
+
+  <div class="section">
+    <h2>Billing Policy</h2>
+    <p><strong>Interval:</strong> Every {{ subscription.billingPolicy.intervalCount }} {{ subscription.billingPolicy.interval }}(s)</p>
+  </div>
+
+  <div class="section">
+    <h2>Delivery Policy</h2>
+    <p><strong>Interval:</strong> Every {{ subscription.deliveryPolicy.intervalCount }} {{ subscription.deliveryPolicy.interval }}(s)</p>
+  </div>
+
+  <div class="section">
+    <h2>Shipping Address</h2>
+    {% if subscription.deliveryMethod.__typename == "SubscriptionDeliveryMethodShipping" %}
+      {% set address = subscription.deliveryMethod.address %}
+      <p>{{ address.name }}</p>
+      <p>{{ address.address1 }} {{ address.address2 }}</p>
+      <p>{{ address.city }}, {{ address.province }} {{ address.zip }}</p>
+      <p>{{ address.country }}</p>
+    {% else %}
+      <p>No shipping address.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <h2>Payment Method</h2>
+    {% set instrument = subscription.paymentMethodInstrument %}
+    {% if instrument %}
+      <p><strong>Type:</strong> {{ instrument.__typename }}</p>
+      {% if instrument.__typename == "CustomerCreditCard" %}
+        <p><strong>Cardholder Name:</strong> {{ subscription.cardholderName }}</p>
+        <p><strong>Card:</strong> **** **** **** {{ instrument.lastDigits }}</p>
+        <p><strong>Brand:</strong> {{ subscription.paymentMethodBrand }}</p>
+        <p><strong>Expires:</strong> {{ instrument.expiryMonth }}/{{ instrument.expiryYear }}</p>
+        <p><strong>Billing Address:</strong><br>
+          {{ instrument.billingAddress.address1 }}<br>
+          {{ instrument.billingAddress.city }}, {{ instrument.billingAddress.province }} {{ instrument.billingAddress.zip }}<br>
+          {{ instrument.billingAddress.country }}
+        </p>
+      {% elif instrument.__typename == "CustomerPaypalBillingAgreement" %}
+        <p><strong>PayPal Email:</strong> {{ instrument.paypalAccountEmail }}</p>
+        <p><strong>Billing Address:</strong><br>
+          {{ instrument.billingAddress.address1 }}<br>
+          {{ instrument.billingAddress.city }}, {{ instrument.billingAddress.zip }}<br>
+          {{ instrument.billingAddress.country }}
+        </p>
+      {% elif instrument.__typename == "CustomerShopPayAgreement" %}
+        <p><strong>Cardholder Name:</strong> {{ subscription.cardholderName }}</p>
+        <p><strong>Card:</strong> **** **** **** {{ instrument.lastDigits }}</p>
+        <p><strong>Brand:</strong> {{ subscription.paymentMethodBrand }}</p>
+        <p><strong>Expires:</strong> {{ instrument.expiryMonth }}/{{ instrument.expiryYear }}</p>
+        <p><strong>Billing Address:</strong><br>
+          {{ instrument.billingAddress.address1 }}<br>
+          {{ instrument.billingAddress.city }}, {{ instrument.billingAddress.zip }}<br>
+          {{ instrument.billingAddress.country }}
+        </p>
+      {% endif %}
+    {% else %}
+      <p>No payment method on file.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <h2>Subscription Items</h2>
+    {% if subscription.lines.edges %}
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for edge in subscription.lines.edges %}
+            {% set item = edge.node %}
+            <tr>
+              <td>{{ item.variantTitle }}</td>
+              <td>{{ item.quantity }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No items in this subscription.</p>
+    {% endif %}
+  </div>
+{% endblock %}
