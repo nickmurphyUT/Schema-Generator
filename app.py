@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, request, jsonify, render_template_string, render_template, redirect
+from flask import Flask, request, jsonify, render_template_string, render_template, redirect, session
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from urllib.parse import quote
