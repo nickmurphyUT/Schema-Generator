@@ -80,6 +80,23 @@
   </style>
   <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
 <script src="https://unpkg.com/@shopify/app-bridge-utils@3"></script>
+<!-- Debug -->
+<p style="color:red">API KEY DEBUG: {{ api_key }}</p>
+
+<script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const host = new URLSearchParams(window.location.search).get("host");
+    
+    const app = window.appBridge.createApp({
+      apiKey: "{{ api_key }}",
+      host: host,
+      forceRedirect: true
+    });
+
+    console.log("AppBridge initialized", app);
+  });
+</script>
 
 <script>
   document.addEventListener("DOMContentLoaded", async () => {
