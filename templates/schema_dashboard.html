@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ title or "Schema App Dashboard" }}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f8;
+      color: #1a1a1a;
+      margin: 0;
+      padding: 0;
+    }
+    nav {
+      background-color: #1b365d;
+      padding: 1rem;
+    }
+    nav a {
+      color: white;
+      margin-right: 20px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    nav a:hover {
+      text-decoration: underline;
+    }
+    .container {
+      padding: 2rem;
+    }
+    .card {
+      background-color: white;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .card-header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    .btn {
+      background-color: #005bd3;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background-color: #0041a8;
+    }
+    .tips {
+      background-color: #fff7e6;
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+    .tips-icon {
+      font-size: 24px;
+      color: #f5a623;
+    }
+    .tips a {
+      color: #005bd3;
+      text-decoration: underline;
+    }
+    hr {
+      border: 0;
+      border-top: 1px solid #ddd;
+      margin: 1.5rem 0;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="{{ url_for('schema_dashboard') }}">Home</a>
+  <a href="{{ url_for('organization_schema') }}">Organization Schema</a>
+  <a href="{{ url_for('product_schema') }}">Product Schema</a>
+  <a href="{{ url_for('collection_schema') }}">Collection Schema</a>
+  <a href="{{ url_for('blog_schema') }}">Blog Schema</a>
+  <a href="{{ url_for('support') }}">Support</a>
+  <a href="{{ url_for('pricing') }}">Pricing</a>
+</nav>
+
+<div class="container">
+
+  <div class="tips">
+    <div class="tips-icon">👍</div>
+    <div>
+      <b>Welcome to Brandography Schema Customization App.</b>
+      This allows you to set metafields and other product or page data to be displayed as schema for search engines.
+      <a href="#">Click Here for our Instructional Video.</a>
+    </div>
+  </div>
+
+  <!-- Schema Cards -->
+  {% for schema in schemas %}
+  <div class="card">
+    <div class="card-header">
+      <h2>{{ schema.title }}</h2>
+      <button class="btn" onclick="window.location.href='{{ schema.url }}'">Manage</button>
+    </div>
+    <p>{{ schema.description }}</p>
+  </div>
+  {% endfor %}
+
+  <hr>
+  <h3>Quick Tips</h3>
+  <ul>
+    <li>✅ Keep your schema updated regularly.</li>
+    <li>✅ Test your structured data using Google’s Rich Results tool.</li>
+    <li>✅ Learn more on <a href="https://developers.google.com/search/docs/appearance/structured-data" target="_blank">Google’s Schema Markup Guide</a>.</li>
+  </ul>
+
+  <hr>
+  <h3>Quick Links</h3>
+  <p>
+    <a href="{{ url_for('schema_dashboard') }}">Home</a> |
+    <a href="{{ url_for('organization_schema') }}">Organization Schema Page</a> |
+    <a href="{{ url_for('product_schema') }}">Product Schema Page</a> |
+    <a href="{{ url_for('collection_schema') }}">Collection Schema Page</a>
+  </p>
+
+</div>
+
+</body>
+</html>
