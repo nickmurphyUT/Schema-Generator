@@ -664,7 +664,7 @@ def get_subscription_info(subscription_id):
     except Exception as e:
         app.logger.error("Error fetching subscription info: %s", str(e))
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
-
+# ---------------- DASHBOARD ----------------
 @app.route("/app")
 def schema_dashboard():
     schemas = [
@@ -691,31 +691,153 @@ def schema_dashboard():
     ]
     return render_template("schema_dashboard.html", schemas=schemas, title="Schema App Dashboard")
 
-
+# ---------------- ORGANIZATION SCHEMA ----------------
 @app.route("/app/organization-schema-builder")
 def organization_schema():
-    return "<h1>Organization Schema Builder</h1>"
+    shop = request.args.get("shop")
+    if not shop:
+        return "<p>Error: missing shop parameter</p>"
 
+    query = """
+    {
+      shop {
+        name
+        metafields(namespace: "organization", first: 10) {
+          edges {
+            node {
+              id
+              key
+              value
+              type
+              description
+            }
+          }
+        }
+      }
+    }
+    """
+    try:
+        data = query_shopify_graphql(shop, ACCESS_TOKEN, query)
+        metafields = data["data"]["shop"]["metafields"]["edges"]
+        return render_template("schema_list.html", schema_name="Organization", metafields=metafields, shop=shop)
+    except Exception as e:
+        return f"<p>Error fetching metafields: {str(e)}</p>"
 
+# ---------------- PRODUCT SCHEMA ----------------
 @app.route("/app/products-schema-builder")
 def product_schema():
-    return "<h1>Product Schema Builder</h1>"
+    shop = request.args.get("shop")
+    if not shop:
+        return "<p>Error: missing shop parameter</p>"
 
+    query = """
+    {
+      products(first: 10) {
+        edges {
+          node {
+            id
+            title
+            metafields(namespace: "product", first: 10) {
+              edges {
+                node {
+                  id
+                  key
+                  value
+                  type
+                  description
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+    try:
+        data = query_shopify_graphql(shop, ACCESS_TOKEN, query)
+        products = data["data"]["products"]["edges"]
+        return render_template("product_schema.html", products=products, shop=shop)
+    except Exception as e:
+        return f"<p>Error fetching products: {str(e)}</p>"
 
+# ---------------- COLLECTION SCHEMA ----------------
 @app.route("/app/collections-schema-builder")
 def collection_schema():
-    return "<h1>Collection Schema Builder</h1>"
+    shop = request.args.get("shop")
+    if not shop:
+        return "<p>Error: missing shop parameter</p>"
 
+    query = """
+    {
+      collections(first: 10) {
+        edges {
+          node {
+            id
+            title
+            metafields(namespace: "collection", first: 10) {
+              edges {
+                node {
+                  id
+                  key
+                  value
+                  type
+                  description
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+    try:
+        data = query_shopify_graphql(shop, ACCESS_TOKEN, query)
+        collections = data["data"]["collections"]["edges"]
+        return render_template("collection_schema.html", collections=collections, shop=shop)
+    except Exception as e:
+        return f"<p>Error fetching collections: {str(e)}</p>"
 
+# ---------------- BLOG SCHEMA ----------------
 @app.route("/app/blog-schema-builder")
 def blog_schema():
-    return "<h1>Blog Schema Builder</h1>"
+    shop = request.args.get("shop")
+    if not shop:
+        return "<p>Error: missing shop parameter</p>"
 
+    query = """
+    {
+      articles(first: 10) {
+        edges {
+          node {
+            id
+            title
+            metafields(namespace: "blog", first: 10) {
+              edges {
+                node {
+                  id
+                  key
+                  value
+                  type
+                  description
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+    try:
+        data = query_shopify_graphql(shop, ACCESS_TOKEN, query)
+        articles = data["data"]["articles"]["edges"]
+        return render_template("blog_schema.html", articles=articles, shop=shop)
+    except Exception as e:
+        return f"<p>Error fetching blog articles: {str(e)}</p>"
 
+# ---------------- SUPPORT & PRICING ----------------
 @app.route("/app/support")
 def support():
     return "<h1>Support Page</h1>"
-
 
 @app.route("/app/pricing")
 def pricing():
