@@ -853,6 +853,80 @@ def pricing():
     return "<h1>Pricing Page</h1>"
 
 
+
+@app.route("/create_app_owned_metafields")
+def create_app_owned_metafields():
+    shop = session.get("shop")
+    token = session.get("access_token")  # Your OAuth token for the store
+
+    if not shop or not token:
+        flash("Shop or access token not found.", "error")
+        return redirect(url_for("schema_dashboard"))
+
+    # Define metafields for products
+    product_metafields = [
+        {
+            "name": "Ingredients",
+            "key": "ingredients",
+            "description": "List of ingredients used in the product.",
+            "type": "list.single_line_text_field",
+            "ownerType": "PRODUCT"
+        },
+        {
+            "name": "Allergens",
+            "key": "allergens",
+            "description": "Allergens present in the product.",
+            "type": "list.single_line_text_field",
+            "ownerType": "PRODUCT"
+        }
+    ]
+
+    # Define metafields for collections
+    collection_metafields = [
+        {
+            "name": "Collection Theme",
+            "key": "theme",
+            "description": "Theme of the collection.",
+            "type": "single_line_text_field",
+            "ownerType": "COLLECTION"
+        }
+    ]
+
+    # Create metafields via GraphQL
+    for mf in product_metafields + collection_metafields:
+        query = """
+        mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
+          metafieldDefinitionCreate(definition: $definition) {
+            createdDefinition {
+              id
+              name
+              namespace
+              key
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {"definition": {
+            "name": mf["name"],
+            "key": mf["key"],
+            "description": mf["description"],
+            "type": mf["type"],
+            "ownerType": mf["ownerType"],
+            "namespace": "$app"  # <-- app-owned namespace
+        }}
+
+        resp = graphql_request(shop, token, query, variables)
+        errors = resp.get("data", {}).get("metafieldDefinitionCreate", {}).get("userErrors", [])
+        if errors:
+            print(f"Error creating {mf['name']}: {errors}")
+
+    flash("App-owned metafields created for products and collections!", "success")
+    return redirect(url_for("schema_dashboard"))
+
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
