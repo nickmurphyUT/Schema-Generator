@@ -1,0 +1,23 @@
+<h1>Product Schema Metafields</h1>
+<p>Shop: {{ shop }}</p>
+{% for product_edge in products %}
+  <h2>{{ product_edge.node.title }}</h2>
+  <table border="1" cellpadding="5">
+    <tr>
+      <th>ID</th>
+      <th>Key</th>
+      <th>Value</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+    {% for mf_edge in product_edge.node.metafields.edges %}
+    <tr>
+      <td>{{ mf_edge.node.id }}</td>
+      <td>{{ mf_edge.node.key }}</td>
+      <td>{{ mf_edge.node.value }}</td>
+      <td>{{ mf_edge.node.type }}</td>
+      <td>{{ mf_edge.node.description }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% endfor %}
