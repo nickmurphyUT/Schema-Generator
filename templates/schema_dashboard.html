@@ -101,7 +101,7 @@
       <a href="#">Click Here for our Instructional Video.</a>
       <br>
       <span>test output for dynamically cpatuirng varibles</span>
-      <span>Shop: {{ shop_name }}</span>
+     <span>Shop: <b id="shop-name-output">Loading...</b></span>
     </div>
   </div>
 
@@ -134,6 +134,23 @@
   </p>
 
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    try {
+        const pathParts = window.location.pathname.split("/");
+        const shopName = pathParts[2] || null;
+
+        if (shopName) {
+            document.getElementById("shop-name-output").textContent = shopName;
+        } else {
+            document.getElementById("shop-name-output").textContent = "Not found";
+        }
+    } catch (err) {
+        console.error("Failed to parse shop name", err);
+        document.getElementById("shop-name-output").textContent = "Error";
+    }
+});
+</script>
 
 </body>
 </html>
