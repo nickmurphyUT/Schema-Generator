@@ -665,6 +665,63 @@ def get_subscription_info(subscription_id):
         app.logger.error("Error fetching subscription info: %s", str(e))
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
+@app.route("/app")
+def schema_dashboard():
+    schemas = [
+        {
+            "title": "Organization Schema",
+            "description": "Define structured data about your organization to improve visibility across search results.",
+            "url": "/app/organization-schema-builder"
+        },
+        {
+            "title": "Product Schema",
+            "description": "Add or edit schema data for your products to improve visibility and SEO ranking.",
+            "url": "/app/products-schema-builder"
+        },
+        {
+            "title": "Collection Schema",
+            "description": "Configure schema markup for collections to help search engines understand your product groups.",
+            "url": "/app/collections-schema-builder"
+        },
+        {
+            "title": "Blog Schema",
+            "description": "Enhance your blog posts with structured schema data to appear in rich search results.",
+            "url": "/app/blog-schema-builder"
+        }
+    ]
+    return render_template("schema_dashboard.html", schemas=schemas, title="Schema App Dashboard")
+
+
+@app.route("/app/organization-schema-builder")
+def organization_schema():
+    return "<h1>Organization Schema Builder</h1>"
+
+
+@app.route("/app/products-schema-builder")
+def product_schema():
+    return "<h1>Product Schema Builder</h1>"
+
+
+@app.route("/app/collections-schema-builder")
+def collection_schema():
+    return "<h1>Collection Schema Builder</h1>"
+
+
+@app.route("/app/blog-schema-builder")
+def blog_schema():
+    return "<h1>Blog Schema Builder</h1>"
+
+
+@app.route("/app/support")
+def support():
+    return "<h1>Support Page</h1>"
+
+
+@app.route("/app/pricing")
+def pricing():
+    return "<h1>Pricing Page</h1>"
+
+
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
