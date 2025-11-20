@@ -78,6 +78,33 @@
       margin: 1.5rem 0;
     }
   </style>
+  <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+<script src="https://unpkg.com/@shopify/app-bridge-utils@3"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    const AppBridge = window['app-bridge'];
+    const createApp = AppBridge.default;
+
+    const app = createApp({
+      apiKey: "{{ api_key }}",
+      host: new URLSearchParams(window.location.search).get("host"),
+    });
+
+    const utils = window['app-bridge-utils'];
+
+    // Read the admin URL of the parent window
+    const adminUrl = await utils.getLocation(app);
+
+    // Example: https://admin.shopify.com/store/nontransferrnick/apps/schema-test-1/app
+    const match = adminUrl.pathname.match(/\/store\/([^\/]+)/);
+
+    const shopName = match ? match[1] : "Not found";
+
+    document.getElementById("shop-name-output").textContent = shopName;
+  });
+</script>
+
 </head>
 <body>
 
