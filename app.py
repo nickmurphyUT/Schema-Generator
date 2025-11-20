@@ -667,6 +667,8 @@ def get_subscription_info(subscription_id):
 # ---------------- DASHBOARD ----------------
 @app.route("/app")
 def schema_dashboard():
+        # Get shop from session (works with Shopify OAuth)
+    shop = session.get("shop")
     schemas = [
         {
             "title": "Organization Schema",
@@ -689,7 +691,12 @@ def schema_dashboard():
             "url": "/app/blog-schema-builder"
         }
     ]
-    return render_template("schema_dashboard.html", schemas=schemas, title="Schema App Dashboard")
+    return render_template(
+        "schema_dashboard.html",
+        schemas=schemas,
+        title="Schema App Dashboard",
+        shop_name=shop  # ← send it to template
+    )
 
 # ---------------- ORGANIZATION SCHEMA ----------------
 @app.route("/app/organization-schema-builder")
