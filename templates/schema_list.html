@@ -1,0 +1,20 @@
+<h1>{{ schema_name }} Schema Metafields</h1>
+<p>Shop: {{ shop }}</p>
+<table border="1" cellpadding="5">
+  <tr>
+    <th>ID</th>
+    <th>Key</th>
+    <th>Value</th>
+    <th>Type</th>
+    <th>Description</th>
+  </tr>
+  {% for edge in metafields %}
+  <tr>
+    <td>{{ edge.node.id }}</td>
+    <td>{{ edge.node.key }}</td>
+    <td>{{ edge.node.value }}</td>
+    <td>{{ edge.node.type }}</td>
+    <td>{{ edge.node.description }}</td>
+  </tr>
+  {% endfor %}
+</table>
