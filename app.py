@@ -879,34 +879,16 @@ def support():
 @app.route("/app/pricing")
 def pricing():
     return "<h1>Pricing Page</h1>"
-
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     import os
-    import hmac, hashlib, jwt, requests
+    import jwt, requests
 
     data = request.get_json()
     shop = data["shop"]
     id_token = data["id_token"]
-    sent_hmac = data["hmac"]
 
-    # 1. Verify HMAC
-    check_string = "&".join([
-        f"hmac={sent_hmac}",
-        f"id_token={id_token}",
-        f"shop={shop}"
-    ])
-
-    computed = hmac.new(
-        os.environ["SHOPIFY_API_SECRET"].encode(),
-        check_string.encode(),
-        hashlib.sha256
-    ).hexdigest()
-
-    if not hmac.compare_digest(sent_hmac, computed):
-        return {"error": "HMAC invalid"}, 400
-
-    # 2. Verify the JWT signature
+    # 1. VERIFY THE JWT (this is your security)
     try:
         decoded = jwt.decode(
             id_token,
@@ -916,7 +898,7 @@ def verify_and_create_metafields():
     except Exception as e:
         return {"error": "Invalid id_token", "details": str(e)}, 400
 
-    # 3. EXCHANGE the ID TOKEN for an Admin API access token
+    # 2. EXCHANGE ID TOKEN FOR ACCESS TOKEN
     token_resp = requests.post(
         f"https://{shop}/admin/oauth/access_token",
         json={
@@ -929,14 +911,11 @@ def verify_and_create_metafields():
     )
 
     if token_resp.status_code != 200:
-        return {
-            "error": "Token exchange failed",
-            "details": token_resp.text
-        }, 500
+        return {"error": "Token exchange failed", "details": token_resp.text}, 500
 
     access_token = token_resp.json()["access_token"]
 
-    # 4. Create metafield
+    # 3. CREATE META
     metafield_payload = {
         "metafield": {
             "namespace": "app_owned",
@@ -955,10 +934,7 @@ def verify_and_create_metafields():
     if result.status_code >= 300:
         return {"error": "Shopify API failed", "details": result.text}, 500
 
-    return {
-        "message": "Metafield created",
-        "result": result.json()
-    }, 200
+    return {"message": "Metafield created", "result": result.json()}
 
 
 
