@@ -78,50 +78,6 @@
       margin: 1.5rem 0;
     }
   </style>
-  <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-<script src="https://unpkg.com/@shopify/app-bridge-utils@3"></script>
-<!-- Debug -->
-<p style="color:red">API KEY DEBUG: {{ api_key }}</p>
-
-<script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const host = new URLSearchParams(window.location.search).get("host");
-    
-    const app = window.appBridge.createApp({
-      apiKey: "{{ api_key }}",
-      host: host,
-      forceRedirect: true
-    });
-
-    console.log("AppBridge initialized", app);
-  });
-</script>
-
-<script>
-  document.addEventListener("DOMContentLoaded", async () => {
-    const AppBridge = window['app-bridge'];
-    const createApp = AppBridge.default;
-
-    const app = createApp({
-      apiKey: "{{ api_key }}",
-      host: new URLSearchParams(window.location.search).get("host"),
-    });
-
-    const utils = window['app-bridge-utils'];
-
-    // Read the admin URL of the parent window
-    const adminUrl = await utils.getLocation(app);
-
-    // Example: https://admin.shopify.com/store/nontransferrnick/apps/schema-test-1/app
-    const match = adminUrl.pathname.match(/\/store\/([^\/]+)/);
-
-    const shopName = match ? match[1] : "Not found";
-
-    document.getElementById("shop-name-output").textContent = shopName;
-  });
-</script>
-
 </head>
 <body>
 
@@ -144,9 +100,9 @@
       This allows you to set metafields and other product or page data to be displayed as schema for search engines.
       <a href="#">Click Here for our Instructional Video.</a>
       <br>
-      <span>test output for dynamically cpatuirng varibles</span>
-      <span>hmac_value: {{ hmac_value or 'Not found' }}</span>
-      <span>id_token_value: {{ id_token_value or 'Not found' }}</span>
+      <span>test output for dynamically cpatuirng varibles</span><br>
+      <span>hmac_value: {{ hmac_value or 'Not found' }}</span><br>
+      <span>id_token_value: {{ id_token_value or 'Not found' }}</span><br>
       <span>Shop: {{ shop_name or 'Not found' }}</span>
 
     </div>
@@ -181,23 +137,5 @@
   </p>
 
 </div>
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    try {
-        const pathParts = window.location.pathname.split("/");
-        const shopName = pathParts[2] || null;
-
-        if (shopName) {
-            document.getElementById("shop-name-output").textContent = shopName;
-        } else {
-            document.getElementById("shop-name-output").textContent = "Not found";
-        }
-    } catch (err) {
-        console.error("Failed to parse shop name", err);
-        document.getElementById("shop-name-output").textContent = "Error";
-    }
-});
-</script>
-
 </body>
 </html>
