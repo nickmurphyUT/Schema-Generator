@@ -934,61 +934,35 @@ def verify_and_create_metafields():
     data = request.json
     shop = data.get("shop")
     posted_hmac = data.get("hmac")
-    posted_id_token = data.get("id_token")
 
-    # --- Step 1: Validate HMAC and ID token ---
-    if posted_hmac != latest_values.get("hmac") or posted_id_token != latest_values.get("id_token"):
-        return jsonify({"error": "HMAC or ID token mismatch"}), 400
+    if not shop or not posted_hmac:
+        return jsonify({"error": "Missing shop or HMAC"}), 400
 
-    if not shop:
-        return jsonify({"error": "Missing shop parameter"}), 400
+    # --- Step 1: Validate HMAC against your stored latest one ---
+    if posted_hmac != latest_values.get("hmac"):
+        return jsonify({"error": "HMAC mismatch"}), 400
 
-    # --- Step 2: Trigger OAuth flow internally to get a fresh access token ---
-    try:
-        # Step 2a: Request a temporary authorization code (simulate the redirect)
-        auth_url = (
-            f"https://{shop}/admin/oauth/authorize?"
-            f"client_id={SHOPIFY_API_KEY}&"
-            f"scope={SCOPES}&"
-            f"redirect_uri={REDIRECT_URI}&"
-            f"state=secure_random_string"
-        )
-        # Normally the user is redirected to Shopify to approve, but for automation
-        # you could hit this endpoint programmatically in dev/test stores that are pre-approved
+    # --- Step 2: Find store in database using shop domain ---
+    store = StoreToken.query.filter_by(shop=shop).first()
+    if not store:
+        return jsonify({"error": "Store not found in DB"}), 404
 
-        # Step 2b: Immediately exchange code for access token
-        # Here we assume you have the code from a prior session or pre-approval
-        # For fully dynamic automation, use offline access or pre-installed app
-        code = data.get("code")
-        if not code:
-            return jsonify({"error": "Missing OAuth authorization code"}), 400
+    access_token = store.access_token
+    if not access_token:
+        return jsonify({"error": "Store token missing"}), 400
 
-        token_url = f"https://{shop}/admin/oauth/access_token"
-        payload = {
-            "client_id": SHOPIFY_API_KEY,
-            "client_secret": SHOPIFY_API_SECRET,
-            "code": code,
-        }
-        token_resp = requests.post(token_url, json=payload)
-        token_resp.raise_for_status()
-        access_token = token_resp.json().get("access_token")
-        if not access_token:
-            return jsonify({"error": "Failed to obtain access token"}), 500
-
-    except Exception as e:
-        return jsonify({"error": "Error during OAuth flow", "details": str(e)}), 500
-
-    # --- Step 3: Use the token to create the metafield ---
+    # --- Step 3: Use stored token to create metafield ---
     headers = {
         "X-Shopify-Access-Token": access_token,
         "Content-Type": "application/json",
     }
+
     metafield_payload = {
         "metafield": {
             "namespace": "custom_schema",
             "key": "example",
             "type": "single_line_text_field",
-            "value": "Hello from fully automated OAuth!"
+            "value": "Hello from automated metafield creator!"
         }
     }
 
@@ -1004,7 +978,8 @@ def verify_and_create_metafields():
 
     return jsonify({
         "message": "Metafield created successfully!",
-        "access_token_used": access_token
+        "shop": shop,
+        "used_access_token": access_token
     })
 
 
