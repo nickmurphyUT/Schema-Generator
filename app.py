@@ -669,6 +669,8 @@ def get_subscription_info(subscription_id):
 def schema_dashboard():
     # Try session first, fallback to query param
     shop = session.get("shop") or request.args.get("shop")
+    hmac = session.get("hmac") or request.args.get("hmac")
+    id_token = session.get("id_token") or request.args.get("id_token")
 
     schemas = [
         {
@@ -698,6 +700,8 @@ def schema_dashboard():
         schemas=schemas,
         title="Schema App Dashboard",
         shop_name=shop  # ← send it to template
+        hmac_value=hmac
+        id_token_value=id_token
     )
 
 # ---------------- ORGANIZATION SCHEMA ----------------
