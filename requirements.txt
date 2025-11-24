@@ -8,4 +8,5 @@ certifi>=2023.11.11
 pip-system-certs
 Flask-Cors==4.0.0
 pytz
+PyJWT==2.8.0
 
