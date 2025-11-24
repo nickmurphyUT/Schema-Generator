@@ -26,12 +26,6 @@ from flask_sqlalchemy import SQLAlchemy
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins=allowed_origins, supports_credentials=True)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
 
 # Store Locally?
 allowed_origins = [
@@ -39,7 +33,12 @@ allowed_origins = [
     "https://xxx",
 ]
 
+CORS(app, origins=allowed_origins, supports_credentials=True)
 
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
 
 # Shopify API credentials
 SHOPIFY_API_KEY = os.getenv("SHOPIFY_API_KEY")
