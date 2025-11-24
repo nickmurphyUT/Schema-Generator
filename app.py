@@ -22,6 +22,12 @@ import base64
 import jwt
 from flask_sqlalchemy import SQLAlchemy
 
+# Load environment variables
+load_dotenv()
+
+app = Flask(__name__)
+CORS(app, origins=allowed_origins, supports_credentials=True)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -33,8 +39,7 @@ allowed_origins = [
     "https://xxx",
 ]
 
-# Load environment variables
-load_dotenv()
+
 
 # Shopify API credentials
 SHOPIFY_API_KEY = os.getenv("SHOPIFY_API_KEY")
@@ -53,11 +58,6 @@ SHOPIFY_ADMIN_ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN")
 SHOPIFY_API_VERSION = "2024-01"  # or current stable version
 
 # Initialize Flask app
-app = Flask(__name__)
-CORS(app, origins=allowed_origins, supports_credentials=True)
-import requests
-import logging
-
 
 class StoreToken(db.Model):
     __tablename__ = "store_tokens"
