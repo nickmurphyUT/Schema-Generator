@@ -889,7 +889,6 @@ def support():
 @app.route("/app/pricing")
 def pricing():
     return "<h1>Pricing Page</h1>"
-    
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
@@ -911,12 +910,27 @@ def verify_and_create_metafields():
     if posted_hmac != original_hmac or posted_id_token != original_id_token:
         return jsonify({"error": "HMAC or ID token mismatch"}), 400
 
-    # Use your stored access token for API calls
-    access_token = STORED_TOKENS.get(shop)
-    if not access_token:
-        return jsonify({"error": "Access token not found for shop"}), 400
+    # --- Dynamically obtain access token via OAuth ---
+    # This assumes you previously completed the OAuth flow and have a code in your callback
+    code = data.get("code")  # client should POST the temporary authorization code
+    if not code:
+        return jsonify({"error": "Missing OAuth authorization code"}), 400
 
-    # Example metafield creation
+    token_url = f"https://{shop}/admin/oauth/access_token"
+    payload = {
+        "client_id": SHOPIFY_API_KEY,
+        "client_secret": SHOPIFY_API_SECRET,
+        "code": code,
+    }
+    token_resp = requests.post(token_url, json=payload)
+    if token_resp.status_code != 200:
+        return jsonify({"error": "Failed to get access token", "details": token_resp.text}), 400
+
+    access_token = token_resp.json().get("access_token")
+    if not access_token:
+        return jsonify({"error": "No access token returned"}), 400
+
+    # --- Create metafield dynamically ---
     headers = {
         "X-Shopify-Access-Token": access_token,
         "Content-Type": "application/json",
@@ -937,7 +951,7 @@ def verify_and_create_metafields():
     )
 
     if resp.status_code != 201:
-        return jsonify({"error": resp.json()}), 400
+        return jsonify({"error": "Metafield creation failed", "details": resp.json()}), 400
 
     return jsonify({"message": "Metafield created successfully!"})
 
