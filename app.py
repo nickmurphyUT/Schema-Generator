@@ -1085,6 +1085,17 @@ def create_app_owned_metafields():
     flash("App-owned metafields created for products and collections!", "success")
     return redirect(url_for("schema_dashboard"))
 
+@app.route("/init-db", methods=["GET"])
+def init_db():
+    """Create all database tables."""
+    try:
+        with app.app_context():
+            db.create_all()
+        return jsonify({"message": "Database initialized successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
