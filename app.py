@@ -882,39 +882,34 @@ def pricing():
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
-    payload = request.get_json()
-    hmac_value = payload["hmac"]
-    id_token = payload["id_token"]
-    shop_from_frontend = payload["shop"]
+    # do NOT verify hmac here
 
-    raw_body = request.data
+    id_token = session.get("id_token")
+    shop = session.get("shop")
 
-    # 1. Verify HMAC
-    if not verify_hmac(hmac_value, raw_body):
-        return jsonify({"error": "Invalid HMAC"}), 400
+    if not id_token or not shop:
+        return jsonify({"error": "Missing session"}), 400
 
-    # 2. Verify JWT
+    # Verify JWT
     try:
         jwt_data = verify_id_token(id_token)
-    except Exception as e:
+    except Exception:
         return jsonify({"error": "Invalid ID token"}), 400
 
-    shop = jwt_data["dest"].replace("https://", "")
+    shop_from_jwt = jwt_data["dest"].replace("https://", "")
 
-    if shop != shop_from_frontend:
+    if shop != shop_from_jwt:
         return jsonify({"error": "Shop mismatch"}), 400
 
-    # 3. Retrieve the shop’s permanent token from your DB
     token = db.get_token(shop)
     if not token:
-        return jsonify({"error": "Store not authenticated yet – redirect to OAuth"}), 401
+        return jsonify({"error": "No OAuth token"}), 401
 
-    # 4. Store session data
-    session["shop"] = shop
     session["access_token"] = token
 
-    # 5. Now run your metafield creation logic
-    return create_app_owned_metafields()
+    create_app_owned_metafields_internal()
+
+    return jsonify({"message": "Metafields created."})
 
 
 @app.route("/create_app_owned_metafields")
