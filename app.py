@@ -891,6 +891,14 @@ def verify_and_create_metafields():
     original_hmac = request.args.get("hmac")
     original_id_token = request.args.get("id_token")
 
+
+    payload = request.get_json()
+    print("POSTed HMAC:", repr(payload['hmac']))
+    print("Query HMAC:", repr(request.args.get('hmac')))
+    print("POSTed ID token:", repr(payload['id_token']))
+    print("Query ID token:", repr(request.args.get('id_token')))
+
+
     # Check for exact match
     if posted_hmac != original_hmac or posted_id_token != original_id_token:
         return jsonify({"error": "HMAC or ID token mismatch"}), 400
