@@ -103,7 +103,28 @@
       <span>test output for dynamically cpatuirng varibles</span><br>
       <span>hmac_value: {{ hmac_value or 'Not found' }}</span><br>
       <span>id_token_value: {{ id_token_value or 'Not found' }}</span><br>
-      <span>Shop: {{ shop_name or 'Not found' }}</span>
+      <span>Shop: {{ shop_name or 'Not found' }}</span><br>
+      <button id="createMetaBtn">Create App-Owned Metafields</button>
+
+<script>
+document.getElementById("createMetaBtn").onclick = async () => {
+  const payload = {
+    hmac: {{ hmac_value or 'Not found' }},        // you already have these values
+    id_token: {{ id_token_value or 'Not found' }},
+    shop: {{ shop_name or 'Not found' }}
+  };
+
+  const resp = await fetch("/verify_and_create_metafields", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const json = await resp.json();
+  alert(json.message || JSON.stringify(json));
+};
+</script>
+
 
     </div>
   </div>
