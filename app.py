@@ -879,62 +879,52 @@ def support():
 @app.route("/app/pricing")
 def pricing():
     return "<h1>Pricing Page</h1>"
+    
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
-    import os
-    import jwt, requests
+    data = request.json
+    shop = data.get("shop")
+    posted_hmac = data.get("hmac")
+    posted_id_token = data.get("id_token")
 
-    data = request.get_json()
-    shop = data["shop"]
-    id_token = data["id_token"]
+    # Grab the original values from the query string (GET /app)
+    original_hmac = request.args.get("hmac")
+    original_id_token = request.args.get("id_token")
 
-    # 1. VERIFY THE JWT (this is your security)
-    try:
-        decoded = jwt.decode(
-            id_token,
-            os.environ["SHOPIFY_API_SECRET"],
-            algorithms=["HS256"]
-        )
-    except Exception as e:
-        return {"error": "Invalid id_token", "details": str(e)}, 400
+    # Check for exact match
+    if posted_hmac != original_hmac or posted_id_token != original_id_token:
+        return jsonify({"error": "HMAC or ID token mismatch"}), 400
 
-    # 2. EXCHANGE ID TOKEN FOR ACCESS TOKEN
-    token_resp = requests.post(
-        f"https://{shop}/admin/oauth/access_token",
-        json={
-            "client_id": os.environ["SHOPIFY_API_KEY"],
-            "client_secret": os.environ["SHOPIFY_API_SECRET"],
-            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
-            "subject_token": id_token,
-            "subject_token_type": "urn:ietf:params:oauth:token-type:id_token"
-        }
-    )
+    # Use your stored access token for API calls
+    access_token = STORED_TOKENS.get(shop)
+    if not access_token:
+        return jsonify({"error": "Access token not found for shop"}), 400
 
-    if token_resp.status_code != 200:
-        return {"error": "Token exchange failed", "details": token_resp.text}, 500
-
-    access_token = token_resp.json()["access_token"]
-
-    # 3. CREATE META
+    # Example metafield creation
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json",
+    }
     metafield_payload = {
         "metafield": {
-            "namespace": "app_owned",
-            "key": "installed",
-            "value": "true",
-            "type": "single_line_text_field"
+            "namespace": "custom_schema",
+            "key": "example",
+            "type": "single_line_text_field",
+            "value": "Hello from button!"
         }
     }
 
-    result = requests.post(
-        f"https://{shop}/admin/api/2025-01/metafields.json",
-        json=metafield_payload,
-        headers={"X-Shopify-Access-Token": access_token}
+    resp = requests.post(
+        f"https://{shop}/admin/api/2026-01/metafields.json",
+        headers=headers,
+        json=metafield_payload
     )
 
-    if result.status_code >= 300:
-        return {"error": "Shopify API failed", "details": result.text}, 500
+    if resp.status_code != 201:
+        return jsonify({"error": resp.json()}), 400
 
-    return {"message": "Metafield created", "result": result.json()}
+    return jsonify({"message": "Metafield created successfully!"})
+
 
 
 
