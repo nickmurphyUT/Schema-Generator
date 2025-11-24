@@ -897,17 +897,15 @@ def verify_and_create_metafields():
     posted_hmac = data.get("hmac")
     posted_id_token = data.get("id_token")
 
-    # Grab the original values from the query string (GET /app)
-    original_hmac = request.args.get("hmac")
-    original_id_token = request.args.get("id_token")
+    # Grab the original dynamic values stored from GET /app
+    original_hmac = latest_values.get("hmac")
+    original_id_token = latest_values.get("id_token")
 
-
-    payload = request.get_json()
-    print("POSTed HMAC:", repr(payload['hmac']))
-    print("Query HMAC:", repr(request.args.get('hmac')))
-    print("POSTed ID token:", repr(payload['id_token']))
-    print("Query ID token:", repr(request.args.get('id_token')))
-
+    # Debug output
+    print("POSTed HMAC:", repr(posted_hmac))
+    print("Stored HMAC:", repr(original_hmac))
+    print("POSTed ID token:", repr(posted_id_token))
+    print("Stored ID token:", repr(original_id_token))
 
     # Check for exact match
     if posted_hmac != original_hmac or posted_id_token != original_id_token:
@@ -942,6 +940,7 @@ def verify_and_create_metafields():
         return jsonify({"error": resp.json()}), 400
 
     return jsonify({"message": "Metafield created successfully!"})
+
 
 
 
