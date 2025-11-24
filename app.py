@@ -20,6 +20,12 @@ import hmac
 import hashlib
 import base64
 import jwt
+from flask_sqlalchemy import SQLAlchemy
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
 
 # Store Locally?
 allowed_origins = [
@@ -51,6 +57,17 @@ app = Flask(__name__)
 CORS(app, origins=allowed_origins, supports_credentials=True)
 import requests
 import logging
+
+
+class StoreToken(db.Model):
+    __tablename__ = "store_tokens"
+    id = db.Column(db.Integer, primary_key=True)
+    shop = db.Column(db.String(255), unique=True, nullable=False)
+    access_token = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+
 
 def verify_hmac(hmac_value, raw_body):
     calculated = hmac.new(
@@ -240,8 +257,19 @@ def auth_callback():
 
     if response.status_code != 200:
         return jsonify({"error": "Error retrieving access token"}), 400
-
+    
     access_token = response.json().get("access_token")
+    
+    # Save token to DB
+    store = StoreToken.query.filter_by(shop=shop).first()
+    if store:
+        store.access_token = access_token
+    else:
+        store = StoreToken(shop=shop, access_token=access_token)
+        db.session.add(store)
+    
+    db.session.commit()
+
 
     return jsonify(
         {
