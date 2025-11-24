@@ -191,7 +191,19 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
 #app status check? Remove?
 @app.route("/")
 def home():
-    return "Shopify OAuth App is running!"
+    shop = request.args.get("shop")
+    if not shop:
+        return jsonify({"error": "Missing shop parameter"}), 400
+
+    auth_url = (
+        f"https://{shop}/admin/oauth/authorize?"
+        f"client_id={SHOPIFY_API_KEY}&"
+        f"scope={SCOPES}&"
+        f"redirect_uri={REDIRECT_URI}&"
+        f"state=secure_random_string"
+    )
+    return redirect(auth_url)
+    
 #access token gen
 @app.route("/auth")
 def authenticate():
