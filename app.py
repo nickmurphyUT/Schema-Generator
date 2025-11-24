@@ -689,12 +689,22 @@ def get_subscription_info(subscription_id):
         app.logger.error("Error fetching subscription info: %s", str(e))
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 # ---------------- DASHBOARD ----------------
+# store the latest dynamic values from Shopify
+latest_values = {
+    "hmac": None,
+    "id_token": None
+}
+
 @app.route("/app")
 def schema_dashboard():
     # Try session first, fallback to query param
     shop = session.get("shop") or request.args.get("shop")
     hmac = session.get("hmac") or request.args.get("hmac")
     id_token = session.get("id_token") or request.args.get("id_token")
+
+    # store dynamic values for later POST comparison
+    latest_values["hmac"] = hmac
+    latest_values["id_token"] = id_token
 
     schemas = [
         {
@@ -723,7 +733,7 @@ def schema_dashboard():
         "schema_dashboard.html",
         schemas=schemas,
         title="Schema App Dashboard",
-        shop_name=shop,  # ← send it to template
+        shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token
     )
