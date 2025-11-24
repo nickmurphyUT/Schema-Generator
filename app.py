@@ -16,6 +16,10 @@ from dateutil import parser
 from flask_cors import CORS
 import uuid
 import pytz
+import hmac
+import hashlib
+import base64
+import jwt
 
 # Store Locally?
 allowed_origins = [
@@ -47,6 +51,26 @@ app = Flask(__name__)
 CORS(app, origins=allowed_origins, supports_credentials=True)
 import requests
 import logging
+
+def verify_hmac(hmac_value, raw_body):
+    calculated = hmac.new(
+        SHOPIFY_API_SECRET.encode("utf-8"),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(calculated, hmac_value)
+
+
+def verify_id_token(id_token):
+    return jwt.decode(
+        id_token,
+        SHOPIFY_API_SECRET,
+        algorithms=["HS256"],
+        audience=SHOPIFY_API_KEY,
+        options={"verify_exp": True}
+    )
+
 
 def query_shopify_graphql(shop, access_token, query):
     """
@@ -856,6 +880,41 @@ def support():
 def pricing():
     return "<h1>Pricing Page</h1>"
 
+@app.route("/verify_and_create_metafields", methods=["POST"])
+def verify_and_create_metafields():
+    payload = request.get_json()
+    hmac_value = payload["hmac"]
+    id_token = payload["id_token"]
+    shop_from_frontend = payload["shop"]
+
+    raw_body = request.data
+
+    # 1. Verify HMAC
+    if not verify_hmac(hmac_value, raw_body):
+        return jsonify({"error": "Invalid HMAC"}), 400
+
+    # 2. Verify JWT
+    try:
+        jwt_data = verify_id_token(id_token)
+    except Exception as e:
+        return jsonify({"error": "Invalid ID token"}), 400
+
+    shop = jwt_data["dest"].replace("https://", "")
+
+    if shop != shop_from_frontend:
+        return jsonify({"error": "Shop mismatch"}), 400
+
+    # 3. Retrieve the shop’s permanent token from your DB
+    token = db.get_token(shop)
+    if not token:
+        return jsonify({"error": "Store not authenticated yet – redirect to OAuth"}), 401
+
+    # 4. Store session data
+    session["shop"] = shop
+    session["access_token"] = token
+
+    # 5. Now run your metafield creation logic
+    return create_app_owned_metafields()
 
 
 @app.route("/create_app_owned_metafields")
