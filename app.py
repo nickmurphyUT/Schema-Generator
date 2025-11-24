@@ -882,34 +882,84 @@ def pricing():
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
-    # do NOT verify hmac here
+    import os
+    import hmac, hashlib, jwt, requests
 
-    id_token = session.get("id_token")
-    shop = session.get("shop")
+    data = request.get_json()
+    shop = data["shop"]
+    id_token = data["id_token"]
+    sent_hmac = data["hmac"]
 
-    if not id_token or not shop:
-        return jsonify({"error": "Missing session"}), 400
+    # 1. Verify HMAC
+    check_string = "&".join([
+        f"hmac={sent_hmac}",
+        f"id_token={id_token}",
+        f"shop={shop}"
+    ])
 
-    # Verify JWT
+    computed = hmac.new(
+        os.environ["SHOPIFY_API_SECRET"].encode(),
+        check_string.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(sent_hmac, computed):
+        return {"error": "HMAC invalid"}, 400
+
+    # 2. Verify the JWT signature
     try:
-        jwt_data = verify_id_token(id_token)
-    except Exception:
-        return jsonify({"error": "Invalid ID token"}), 400
+        decoded = jwt.decode(
+            id_token,
+            os.environ["SHOPIFY_API_SECRET"],
+            algorithms=["HS256"]
+        )
+    except Exception as e:
+        return {"error": "Invalid id_token", "details": str(e)}, 400
 
-    shop_from_jwt = jwt_data["dest"].replace("https://", "")
+    # 3. EXCHANGE the ID TOKEN for an Admin API access token
+    token_resp = requests.post(
+        f"https://{shop}/admin/oauth/access_token",
+        json={
+            "client_id": os.environ["SHOPIFY_API_KEY"],
+            "client_secret": os.environ["SHOPIFY_API_SECRET"],
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "subject_token": id_token,
+            "subject_token_type": "urn:ietf:params:oauth:token-type:id_token"
+        }
+    )
 
-    if shop != shop_from_jwt:
-        return jsonify({"error": "Shop mismatch"}), 400
+    if token_resp.status_code != 200:
+        return {
+            "error": "Token exchange failed",
+            "details": token_resp.text
+        }, 500
 
-    token = db.get_token(shop)
-    if not token:
-        return jsonify({"error": "No OAuth token"}), 401
+    access_token = token_resp.json()["access_token"]
 
-    session["access_token"] = token
+    # 4. Create metafield
+    metafield_payload = {
+        "metafield": {
+            "namespace": "app_owned",
+            "key": "installed",
+            "value": "true",
+            "type": "single_line_text_field"
+        }
+    }
 
-    create_app_owned_metafields_internal()
+    result = requests.post(
+        f"https://{shop}/admin/api/2025-01/metafields.json",
+        json=metafield_payload,
+        headers={"X-Shopify-Access-Token": access_token}
+    )
 
-    return jsonify({"message": "Metafields created."})
+    if result.status_code >= 300:
+        return {"error": "Shopify API failed", "details": result.text}, 500
+
+    return {
+        "message": "Metafield created",
+        "result": result.json()
+    }, 200
+
 
 
 @app.route("/create_app_owned_metafields")
