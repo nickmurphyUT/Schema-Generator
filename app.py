@@ -699,8 +699,8 @@ def schema_dashboard():
         "schema_dashboard.html",
         schemas=schemas,
         title="Schema App Dashboard",
-        shop_name=shop  # ← send it to template
-        hmac_value=hmac
+        shop_name=shop,  # ← send it to template
+        hmac_value=hmac,
         id_token_value=id_token
     )
 
