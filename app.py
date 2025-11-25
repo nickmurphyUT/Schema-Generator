@@ -1044,64 +1044,6 @@ def support():
 def pricing():
     return "<h1>Pricing Page</h1>"
     
-@app.route("/verify_and_create_metafields", methods=["POST"])
-def verify_and_create_metafields():
-    data = request.json
-    shop = data.get("shop")
-    posted_hmac = data.get("hmac")
-
-    if not shop or not posted_hmac:
-        return jsonify({"error": "Missing shop or HMAC"}), 400
-
-    # --- Step 1: Validate HMAC against your stored latest one ---
-    if posted_hmac != latest_values.get("hmac"):
-        return jsonify({"error": "HMAC mismatch"}), 400
-
-    # --- Step 2: Find store in database using shop domain ---
-    store = StoreToken.query.filter_by(shop=shop).first()
-    if not store:
-        return jsonify({"error": "Store not found in DB"}), 404
-
-    access_token = store.access_token
-    if not access_token:
-        return jsonify({"error": "Store token missing"}), 400
-
-    # --- Step 3: Use stored token to create metafield ---
-    headers = {
-        "X-Shopify-Access-Token": access_token,
-        "Content-Type": "application/json",
-    }
-
-    metafield_payload = {
-        "metafield": {
-            "namespace": "custom_schema",
-            "key": "example",
-            "type": "single_line_text_field",
-            "value": "Hello from automated metafield creator!"
-        }
-    }
-
-    try:
-        resp = requests.post(
-            f"https://{shop}/admin/api/2026-01/metafields.json",
-            headers=headers,
-            json=metafield_payload
-        )
-        resp.raise_for_status()
-    except Exception as e:
-        return jsonify({"error": "Failed to create metafield", "details": str(e)}), 500
-
-    return jsonify({
-        "message": "Metafield created successfully!",
-        "shop": shop,
-        "used_access_token": access_token
-    })
-
-
-
-
-
-
 @app.route("/create_app_owned_metafields")
 def create_app_owned_metafields():
     shop = session.get("shop")
