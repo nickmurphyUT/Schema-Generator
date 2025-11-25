@@ -92,7 +92,67 @@
 </nav>
 
 <div class="container">
+<h3>Map Product Metafields to Organization Schema</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Product Metafield</th>
+      <th>Organization Schema Field</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for mf in product_metafields %}
+    <tr>
+      <td>{{ mf.node.namespace }}.{{ mf.node.key }}</td>
+      <td>
+        <select class="product-map" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
+          <option value="">-- Select Schema Field --</option>
+          {% for field in org_schema_fields %}
+            <option value="{{ field }}">{{ field }}</option>
+          {% endfor %}
+        </select>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
+<h3>Product Mappings Preview</h3>
+<ul id="product-mappings-preview"></ul>
+
+
+  <h3>Map Collection Metafields to Organization Schema</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Collection Metafield</th>
+      <th>Organization Schema Field</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for mf in collection_metafields %}
+    <tr>
+      <td>{{ mf.node.namespace }}.{{ mf.node.key }}</td>
+      <td>
+        <select class="collection-map" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
+          <option value="">-- Select Schema Field --</option>
+          {% for field in org_schema_fields %}
+            <option value="{{ field }}">{{ field }}</option>
+          {% endfor %}
+        </select>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Collection Mappings Preview</h3>
+<ul id="collection-mappings-preview"></ul>
+
+
+
+
+  
   <div class="tips">
     <div class="tips-icon">👍</div>
     <div>
@@ -177,5 +237,42 @@ document.getElementById("createMetaBtn").onclick = async () => {
 </ul>
 
 </div>
+  <script>
+    const productMappings = {};
+const collectionMappings = {};
+
+function updatePreview() {
+  const productPreview = document.getElementById("product-mappings-preview");
+  productPreview.innerHTML = "";
+  for (const [mf, field] of Object.entries(productMappings)) {
+    if (field) productPreview.innerHTML += `<li>${mf} → ${field}</li>`;
+  }
+
+  const collectionPreview = document.getElementById("collection-mappings-preview");
+  collectionPreview.innerHTML = "";
+  for (const [mf, field] of Object.entries(collectionMappings)) {
+    if (field) collectionPreview.innerHTML += `<li>${mf} → ${field}</li>`;
+  }
+}
+
+// Listen for product select changes
+document.querySelectorAll(".product-map").forEach(select => {
+  select.addEventListener("change", e => {
+    const mf = select.dataset.mf;
+    productMappings[mf] = select.value;
+    updatePreview();
+  });
+});
+
+// Listen for collection select changes
+document.querySelectorAll(".collection-map").forEach(select => {
+  select.addEventListener("change", e => {
+    const mf = select.dataset.mf;
+    collectionMappings[mf] = select.value;
+    updatePreview();
+  });
+});
+
+  </script>
 </body>
 </html>
