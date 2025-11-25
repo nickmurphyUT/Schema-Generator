@@ -1,0 +1,21 @@
+api_version = "unstable"
+
+[[extensions]]
+name = "t:name"
+handle = "discounts-allocator"
+type = "function"
+uid = "46f8b751-0dfd-0f4f-6972-a9f6330bd7491c5b791d"
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "purchase.discounts-allocator.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/app/discounts-allocator/:functionId"
