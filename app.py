@@ -866,9 +866,11 @@ def schema_dashboard():
             meta_data = get_metafield_definitions(shop, access_token)
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
-
         except Exception as e:
             print("Error fetching metafield definitions:", str(e))
+
+    # ✅ Fetch cached organization fields
+    org_fields = fetch_organization_schema_properties()  # will use cache if valid
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
@@ -884,8 +886,9 @@ def schema_dashboard():
         shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token,
-        product_metafields=product_metafields,      # <-- PASS TO TEMPLATE
-        collection_metafields=collection_metafields # <-- PASS TO TEMPLATE
+        product_metafields=product_metafields,      
+        collection_metafields=collection_metafields,
+        org_schema_fields=org_fields   # <-- pass cached org schema to template
     )
 
 
