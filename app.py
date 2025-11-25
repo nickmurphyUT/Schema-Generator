@@ -1208,14 +1208,16 @@ def get_metafields():
     hmac = data.get("hmac")
     id_token = data.get("id_token")
 
-    # --- Validate HMAC / ID token here if needed ---
-    
-    # Get access token for shop (fetch from DB or in-memory)
-    access_token = get_access_token_for_shop(shop)
-    if not access_token:
-        return {"error": "Access token not found"}, 400
+    # --- Optional: validate HMAC / ID token here ---
 
-    # Query Shopify GraphQL for product and collection metafields
+    # Fetch access token from DB
+    store = StoreToken.query.filter_by(shop=shop).first()
+    access_token = store.access_token if store else None
+
+    if not access_token:
+        return {"error": "Access token not found for shop"}, 400
+
+    # Query Shopify GraphQL for products and collections metafields
     import requests
 
     query = """
@@ -1270,7 +1272,6 @@ def get_metafields():
         return {"error": "Failed to fetch metafields", "details": resp.text}, 400
 
     return resp.json()
-
 
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
