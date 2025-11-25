@@ -169,6 +169,12 @@ document.getElementById("createMetaBtn").onclick = async () => {
   <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
 {% endfor %}
 </ul>
+<h2>Organization Schema Fields</h2>
+<ul>
+  {% for field in org_schema_fields %}
+    <li>{{ field }}</li>
+  {% endfor %}
+</ul>
 
 </div>
 </body>
