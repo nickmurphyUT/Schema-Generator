@@ -21,6 +21,16 @@ import hashlib
 import base64
 import jwt
 from flask_sqlalchemy import SQLAlchemy
+import time
+from app import app
+
+SCHEMA_CACHE = {
+    "timestamp": 0,
+    "organization_fields": []
+}
+
+# Cache lifetime – 24 hours (in seconds)
+CACHE_TTL = 60 * 60 * 24
 
 # Load environment variables
 load_dotenv()
@@ -67,6 +77,69 @@ class StoreToken(db.Model):
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
 
+def fetch_organization_schema_properties():
+    """
+    Fetches and parses Schema.org vocabulary to extract
+    Organization properties.
+    Uses in-memory caching for speed.
+    """
+
+    now = time.time()
+
+    # ---------------------------------
+    # 1. Return cached if still fresh
+    # ---------------------------------
+    if now - SCHEMA_CACHE["timestamp"] < CACHE_TTL:
+        return SCHEMA_CACHE["organization_fields"]
+
+    # ---------------------------------
+    # 2. Fetch file from Schema.org
+    # ---------------------------------
+    url = "https://schema.org/version/latest/schemaorg-current-https.jsonld"
+    resp = requests.get(url)
+    data = resp.json()
+
+    graph = data["@graph"]
+
+    # Filter only properties
+    properties = [p for p in graph if p.get("@type") == "rdf:Property"]
+
+    org_fields = []
+    for prop in properties:
+        domain = prop.get("schema:domainIncludes")
+        if not domain:
+            continue
+
+        # Normalize
+        domain_list = domain if isinstance(domain, list) else [domain]
+
+        # Check if Organization is included
+        if any(d.get("@id") == "schema:Organization" for d in domain_list):
+            org_fields.append(prop["@id"].split(":")[-1])
+
+    org_fields.sort()
+
+    # ---------------------------------
+    # 3. Update cache
+    # ---------------------------------
+    SCHEMA_CACHE["timestamp"] = now
+    SCHEMA_CACHE["organization_fields"] = org_fields
+
+    return org_fields
+
+
+# ----------------------------
+# Flask API Route
+# ----------------------------
+
+@app.route("/api/schema/org-fields")
+def api_get_org_schema_fields():
+    """
+    Returns a lightweight JSON list:
+    ["address", "email", "logo", ...]
+    """
+    fields = fetch_organization_schema_properties()
+    return jsonify({"organization_fields": fields})
 
 def verify_hmac(hmac_value, raw_body):
     calculated = hmac.new(
