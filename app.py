@@ -1185,6 +1185,79 @@ def init_db():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/verify_and_create_metafields", methods=["POST"])
+def verify_and_create_metafields():
+    data = request.json
+    shop = data.get("shop")
+    posted_hmac = data.get("hmac")
+    id_token = data.get("id_token")
+    product_mappings = data.get("product_mappings", {})
+    collection_mappings = data.get("collection_mappings", {})
+
+    if not shop or not posted_hmac:
+        return jsonify({"error": "Missing shop or HMAC"}), 400
+
+    # Verify HMAC
+    if posted_hmac != latest_values.get("hmac"):
+        return jsonify({"error": "HMAC mismatch"}), 400
+
+    # Fetch store token
+    store = StoreToken.query.filter_by(shop=shop).first()
+    if not store or not store.access_token:
+        return jsonify({"error": "Store token missing"}), 400
+    access_token = store.access_token
+
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json",
+    }
+
+    created_metafields = {"product": None, "collection": None}
+
+    # --- Product schema metafield ---
+    if product_mappings:
+        product_payload = {
+            "metafield": {
+                "namespace": "app_schema",
+                "key": "product_schema_mappings",
+                "type": "json",
+                "description": "Product schema → metafield mappings",
+                "value": json.dumps(product_mappings)
+            }
+        }
+        try:
+            resp = requests.post(f"https://{shop}/admin/api/2026-01/metafields.json",
+                                 headers=headers, json=product_payload)
+            resp.raise_for_status()
+            created_metafields["product"] = resp.json().get("metafield")
+        except Exception as e:
+            return jsonify({"error": "Failed to create product metafield", "details": str(e)}), 500
+
+    # --- Collection schema metafield ---
+    if collection_mappings:
+        collection_payload = {
+            "metafield": {
+                "namespace": "app_schema",
+                "key": "collection_schema_mappings",
+                "type": "json",
+                "description": "Collection schema → metafield mappings",
+                "value": json.dumps(collection_mappings)
+            }
+        }
+        try:
+            resp = requests.post(f"https://{shop}/admin/api/2026-01/metafields.json",
+                                 headers=headers, json=collection_payload)
+            resp.raise_for_status()
+            created_metafields["collection"] = resp.json().get("metafield")
+        except Exception as e:
+            return jsonify({"error": "Failed to create collection metafield", "details": str(e)}), 500
+
+    return jsonify({
+        "success": True,
+        "message": "App-owned metafields created successfully",
+        "created_metafields": created_metafields
+    })
+
 
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
