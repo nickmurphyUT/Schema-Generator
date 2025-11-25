@@ -22,7 +22,6 @@ import base64
 import jwt
 from flask_sqlalchemy import SQLAlchemy
 import time
-from app import app
 
 SCHEMA_CACHE = {
     "timestamp": 0,
