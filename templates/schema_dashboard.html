@@ -156,6 +156,19 @@ document.getElementById("createMetaBtn").onclick = async () => {
     <a href="{{ url_for('product_schema') }}">Product Schema Page</a> |
     <a href="{{ url_for('collection_schema') }}">Collection Schema Page</a>
   </p>
+<h3>Product Metafields</h3>
+<ul>
+{% for mf in product_metafields %}
+  <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
+{% endfor %}
+</ul>
+
+<h3>Collection Metafields</h3>
+<ul>
+{% for mf in collection_metafields %}
+  <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
+{% endfor %}
+</ul>
 
 </div>
 </body>
