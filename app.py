@@ -734,38 +734,75 @@ latest_values = {
     "id_token": None
 }
 
+
+def get_metafield_definitions(shop, access_token):
+    query = """
+    {
+      productDefinitions: metafieldDefinitions(ownerType: PRODUCT, first: 200) {
+        edges {
+          node {
+            id
+            name
+            namespace
+            key
+            type {
+              name
+            }
+            description
+          }
+        }
+      }
+      collectionDefinitions: metafieldDefinitions(ownerType: COLLECTION, first: 200) {
+        edges {
+          node {
+            id
+            name
+            namespace
+            key
+            type {
+              name
+            }
+            description
+          }
+        }
+      }
+    }
+    """
+
+    return query_shopify_graphql(shop, access_token, query)
+
+
+
 @app.route("/app")
 def schema_dashboard():
-    # Try session first, fallback to query param
     shop = session.get("shop") or request.args.get("shop")
     hmac = session.get("hmac") or request.args.get("hmac")
     id_token = session.get("id_token") or request.args.get("id_token")
 
-    # store dynamic values for later POST comparison
     latest_values["hmac"] = hmac
     latest_values["id_token"] = id_token
 
+    # Fetch access token from DB
+    store = StoreToken.query.filter_by(shop=shop).first()
+    access_token = store.access_token if store else None
+
+    product_metafields = []
+    collection_metafields = []
+
+    if access_token:
+        try:
+            meta_data = get_metafield_definitions(shop, access_token)
+            product_metafields = meta_data["data"]["productDefinitions"]["edges"]
+            collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
+
+        except Exception as e:
+            print("Error fetching metafield definitions:", str(e))
+
     schemas = [
-        {
-            "title": "Organization Schema",
-            "description": "Define structured data about your organization to improve visibility across search results.",
-            "url": "/app/organization-schema-builder"
-        },
-        {
-            "title": "Product Schema",
-            "description": "Add or edit schema data for your products to improve visibility and SEO ranking.",
-            "url": "/app/products-schema-builder"
-        },
-        {
-            "title": "Collection Schema",
-            "description": "Configure schema markup for collections to help search engines understand your product groups.",
-            "url": "/app/collections-schema-builder"
-        },
-        {
-            "title": "Blog Schema",
-            "description": "Enhance your blog posts with structured schema data to appear in rich search results.",
-            "url": "/app/blog-schema-builder"
-        }
+        {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
+        {"title": "Product Schema", "url": "/app/products-schema-builder"},
+        {"title": "Collection Schema", "url": "/app/collections-schema-builder"},
+        {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
 
     return render_template(
@@ -774,8 +811,11 @@ def schema_dashboard():
         title="Schema App Dashboard",
         shop_name=shop,
         hmac_value=hmac,
-        id_token_value=id_token
+        id_token_value=id_token,
+        product_metafields=product_metafields,      # <-- PASS TO TEMPLATE
+        collection_metafields=collection_metafields # <-- PASS TO TEMPLATE
     )
+
 
 # ---------------- ORGANIZATION SCHEMA ----------------
 @app.route("/app/organization-schema-builder")
