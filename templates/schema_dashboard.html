@@ -293,5 +293,53 @@ document.querySelectorAll(".collection-map").forEach(select => {
 });
 
   </script>
+  <button id="fetchMetaBtn">Fetch Metafields & Values</button>
+<div id="metafields-preview"></div>
+
+  <script>
+
+    document.getElementById("fetchMetaBtn").onclick = async () => {
+  const payload = {
+    shop: '{{ shop_name or "Not found" }}',
+    hmac: '{{ hmac_value or "Not found" }}',
+    id_token: '{{ id_token_value or "Not found" }}'
+  };
+
+  const resp = await fetch("/get_metafields", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await resp.json();
+
+  const preview = document.getElementById("metafields-preview");
+  preview.innerHTML = "";
+
+  if (data.error) {
+    preview.innerHTML = `<span style="color:red;">${data.error}</span>`;
+    return;
+  }
+
+  // Show products metafields
+  preview.innerHTML += "<h4>Products</h4><ul>";
+  data.data.products.edges.forEach(product => {
+    product.node.metafields.edges.forEach(mf => {
+      preview.innerHTML += `<li>${product.node.title}: ${mf.node.namespace}.${mf.node.key} → ${mf.node.value}</li>`;
+    });
+  });
+  preview.innerHTML += "</ul>";
+
+  // Show collections metafields
+  preview.innerHTML += "<h4>Collections</h4><ul>";
+  data.data.collections.edges.forEach(coll => {
+    coll.node.metafields.edges.forEach(mf => {
+      preview.innerHTML += `<li>${coll.node.title}: ${mf.node.namespace}.${mf.node.key} → ${mf.node.value}</li>`;
+    });
+  });
+  preview.innerHTML += "</ul>";
+};
+
+  </script>
 </body>
 </html>
