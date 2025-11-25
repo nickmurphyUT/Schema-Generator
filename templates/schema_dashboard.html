@@ -166,6 +166,25 @@
       <span>Shop: {{ shop_name or 'Not found' }}</span><br>
       <button id="createMetaBtn">Create App-Owned Metafields</button>
 
+      <h3>App-Owned Metafields Preview</h3>
+<ul id="meta-preview"></ul>
+
+<script>
+function updateMetaPreview() {
+  const preview = document.getElementById("meta-preview");
+  preview.innerHTML = "<b>Product Metafields:</b><br>";
+  for (const [mf, field] of Object.entries(productMappings)) {
+    if (field) preview.innerHTML += `<li>${mf} → ${field}</li>`;
+  }
+  preview.innerHTML += "<b>Collection Metafields:</b><br>";
+  for (const [mf, field] of Object.entries(collectionMappings)) {
+    if (field) preview.innerHTML += `<li>${mf} → ${field}</li>`;
+  }
+}
+
+// Example usage: whenever mapping changes, call updateMetaPreview()
+</script>
+
 <script>
 document.getElementById("createMetaBtn").onclick = async () => {
   const payload = {
