@@ -1066,7 +1066,7 @@ def create_app_owned_metafields():
         flash("Shop or access token not found.", "error")
         return redirect(url_for("schema_dashboard"))
 
-    # Define schemas and default values
+    # Define schemas
     schemas = [
         {"namespace": "app_schema", "key": "prod_schema", "ownerType": "PRODUCT"},
         {"namespace": "app_schema", "key": "coll_schema", "ownerType": "COLLECTION"},
@@ -1074,9 +1074,10 @@ def create_app_owned_metafields():
         {"namespace": "app_schema", "key": "page_schema", "ownerType": "PAGE"},
     ]
 
+    # For each schema
     for schema in schemas:
-        # 1️⃣ Create the metafield definition
-        query_definition = """
+        # 1️⃣ Create definition
+        query_def = """
         mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
           metafieldDefinitionCreate(definition: $definition) {
             createdDefinition { id namespace key }
@@ -1084,7 +1085,7 @@ def create_app_owned_metafields():
           }
         }
         """
-        variables_definition = {
+        variables_def = {
             "definition": {
                 "name": schema["key"],
                 "key": schema["key"],
@@ -1094,23 +1095,25 @@ def create_app_owned_metafields():
                 "namespace": schema["namespace"]
             }
         }
-        resp_def = graphql_request(shop, token, query_definition, variables_definition)
+        resp_def = graphql_request(shop, token, query_def, variables_def)
         errors_def = resp_def.get("data", {}).get("metafieldDefinitionCreate", {}).get("userErrors", [])
         if errors_def:
             print(f"Error creating definition {schema['key']}: {errors_def}")
 
-        # 2️⃣ Upsert default value `{}` for all existing objects of this type
-        object_query_map = {
-            "PRODUCT": "{ products(first: 100) { edges { node { id } } } }",
-            "COLLECTION": "{ collections(first: 100) { edges { node { id } } } }",
-            "BLOG": "{ blogs(first: 100) { edges { node { id } } } }",
-            "PAGE": "{ pages(first: 100) { edges { node { id } } } }",
+        # 2️⃣ Upsert default `{}` for all objects
+        object_queries = {
+            "PRODUCT": "{ products(first:100) { edges { node { id } } } }",
+            "COLLECTION": "{ collections(first:100) { edges { node { id } } } }",
+            "BLOG": "{ blogs(first:100) { edges { node { id } } } }",
+            "PAGE": "{ pages(first:100) { edges { node { id } } } }",
         }
-        resp_objects = query_shopify_graphql_webhookB(shop, token, object_query_map[schema["ownerType"]])
-        nodes = list(resp_objects.get("data", {}).values())[0].get("edges", [])
+        resp_objects = graphql_request(shop, token, object_queries[schema["ownerType"]], {})
+        edges = list(resp_objects.get("data", {}).values())[0].get("edges", [])
 
-        for node in nodes:
-            object_id = node["node"]["id"]
+        for node in edges:
+            numeric_id = node["node"]["id"].split('/')[-1]  # Convert GID to numeric ID if needed
+            gid = f"gid://shopify/{schema['ownerType'].capitalize()}/{numeric_id}"
+
             query_upsert = """
             mutation metafieldUpsert($input: MetafieldInput!) {
               metafieldUpsert(input: $input) {
@@ -1123,19 +1126,18 @@ def create_app_owned_metafields():
                 "input": {
                     "namespace": schema["namespace"],
                     "key": schema["key"],
-                    "ownerId": object_id,
+                    "ownerId": gid,
                     "type": "json",
-                    "value": "{}"  # default empty JSON
+                    "value": "{}"
                 }
             }
-            resp_value = graphql_request(shop, token, query_upsert, variables_upsert)
-            errors_value = resp_value.get("data", {}).get("metafieldUpsert", {}).get("userErrors", [])
-            if errors_value:
-                print(f"Error upserting {schema['key']} for {object_id}: {errors_value}")
+            resp_upsert = graphql_request(shop, token, query_upsert, variables_upsert)
+            errors_upsert = resp_upsert.get("data", {}).get("metafieldUpsert", {}).get("userErrors", [])
+            if errors_upsert:
+                print(f"Error upserting {schema['key']} for {gid}: {errors_upsert}")
 
-    flash("App-owned schema metafields created with default values!", "success")
+    flash("App-owned schema metafields created and default values upserted!", "success")
     return redirect(url_for("schema_dashboard"))
-
 
 @app.route("/init-db", methods=["GET"])
 def init_db():
@@ -1301,42 +1303,42 @@ def get_metafields():
 
 
 
-@app.route("/get_app_schema_metafield")
+@app.route("/get_app_schema_metafield", methods=["GET"])
 def get_app_schema_metafield():
     shop = request.args.get("shop")
-    object_type = request.args.get("type")  # "product", "collection", "blog", "page"
-    object_id = request.args.get("id")      # Shopify GID
+    type_ = request.args.get("type")
+    numeric_id = request.args.get("id")
 
-    schema_key_map = {
-        "product": "prod_schema",
-        "collection": "coll_schema",
-        "blog": "blog_schema",
-        "page": "page_schema"
-    }
-    key = schema_key_map.get(object_type)
-    if not key:
-        return {"error": "Invalid object type"}, 400
-
-    # Get app access token from DB
     store = StoreToken.query.filter_by(shop=shop).first()
-    if not store:
-        return {"error": "Access token not found"}, 400
+    if not store or not store.access_token:
+        return jsonify({"error": "Store token missing"}), 400
     token = store.access_token
 
-    # Fetch the app-owned metafield
+    # Map type to ownerType and metafield key
+    mapping = {
+        "product": ("PRODUCT", "prod_schema"),
+        "collection": ("COLLECTION", "coll_schema"),
+        "blog": ("BLOG", "blog_schema"),
+        "page": ("PAGE", "page_schema")
+    }
+    if type_ not in mapping:
+        return jsonify({"error": "Invalid type"}), 400
+
+    owner_type, key = mapping[type_]
+    gid = f"gid://shopify/{owner_type}/{numeric_id}"
+
     query = """
-    query getMetafield($id: ID!) {
+    query getAppSchema($id: ID!) {
       node(id: $id) {
-        ... on Product { metafield(namespace: "app_schema", key: "%s") { value } }
-        ... on Collection { metafield(namespace: "app_schema", key: "%s") { value } }
-        ... on Blog { metafield(namespace: "app_schema", key: "%s") { value } }
-        ... on Page { metafield(namespace: "app_schema", key: "%s") { value } }
+        ... on Product { metafield(namespace:"app_schema", key:"prod_schema") { value } }
+        ... on Collection { metafield(namespace:"app_schema", key:"coll_schema") { value } }
+        ... on Blog { metafield(namespace:"app_schema", key:"blog_schema") { value } }
+        ... on Page { metafield(namespace:"app_schema", key:"page_schema") { value } }
       }
     }
-    """ % (key, key, key, key)
-
-    resp = graphql_request(shop, token, query, {"id": object_id})
-    return resp
+    """
+    resp = graphql_request(shop, token, query, {"id": gid})
+    return jsonify(resp)
 
 
 
