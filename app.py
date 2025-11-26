@@ -24,7 +24,7 @@ from flask_sqlalchemy import SQLAlchemy
 import time
 from threading import Thread
 import re
-
+from models import shop
 
 
 SCHEMA_CACHE = {
@@ -863,7 +863,11 @@ def get_metafield_definitions(shop, access_token):
 
     return query_shopify_graphql(shop, access_token, query)
 
-
+def get_access_token_for_shop(shop_name: str) -> str:
+    shop = Shop.query.filter_by(shop_domain=shop_name).first()
+    if not shop:
+        raise ValueError(f"No access token found for shop {shop_name}")
+    return shop.access_token
 
 @app.route("/app")
 def schema_dashboard():
