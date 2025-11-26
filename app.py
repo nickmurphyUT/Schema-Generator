@@ -1047,7 +1047,7 @@ def pricing():
 @app.route("/create_app_owned_metafields")
 def create_app_owned_metafields():
     shop = session.get("shop")
-    token = session.get("access_token")  # Your OAuth token for the store
+    token = session.get("access_token")  # App access token
 
     if not shop or not token:
         flash("Shop or access token not found.", "error")
@@ -1055,48 +1055,19 @@ def create_app_owned_metafields():
 
     # Define schemas and default values
     schemas = [
-        {
-            "namespace": "app_schema",
-            "key": "prod_schema",
-            "ownerType": "PRODUCT",
-            "defaultValue": "{}"
-        },
-        {
-            "namespace": "app_schema",
-            "key": "coll_schema",
-            "ownerType": "COLLECTION",
-            "defaultValue": "{}"
-        },
-        {
-            "namespace": "app_schema",
-            "key": "blog_schema",
-            "ownerType": "BLOG",
-            "defaultValue": "{}"
-        },
-        {
-            "namespace": "app_schema",
-            "key": "page_schema",
-            "ownerType": "PAGE",
-            "defaultValue": "{}"
-        }
+        {"namespace": "app_schema", "key": "prod_schema", "ownerType": "PRODUCT"},
+        {"namespace": "app_schema", "key": "coll_schema", "ownerType": "COLLECTION"},
+        {"namespace": "app_schema", "key": "blog_schema", "ownerType": "BLOG"},
+        {"namespace": "app_schema", "key": "page_schema", "ownerType": "PAGE"},
     ]
 
-    # Create metafield definitions and default values
     for schema in schemas:
         # 1️⃣ Create the metafield definition
         query_definition = """
         mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
           metafieldDefinitionCreate(definition: $definition) {
-            createdDefinition {
-              id
-              name
-              namespace
-              key
-            }
-            userErrors {
-              field
-              message
-            }
+            createdDefinition { id namespace key }
+            userErrors { field message }
           }
         }
         """
@@ -1115,53 +1086,19 @@ def create_app_owned_metafields():
         if errors_def:
             print(f"Error creating definition {schema['key']}: {errors_def}")
 
-        # 2️⃣ Upsert a default value (so theme embed can read it)
-        # Query all objects of that type to assign the default value
-        if schema["ownerType"] == "PRODUCT":
-            query_objects = """
-            {
-              products(first: 100) {
-                edges { node { id } }
-              }
-            }
-            """
-            resp_objects = graphql_request(shop, token, query_objects)
-            nodes = resp_objects.get("data", {}).get("products", {}).get("edges", [])
-        elif schema["ownerType"] == "COLLECTION":
-            query_objects = """
-            {
-              collections(first: 100) {
-                edges { node { id } }
-              }
-            }
-            """
-            resp_objects = graphql_request(shop, token, query_objects)
-            nodes = resp_objects.get("data", {}).get("collections", {}).get("edges", [])
-        elif schema["ownerType"] == "BLOG":
-            query_objects = """
-            {
-              blogs(first: 100) {
-                edges { node { id } }
-              }
-            }
-            """
-            resp_objects = graphql_request(shop, token, query_objects)
-            nodes = resp_objects.get("data", {}).get("blogs", {}).get("edges", [])
-        else:  # PAGE
-            query_objects = """
-            {
-              pages(first: 100) {
-                edges { node { id } }
-              }
-            }
-            """
-            resp_objects = graphql_request(shop, token, query_objects)
-            nodes = resp_objects.get("data", {}).get("pages", {}).get("edges", [])
+        # 2️⃣ Upsert default value `{}` for all existing objects of this type
+        object_query_map = {
+            "PRODUCT": "{ products(first: 100) { edges { node { id } } } }",
+            "COLLECTION": "{ collections(first: 100) { edges { node { id } } } }",
+            "BLOG": "{ blogs(first: 100) { edges { node { id } } } }",
+            "PAGE": "{ pages(first: 100) { edges { node { id } } } }",
+        }
+        resp_objects = graphql_request(shop, token, object_query_map[schema["ownerType"]])
+        nodes = list(resp_objects.get("data", {}).values())[0].get("edges", [])
 
-        # Upsert default value for each object
         for node in nodes:
             object_id = node["node"]["id"]
-            query_value = """
+            query_upsert = """
             mutation metafieldUpsert($input: MetafieldInput!) {
               metafieldUpsert(input: $input) {
                 metafield { id namespace key value type }
@@ -1169,19 +1106,19 @@ def create_app_owned_metafields():
               }
             }
             """
-            variables_value = {
+            variables_upsert = {
                 "input": {
                     "namespace": schema["namespace"],
                     "key": schema["key"],
                     "ownerId": object_id,
                     "type": "json",
-                    "value": schema["defaultValue"]
+                    "value": "{}"  # default empty JSON
                 }
             }
-            resp_value = graphql_request(shop, token, query_value, variables_value)
+            resp_value = graphql_request(shop, token, query_upsert, variables_upsert)
             errors_value = resp_value.get("data", {}).get("metafieldUpsert", {}).get("userErrors", [])
             if errors_value:
-                print(f"Error upserting value for {object_id}: {errors_value}")
+                print(f"Error upserting {schema['key']} for {object_id}: {errors_value}")
 
     flash("App-owned schema metafields created with default values!", "success")
     return redirect(url_for("schema_dashboard"))
