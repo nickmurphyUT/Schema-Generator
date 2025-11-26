@@ -1155,10 +1155,15 @@ def init_db():
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
+    import json
+    import time
+
     data = request.json
     shop = data.get("shop")
     posted_hmac = data.get("hmac")
     id_token = data.get("id_token")
+    product_mappings = data.get("product_mappings", {})      # {metafield: schema_field}
+    collection_mappings = data.get("collection_mappings", {})
 
     if not shop or not posted_hmac:
         return jsonify({"error": "Missing shop or HMAC"}), 400
@@ -1167,54 +1172,93 @@ def verify_and_create_metafields():
     if posted_hmac != latest_values.get("hmac"):
         return jsonify({"error": "HMAC mismatch"}), 400
 
-    # Fetch store token (the app token that can write app-owned metafields)
+    # Fetch store token
     store = StoreToken.query.filter_by(shop=shop).first()
     if not store or not store.access_token:
         return jsonify({"error": "Store token missing"}), 400
-
     access_token = store.access_token
 
-    # ------------------------------
-    # 1️⃣ Create or update app-owned metafields on the SHOP
-    # ------------------------------
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json",
+    }
 
-    metafields_to_set = [
-        ("prod_schema", "{}"),
-        ("coll_schema", "{}"),
-        ("blog_schema", "{}"),
-        ("page_schema", "{}")
-    ]
+    created_metafields = {"products": [], "collections": []}
 
-    upsert_query = """
-        mutation metafieldUpsert($input: MetafieldInput!) {
-            metafieldUpsert(input: $input) {
-                metafield { id namespace key value }
-                userErrors { field message }
+    # --- Helper to fetch paginated resources ---
+    def fetch_paginated(endpoint, key):
+        results = []
+        url = f"https://{shop}/admin/api/2026-01/{endpoint}.json?limit=250"
+        while url:
+            resp = requests.get(url, headers=headers)
+            resp.raise_for_status()
+            data_page = resp.json()
+            results.extend(data_page.get(key, []))
+            # Handle pagination via Link header
+            link_header = resp.headers.get("Link", "")
+            next_url = None
+            if 'rel="next"' in link_header:
+                parts = link_header.split(",")
+                for part in parts:
+                    if 'rel="next"' in part:
+                        next_url = part.split(";")[0].strip()[1:-1]  # Remove <>
+            url = next_url
+        return results
+
+    # --- Update Products ---
+    if product_mappings:
+        products = fetch_paginated("products", "products")
+        for product in products:
+            product_schema = {mf: field for mf, field in product_mappings.items() if field}
+            if not product_schema:
+                continue
+            payload = {
+                "metafield": {
+                    "namespace": "app_schema",
+                    "key": "prod_schema",
+                    "type": "json",
+                    "value": json.dumps(product_schema)
+                }
             }
-        }
-    """
+            try:
+                resp = requests.post(f"https://{shop}/admin/api/2026-01/products/{product['id']}/metafields.json",
+                                     headers=headers, json=payload)
+                resp.raise_for_status()
+                created_metafields["products"].append(product['id'])
+            except Exception as e:
+                print(f"Failed to upsert product {product['id']} metafield:", e)
+                continue
+            time.sleep(0.2)  # Small delay to avoid rate limits
 
-    results = {}
-
-    for key, default_value in metafields_to_set:
-
-        variables = {
-            "input": {
-                "namespace": "app_schema",
-                "key": key,
-                "ownerId": f"gid://shopify/Shop/{shop}",
-                "type": "json",
-                "value": default_value
+    # --- Update Collections ---
+    if collection_mappings:
+        collections = fetch_paginated("custom_collections", "custom_collections")
+        for coll in collections:
+            coll_schema = {mf: field for mf, field in collection_mappings.items() if field}
+            if not coll_schema:
+                continue
+            payload = {
+                "metafield": {
+                    "namespace": "app_schema",
+                    "key": "coll_schema",
+                    "type": "json",
+                    "value": json.dumps(coll_schema)
+                }
             }
-        }
-
-        resp = graphql_request(shop, access_token, upsert_query, variables)
-        results[key] = resp
+            try:
+                resp = requests.post(f"https://{shop}/admin/api/2026-01/collections/{coll['id']}/metafields.json",
+                                     headers=headers, json=payload)
+                resp.raise_for_status()
+                created_metafields["collections"].append(coll['id'])
+            except Exception as e:
+                print(f"Failed to upsert collection {coll['id']} metafield:", e)
+                continue
+            time.sleep(0.2)
 
     return jsonify({
         "success": True,
-        "message": "App-owned metafields updated",
-        "results": results
+        "message": "App-owned metafields updated for all products/collections based on mappings",
+        "created_metafields": created_metafields
     })
 
 
