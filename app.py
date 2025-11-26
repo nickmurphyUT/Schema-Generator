@@ -1043,7 +1043,9 @@ def support():
 @app.route("/app/pricing")
 def pricing():
     return "<h1>Pricing Page</h1>"
-   @app.route("/create_app_owned_metafields")
+
+
+@app.route("/create_app_owned_metafields")
 def create_app_owned_metafields():
     shop = session.get("shop")
     token = session.get("access_token")  # Your OAuth token for the store
