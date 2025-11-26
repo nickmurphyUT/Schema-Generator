@@ -1043,8 +1043,7 @@ def support():
 @app.route("/app/pricing")
 def pricing():
     return "<h1>Pricing Page</h1>"
-    
-@app.route("/create_app_owned_metafields")
+   @app.route("/create_app_owned_metafields")
 def create_app_owned_metafields():
     shop = session.get("shop")
     token = session.get("access_token")  # Your OAuth token for the store
@@ -1053,69 +1052,100 @@ def create_app_owned_metafields():
         flash("Shop or access token not found.", "error")
         return redirect(url_for("schema_dashboard"))
 
-    # Define metafields for products
-    product_metafields = [
+    # Define metafields for each schema
+    schemas = [
         {
-            "name": "Ingredients",
-            "key": "ingredients",
-            "description": "List of ingredients used in the product.",
-            "type": "list.single_line_text_field",
-            "ownerType": "PRODUCT"
+            "namespace": "app_schema.prod_schema",
+            "ownerType": "PRODUCT",
+            "metafields": [
+                {
+                    "name": "Ingredients",
+                    "key": "ingredients",
+                    "description": "List of ingredients used in the product.",
+                    "type": "list.single_line_text_field"
+                },
+                {
+                    "name": "Allergens",
+                    "key": "allergens",
+                    "description": "Allergens present in the product.",
+                    "type": "list.single_line_text_field"
+                }
+            ]
         },
         {
-            "name": "Allergens",
-            "key": "allergens",
-            "description": "Allergens present in the product.",
-            "type": "list.single_line_text_field",
-            "ownerType": "PRODUCT"
-        }
-    ]
-
-    # Define metafields for collections
-    collection_metafields = [
+            "namespace": "app_schema.coll_schema",
+            "ownerType": "COLLECTION",
+            "metafields": [
+                {
+                    "name": "Collection Theme",
+                    "key": "theme",
+                    "description": "Theme of the collection.",
+                    "type": "single_line_text_field"
+                }
+            ]
+        },
         {
-            "name": "Collection Theme",
-            "key": "theme",
-            "description": "Theme of the collection.",
-            "type": "single_line_text_field",
-            "ownerType": "COLLECTION"
+            "namespace": "app_schema.blog_schema",
+            "ownerType": "BLOG",
+            "metafields": [
+                {
+                    "name": "Blog Category",
+                    "key": "category",
+                    "description": "Category of the blog post.",
+                    "type": "single_line_text_field"
+                }
+            ]
+        },
+        {
+            "namespace": "app_schema.page_schema",
+            "ownerType": "PAGE",
+            "metafields": [
+                {
+                    "name": "Page Layout",
+                    "key": "layout",
+                    "description": "Layout configuration for the page.",
+                    "type": "single_line_text_field"
+                }
+            ]
         }
     ]
 
-    # Create metafields via GraphQL
-    for mf in product_metafields + collection_metafields:
-        query = """
-        mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
-          metafieldDefinitionCreate(definition: $definition) {
-            createdDefinition {
-              id
-              name
-              namespace
-              key
+    # Create metafield definitions via GraphQL
+    for schema in schemas:
+        for mf in schema["metafields"]:
+            query = """
+            mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
+              metafieldDefinitionCreate(definition: $definition) {
+                createdDefinition {
+                  id
+                  name
+                  namespace
+                  key
+                }
+                userErrors {
+                  field
+                  message
+                }
+              }
             }
-            userErrors {
-              field
-              message
-            }
-          }
-        }
-        """
-        variables = {"definition": {
-            "name": mf["name"],
-            "key": mf["key"],
-            "description": mf["description"],
-            "type": mf["type"],
-            "ownerType": mf["ownerType"],
-            "namespace": "$app"  # <-- app-owned namespace
-        }}
+            """
+            variables = {"definition": {
+                "name": mf["name"],
+                "key": mf["key"],
+                "description": mf["description"],
+                "type": mf["type"],
+                "ownerType": schema["ownerType"],
+                "namespace": schema["namespace"]
+            }}
 
-        resp = graphql_request(shop, token, query, variables)
-        errors = resp.get("data", {}).get("metafieldDefinitionCreate", {}).get("userErrors", [])
-        if errors:
-            print(f"Error creating {mf['name']}: {errors}")
+            resp = graphql_request(shop, token, query, variables)
+            errors = resp.get("data", {}).get("metafieldDefinitionCreate", {}).get("userErrors", [])
+            if errors:
+                print(f"Error creating {mf['name']} in {schema['namespace']}: {errors}")
 
-    flash("App-owned metafields created for products and collections!", "success")
+    flash("App-owned metafields created under all schemas!", "success")
     return redirect(url_for("schema_dashboard"))
+
 
 @app.route("/init-db", methods=["GET"])
 def init_db():
