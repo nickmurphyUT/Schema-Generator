@@ -4,83 +4,25 @@
   <meta charset="UTF-8">
   <title>{{ title or "Schema App Dashboard" }}</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f6f8;
-      color: #1a1a1a;
-      margin: 0;
-      padding: 0;
-    }
-    nav {
-      background-color: #1b365d;
-      padding: 1rem;
-    }
-    nav a {
-      color: white;
-      margin-right: 20px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    nav a:hover {
-      text-decoration: underline;
-    }
-    .container {
-      padding: 2rem;
-    }
-    .card {
-      background-color: white;
-      border-radius: 10px;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-    .card-header h2 {
-      margin: 0;
-      font-size: 1.2rem;
-    }
-    .btn {
-      background-color: #005bd3;
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    .btn:hover {
-      background-color: #0041a8;
-    }
-    .tips {
-      background-color: #fff7e6;
-      border-radius: 10px;
-      padding: 1rem;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-    .tips-icon {
-      font-size: 24px;
-      color: #f5a623;
-    }
-    .tips a {
-      color: #005bd3;
-      text-decoration: underline;
-    }
-    hr {
-      border: 0;
-      border-top: 1px solid #ddd;
-      margin: 1.5rem 0;
-    }
+    body { font-family: Arial, sans-serif; background-color: #f4f6f8; color: #1a1a1a; margin: 0; padding: 0; }
+    nav { background-color: #1b365d; padding: 1rem; }
+    nav a { color: white; margin-right: 20px; text-decoration: none; font-weight: bold; }
+    nav a:hover { text-decoration: underline; }
+    .container { padding: 2rem; }
+    .card { background-color: white; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .card-header h2 { margin: 0; font-size: 1.2rem; }
+    .btn { background-color: #005bd3; color: white; border: none; padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer; }
+    .btn:hover { background-color: #0041a8; }
+    .tips { background-color: #fff7e6; border-radius: 10px; padding: 1rem; display: flex; gap: 10px; align-items: center; margin-bottom: 2rem; }
+    .tips-icon { font-size: 24px; color: #f5a623; }
+    .tips a { color: #005bd3; text-decoration: underline; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
   </style>
 </head>
 <body>
-
 <nav>
   <a href="{{ url_for('schema_dashboard') }}">Home</a>
   <a href="{{ url_for('organization_schema') }}">Organization Schema</a>
@@ -92,13 +34,11 @@
 </nav>
 
 <div class="container">
+
 <h3>Map Product Metafields to Organization Schema</h3>
 <table>
   <thead>
-    <tr>
-      <th>Product Metafield</th>
-      <th>Organization Schema Field</th>
-    </tr>
+    <tr><th>Product Metafield</th><th>Organization Schema Field</th></tr>
   </thead>
   <tbody>
     {% for mf in product_metafields %}
@@ -108,7 +48,7 @@
         <select class="product-map" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
           <option value="">-- Select Schema Field --</option>
           {% for field in org_schema_fields %}
-            <option value="{{ field }}">{{ field }}</option>
+          <option value="{{ field }}">{{ field }}</option>
           {% endfor %}
         </select>
       </td>
@@ -120,14 +60,10 @@
 <h3>Product Mappings Preview</h3>
 <ul id="product-mappings-preview"></ul>
 
-
-  <h3>Map Collection Metafields to Organization Schema</h3>
+<h3>Map Collection Metafields to Organization Schema</h3>
 <table>
   <thead>
-    <tr>
-      <th>Collection Metafield</th>
-      <th>Organization Schema Field</th>
-    </tr>
+    <tr><th>Collection Metafield</th><th>Organization Schema Field</th></tr>
   </thead>
   <tbody>
     {% for mf in collection_metafields %}
@@ -137,7 +73,7 @@
         <select class="collection-map" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
           <option value="">-- Select Schema Field --</option>
           {% for field in org_schema_fields %}
-            <option value="{{ field }}">{{ field }}</option>
+          <option value="{{ field }}">{{ field }}</option>
           {% endfor %}
         </select>
       </td>
@@ -149,118 +85,64 @@
 <h3>Collection Mappings Preview</h3>
 <ul id="collection-mappings-preview"></ul>
 
+<div class="tips">
+  <div class="tips-icon">👍</div>
+  <div>
+    <b>Welcome to Brandography Schema Customization App.</b>
+    This allows you to set metafields and other product or page data to be displayed as schema for search engines.
+    <a href="#">Click Here for our Instructional Video.</a>
+    <br>
+    <span>hmac_value: {{ hmac_value or 'Not found' }}</span><br>
+    <span>id_token_value: {{ id_token_value or 'Not found' }}</span><br>
+    <span>Shop: {{ shop_name or 'Not found' }}</span><br>
+    <button id="createMetaBtn" class="btn">Create App-Owned Metafields</button>
 
-
-
-  
-  <div class="tips">
-    <div class="tips-icon">👍</div>
-    <div>
-      <b>Welcome to Brandography Schema Customization App.</b>
-      This allows you to set metafields and other product or page data to be displayed as schema for search engines.
-      <a href="#">Click Here for our Instructional Video.</a>
-      <br>
-      <span>test output for dynamically cpatuirng varibles</span><br>
-      <span>hmac_value: {{ hmac_value or 'Not found' }}</span><br>
-      <span>id_token_value: {{ id_token_value or 'Not found' }}</span><br>
-      <span>Shop: {{ shop_name or 'Not found' }}</span><br>
-      <button id="createMetaBtn">Create App-Owned Metafields</button>
-
-      <h3>App-Owned Metafields Preview</h3>
-<ul id="meta-preview"></ul>
-
-<script>
-function updateMetaPreview() {
-  const preview = document.getElementById("meta-preview");
-  preview.innerHTML = "<b>Product Metafields:</b><br>";
-  for (const [mf, field] of Object.entries(productMappings)) {
-    if (field) preview.innerHTML += `<li>${mf} → ${field}</li>`;
-  }
-  preview.innerHTML += "<b>Collection Metafields:</b><br>";
-  for (const [mf, field] of Object.entries(collectionMappings)) {
-    if (field) preview.innerHTML += `<li>${mf} → ${field}</li>`;
-  }
-}
-
-// Example usage: whenever mapping changes, call updateMetaPreview()
-</script>
-
-<script>
-document.getElementById("createMetaBtn").onclick = async () => {
-  // Gather the current mapping selections
-  const productMappings = {};
-  document.querySelectorAll(".product-map").forEach(select => {
-    if (select.value) productMappings[select.dataset.mf] = select.value;
-  });
-
-  const collectionMappings = {};
-  document.querySelectorAll(".collection-map").forEach(select => {
-    if (select.value) collectionMappings[select.dataset.mf] = select.value;
-  });
-
-  const payload = {
-    shop: '{{ shop_name or "Not found" }}',
-    hmac: '{{ hmac_value or "Not found" }}',
-    id_token: '{{ id_token_value or "Not found" }}',
-    product_mappings: productMappings,
-    collection_mappings: collectionMappings
-  };
-
-  const resp = await fetch("/verify_and_create_metafields", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  const json = await resp.json();
-  alert(json.message || JSON.stringify(json));
-};
-</script>
-
-
-    </div>
+    <h3>App-Owned Metafields Preview</h3>
+    <ul id="meta-preview"></ul>
   </div>
+</div>
 
-  <!-- Schema Cards -->
-  {% for schema in schemas %}
-  <div class="card">
-    <div class="card-header">
-      <h2>{{ schema.title }}</h2>
-      <button class="btn" onclick="window.location.href='{{ schema.url }}'">Manage</button>
-    </div>
-    <p>{{ schema.description }}</p>
+{% for schema in schemas %}
+<div class="card">
+  <div class="card-header">
+    <h2>{{ schema.title }}</h2>
+    <button class="btn" onclick="window.location.href='{{ schema.url }}'">Manage</button>
   </div>
+  <p>{{ schema.description }}</p>
+</div>
+{% endfor %}
+
+<hr>
+<h3>Quick Tips</h3>
+<ul>
+  <li>✅ Keep your schema updated regularly.</li>
+  <li>✅ Test your structured data using Google’s Rich Results tool.</li>
+  <li>✅ Learn more on <a href="https://developers.google.com/search/docs/appearance/structured-data" target="_blank">Google’s Schema Markup Guide</a>.</li>
+</ul>
+
+<hr>
+<h3>Quick Links</h3>
+<p>
+  <a href="{{ url_for('schema_dashboard') }}">Home</a> |
+  <a href="{{ url_for('organization_schema') }}">Organization Schema Page</a> |
+  <a href="{{ url_for('product_schema') }}">Product Schema Page</a> |
+  <a href="{{ url_for('collection_schema') }}">Collection Schema Page</a>
+</p>
+
+<h2>Product Metafields</h2>
+<ul>
+  {% for mf in product_metafields %}
+    <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
   {% endfor %}
-
-  <hr>
-  <h3>Quick Tips</h3>
-  <ul>
-    <li>✅ Keep your schema updated regularly.</li>
-    <li>✅ Test your structured data using Google’s Rich Results tool.</li>
-    <li>✅ Learn more on <a href="https://developers.google.com/search/docs/appearance/structured-data" target="_blank">Google’s Schema Markup Guide</a>.</li>
-  </ul>
-
-  <hr>
-  <h3>Quick Links</h3>
-  <p>
-    <a href="{{ url_for('schema_dashboard') }}">Home</a> |
-    <a href="{{ url_for('organization_schema') }}">Organization Schema Page</a> |
-    <a href="{{ url_for('product_schema') }}">Product Schema Page</a> |
-    <a href="{{ url_for('collection_schema') }}">Collection Schema Page</a>
-  </p>
-<h3>Product Metafields</h3>
-<ul>
-{% for mf in product_metafields %}
-  <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
-{% endfor %}
 </ul>
 
-<h3>Collection Metafields</h3>
+<h2>Collection Metafields</h2>
 <ul>
-{% for mf in collection_metafields %}
-  <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
-{% endfor %}
+  {% for mf in collection_metafields %}
+    <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
+  {% endfor %}
 </ul>
+
 <h2>Organization Schema Fields</h2>
 <ul>
   {% for field in org_schema_fields %}
@@ -268,9 +150,11 @@ document.getElementById("createMetaBtn").onclick = async () => {
   {% endfor %}
 </ul>
 
-</div>
-  <script>
-    const productMappings = {};
+<button id="fetchMetaBtn" class="btn">Fetch Metafields & Values</button>
+<div id="metafields-preview"></div>
+
+<script>
+const productMappings = {};
 const collectionMappings = {};
 
 function updatePreview() {
@@ -285,74 +169,105 @@ function updatePreview() {
   for (const [mf, field] of Object.entries(collectionMappings)) {
     if (field) collectionPreview.innerHTML += `<li>${mf} → ${field}</li>`;
   }
+
+  const metaPreview = document.getElementById("meta-preview");
+  metaPreview.innerHTML = "<b>Product Metafields:</b><br>";
+  for (const [mf, field] of Object.entries(productMappings)) {
+    if (field) metaPreview.innerHTML += `<li>${mf} → ${field}</li>`;
+  }
+  metaPreview.innerHTML += "<b>Collection Metafields:</b><br>";
+  for (const [mf, field] of Object.entries(collectionMappings)) {
+    if (field) metaPreview.innerHTML += `<li>${mf} → ${field}</li>`;
+  }
 }
 
-// Listen for product select changes
+// Listen for select changes
 document.querySelectorAll(".product-map").forEach(select => {
-  select.addEventListener("change", e => {
-    const mf = select.dataset.mf;
-    productMappings[mf] = select.value;
+  select.addEventListener("change", () => {
+    productMappings[select.dataset.mf] = select.value;
     updatePreview();
   });
 });
-
-// Listen for collection select changes
 document.querySelectorAll(".collection-map").forEach(select => {
-  select.addEventListener("change", e => {
-    const mf = select.dataset.mf;
-    collectionMappings[mf] = select.value;
+  select.addEventListener("change", () => {
+    collectionMappings[select.dataset.mf] = select.value;
     updatePreview();
   });
 });
 
-  </script>
-  <button id="fetchMetaBtn">Fetch Metafields & Values</button>
-<div id="metafields-preview"></div>
+// Upsert metafields
+document.getElementById("createMetaBtn").onclick = async () => {
+  const payload = {
+    shop: '{{ shop_name or "Not found" }}',
+    hmac: '{{ hmac_value or "Not found" }}',
+    id_token: '{{ id_token_value or "Not found" }}',
+    product_mappings: productMappings,
+    collection_mappings: collectionMappings
+  };
 
-  <script>
+  try {
+    const resp = await fetch("/verify_and_create_metafields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const json = await resp.json();
+    alert(json.message || JSON.stringify(json));
+    updatePreview();
+  } catch (err) {
+    console.error(err);
+    alert("Error creating metafields. Check console.");
+  }
+};
 
-    document.getElementById("fetchMetaBtn").onclick = async () => {
+// Fetch existing metafields
+document.getElementById("fetchMetaBtn").onclick = async () => {
   const payload = {
     shop: '{{ shop_name or "Not found" }}',
     hmac: '{{ hmac_value or "Not found" }}',
     id_token: '{{ id_token_value or "Not found" }}'
   };
 
-  const resp = await fetch("/get_metafields", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const resp = await fetch("/get_metafields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    const preview = document.getElementById("metafields-preview");
+    preview.innerHTML = "";
 
-  const data = await resp.json();
+    if (data.error) {
+      preview.innerHTML = `<span style="color:red;">${data.error}</span>`;
+      return;
+    }
 
-  const preview = document.getElementById("metafields-preview");
-  preview.innerHTML = "";
+    // Products
+    preview.innerHTML += "<h4>Products</h4><ul>";
+    data.data.products.edges.forEach(product => {
+      product.node.metafields.edges.forEach(mf => {
+        preview.innerHTML += `<li>${product.node.title}: ${mf.node.namespace}.${mf.node.key} → ${mf.node.value}</li>`;
+      });
+    });
+    preview.innerHTML += "</ul>";
 
-  if (data.error) {
-    preview.innerHTML = `<span style="color:red;">${data.error}</span>`;
-    return;
+    // Collections
+    preview.innerHTML += "<h4>Collections</h4><ul>";
+    data.data.collections.edges.forEach(coll => {
+      coll.node.metafields.edges.forEach(mf => {
+        preview.innerHTML += `<li>${coll.node.title}: ${mf.node.namespace}.${mf.node.key} → ${mf.node.value}</li>`;
+      });
+    });
+    preview.innerHTML += "</ul>";
+
+  } catch (err) {
+    console.error(err);
+    alert("Error fetching metafields. Check console.");
   }
-
-  // Show products metafields
-  preview.innerHTML += "<h4>Products</h4><ul>";
-  data.data.products.edges.forEach(product => {
-    product.node.metafields.edges.forEach(mf => {
-      preview.innerHTML += `<li>${product.node.title}: ${mf.node.namespace}.${mf.node.key} → ${mf.node.value}</li>`;
-    });
-  });
-  preview.innerHTML += "</ul>";
-
-  // Show collections metafields
-  preview.innerHTML += "<h4>Collections</h4><ul>";
-  data.data.collections.edges.forEach(coll => {
-    coll.node.metafields.edges.forEach(mf => {
-      preview.innerHTML += `<li>${coll.node.title}: ${mf.node.namespace}.${mf.node.key} → ${mf.node.value}</li>`;
-    });
-  });
-  preview.innerHTML += "</ul>";
 };
+</script>
 
-  </script>
+</div>
 </body>
 </html>
