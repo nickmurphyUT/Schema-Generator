@@ -1287,6 +1287,46 @@ def get_metafields():
     return resp.json()
 
 
+
+@app.route("/get_app_schema_metafield")
+def get_app_schema_metafield():
+    shop = request.args.get("shop")
+    object_type = request.args.get("type")  # "product", "collection", "blog", "page"
+    object_id = request.args.get("id")      # Shopify GID
+
+    schema_key_map = {
+        "product": "prod_schema",
+        "collection": "coll_schema",
+        "blog": "blog_schema",
+        "page": "page_schema"
+    }
+    key = schema_key_map.get(object_type)
+    if not key:
+        return {"error": "Invalid object type"}, 400
+
+    # Get app access token from DB
+    store = StoreToken.query.filter_by(shop=shop).first()
+    if not store:
+        return {"error": "Access token not found"}, 400
+    token = store.access_token
+
+    # Fetch the app-owned metafield
+    query = """
+    query getMetafield($id: ID!) {
+      node(id: $id) {
+        ... on Product { metafield(namespace: "app_schema", key: "%s") { value } }
+        ... on Collection { metafield(namespace: "app_schema", key: "%s") { value } }
+        ... on Blog { metafield(namespace: "app_schema", key: "%s") { value } }
+        ... on Page { metafield(namespace: "app_schema", key: "%s") { value } }
+      }
+    }
+    """ % (key, key, key, key)
+
+    resp = graphql_request(shop, token, query, {"id": object_id})
+    return resp
+
+
+
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
