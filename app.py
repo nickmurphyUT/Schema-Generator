@@ -1114,6 +1114,9 @@ def create_app_owned_metafields():
             numeric_id = node["node"]["id"].split('/')[-1]  # Convert GID to numeric ID if needed
             gid = f"gid://shopify/{schema['ownerType'].capitalize()}/{numeric_id}"
 
+
+            
+
             query_upsert = """
             mutation metafieldUpsert($input: MetafieldInput!) {
               metafieldUpsert(input: $input) {
@@ -1132,6 +1135,7 @@ def create_app_owned_metafields():
                 }
             }
             resp_upsert = graphql_request(shop, token, query_upsert, variables_upsert)
+            print(json.dumps(resp_upsert, indent=2))
             errors_upsert = resp_upsert.get("data", {}).get("metafieldUpsert", {}).get("userErrors", [])
             if errors_upsert:
                 print(f"Error upserting {schema['key']} for {gid}: {errors_upsert}")
