@@ -127,7 +127,19 @@ def fetch_organization_schema_properties():
 
     return org_fields
 
+def graphql_request(shop, token, query, variables=None):
+    url = f"https://{shop}/admin/api/2025-10/graphql.json"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": token
+    }
+    payload = {"query": query}
+    if variables:
+        payload["variables"] = variables
 
+    resp = requests.post(url, headers=headers, json=payload)
+    resp.raise_for_status()
+    return resp.json()
 # ----------------------------
 # Flask API Route
 # ----------------------------
