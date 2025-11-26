@@ -187,10 +187,23 @@ function updateMetaPreview() {
 
 <script>
 document.getElementById("createMetaBtn").onclick = async () => {
+  // Gather the current mapping selections
+  const productMappings = {};
+  document.querySelectorAll(".product-map").forEach(select => {
+    if (select.value) productMappings[select.dataset.mf] = select.value;
+  });
+
+  const collectionMappings = {};
+  document.querySelectorAll(".collection-map").forEach(select => {
+    if (select.value) collectionMappings[select.dataset.mf] = select.value;
+  });
+
   const payload = {
-    hmac: '{{ hmac_value or 'Not found' }}',        // you already have these values
-    id_token: '{{ id_token_value or 'Not found' }}',
-    shop: '{{ shop_name or 'Not found' }}'
+    shop: '{{ shop_name or "Not found" }}',
+    hmac: '{{ hmac_value or "Not found" }}',
+    id_token: '{{ id_token_value or "Not found" }}',
+    product_mappings: productMappings,
+    collection_mappings: collectionMappings
   };
 
   const resp = await fetch("/verify_and_create_metafields", {
