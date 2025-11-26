@@ -1208,8 +1208,6 @@ def get_metafields():
     hmac = data.get("hmac")
     id_token = data.get("id_token")
 
-    # --- Optional: validate HMAC / ID token here ---
-
     # Fetch access token from DB
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
@@ -1217,48 +1215,49 @@ def get_metafields():
     if not access_token:
         return {"error": "Access token not found for shop"}, 400
 
-    # Query Shopify GraphQL for products and collections metafields
-    import requests
+    APP_NAMESPACE = "app_schema"
 
+    # GraphQL: fetch ONLY metafields created by your app
     query = """
-    {
-      products(first: 10) {
-        edges {
-          node {
+    {{
+      products(first: 100) {{
+        edges {{
+          node {{
             id
             title
-            metafields(first: 10) {
-              edges {
-                node {
+            metafields(namespace: "{APP_NAMESPACE}", first: 50) {{
+              edges {{
+                node {{
                   namespace
                   key
                   value
                   type
-                }
-              }
-            }
-          }
-        }
-      }
-      collections(first: 10) {
-        edges {
-          node {
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+
+      collections(first: 100) {{
+        edges {{
+          node {{
             id
             title
-            metafields(first: 10) {
-              edges {
-                node {
+            metafields(namespace: "{APP_NAMESPACE}", first: 50) {{
+              edges {{
+                node {{
                   namespace
                   key
                   value
                   type
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
     """
 
     headers = {
@@ -1266,12 +1265,20 @@ def get_metafields():
         "X-Shopify-Access-Token": access_token
     }
 
-    resp = requests.post(f"https://{shop}/admin/api/2025-10/graphql.json", json={"query": query}, headers=headers)
-    
+    resp = requests.post(
+        f"https://{shop}/admin/api/2025-10/graphql.json",
+        json={"query": query},
+        headers=headers
+    )
+
     if resp.status_code != 200:
-        return {"error": "Failed to fetch metafields", "details": resp.text}, 400
+        return {
+            "error": "Failed to fetch metafields",
+            "details": resp.text
+        }, 400
 
     return resp.json()
+
 
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
