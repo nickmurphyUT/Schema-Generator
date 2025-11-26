@@ -24,7 +24,7 @@ from flask_sqlalchemy import SQLAlchemy
 import time
 from threading import Thread
 import re
-from models import shop, StoreToken
+from models import StoreToken
 from math import ceil
 
 SCHEMA_CACHE = {
