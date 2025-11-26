@@ -1217,47 +1217,47 @@ def get_metafields():
 
     APP_NAMESPACE = "app_schema"
 
-    # GraphQL: fetch ONLY metafields created by your app
+    # Fixed GraphQL query - no string formatting
     query = """
-    {{
-      products(first: 100) {{
-        edges {{
-          node {{
+    {
+      products(first: 100) {
+        edges {
+          node {
             id
             title
-            metafields(namespace: "{APP_NAMESPACE}", first: 50) {{
-              edges {{
-                node {{
+            metafields(namespace: "app_schema", first: 50) {
+              edges {
+                node {
                   namespace
                   key
                   value
                   type
-                }}
-              }}
-            }}
-          }}
-        }}
-      }}
+                }
+              }
+            }
+          }
+        }
+      }
 
-      collections(first: 100) {{
-        edges {{
-          node {{
+      collections(first: 100) {
+        edges {
+          node {
             id
             title
-            metafields(namespace: "{APP_NAMESPACE}", first: 50) {{
-              edges {{
-                node {{
+            metafields(namespace: "app_schema", first: 50) {
+              edges {
+                node {
                   namespace
                   key
                   value
                   type
-                }}
-              }}
-            }}
-          }}
-        }}
-      }}
-    }}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
     """
 
     headers = {
@@ -1266,7 +1266,7 @@ def get_metafields():
     }
 
     resp = requests.post(
-        f"https://{shop}/admin/api/2025-10/graphql.json",
+        "https://{}/admin/api/2025-10/graphql.json".format(shop),
         json={"query": query},
         headers=headers
     )
