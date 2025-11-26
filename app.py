@@ -1094,7 +1094,7 @@ def create_app_owned_metafields():
             "BLOG": "{ blogs(first: 100) { edges { node { id } } } }",
             "PAGE": "{ pages(first: 100) { edges { node { id } } } }",
         }
-        resp_objects = graphql_request(shop, token, object_query_map[schema["ownerType"]])
+        resp_objects = query_shopify_graphql_webhookB(shop, token, object_query_map[schema["ownerType"]])
         nodes = list(resp_objects.get("data", {}).values())[0].get("edges", [])
 
         for node in nodes:
