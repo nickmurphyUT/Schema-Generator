@@ -24,7 +24,6 @@ from flask_sqlalchemy import SQLAlchemy
 import time
 from threading import Thread
 import re
-from models import StoreToken
 from math import ceil
 
 SCHEMA_CACHE = {
@@ -1199,54 +1198,50 @@ def batch_items(items, batch_size=BATCH_SIZE):
     for i in range(0, total, batch_size):
         yield items[i:i + batch_size]
 
-# Main route: verify & create metafields
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
     shop = data.get("shop")
     hmac = data.get("hmac")
     id_token = data.get("id_token")
-
-    # Save latest session values (optional)
-    latest_values = {}
-    latest_values["hmac"] = hmac
-    latest_values["id_token"] = id_token
-
-    # Fetch access token
-    access_token = get_access_token_for_shop(shop)
-    if not access_token:
-        return jsonify({"error": f"No access token found for shop {shop}"}), 400
-
     product_mappings = data.get("product_mappings", {})
     collection_mappings = data.get("collection_mappings", {})
 
-    # --- Process product metafields in batches ---
-    products = list(product_mappings.items())
-    for batch_num, batch in enumerate(batch_items(products), 1):
-        print(f"[INFO] Upserting product batch {batch_num}/{ceil(len(products)/BATCH_SIZE)}")
-        for product_id, field in batch:
-            try:
-                upsert_product_metafield(shop, access_token, product_id, field)
-                time.sleep(0.2)
-            except requests.HTTPError as e:
-                print(f"[ERROR] Failed product {product_id}: {e.response.text}")
-            except Exception as e:
-                print(f"[ERROR] Failed product {product_id}: {str(e)}")
+    # Update latest_values (optional, if you track it like schema_dashboard)
+    latest_values["hmac"] = hmac
+    latest_values["id_token"] = id_token
 
-    # --- Process collection metafields in batches ---
-    collections = list(collection_mappings.items())
-    for batch_num, batch in enumerate(batch_items(collections), 1):
-        print(f"[INFO] Upserting collection batch {batch_num}/{ceil(len(collections)/BATCH_SIZE)}")
-        for collection_id, field in batch:
-            try:
-                upsert_collection_metafield(shop, access_token, collection_id, field)
-                time.sleep(0.2)
-            except requests.HTTPError as e:
-                print(f"[ERROR] Failed collection {collection_id}: {e.response.text}")
-            except Exception as e:
-                print(f"[ERROR] Failed collection {collection_id}: {str(e)}")
+    # --- Fetch access token exactly like schema_dashboard ---
+    store = StoreToken.query.filter_by(shop=shop).first()
+    access_token = store.access_token if store else None
 
-    return jsonify({"message": "All metafield updates completed successfully."})
+    if not access_token:
+        return jsonify({"error": f"No access token found for shop {shop}"}), 400
+
+    # Now proceed to upsert metafields
+    try:
+        # Example: upsert product metafields
+        for mf, field in product_mappings.items():
+            if field:
+                try:
+                    upsert_product_metafield(shop, access_token, mf, field)
+                except Exception as e:
+                    print(f"[ERROR] Failed to upsert prod metafield {mf}: {e}")
+
+        # Example: upsert collection metafields
+        for mf, field in collection_mappings.items():
+            if field:
+                try:
+                    upsert_collection_metafield(shop, access_token, mf, field)
+                except Exception as e:
+                    print(f"[ERROR] Failed to upsert coll metafield {mf}: {e}")
+
+        return jsonify({"message": "Metafields processed successfully"}), 200
+
+    except Exception as e:
+        print("[ERROR] verify_and_create_metafields exception:", e)
+        return jsonify({"error": str(e)}), 500
+
 
 
 @app.route("/get_metafields", methods=["POST"])
