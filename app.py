@@ -24,8 +24,8 @@ from flask_sqlalchemy import SQLAlchemy
 import time
 from threading import Thread
 import re
-from models import shop
-
+from models import shop, StoreToken
+from math import ceil
 
 SCHEMA_CACHE = {
     "timestamp": 0,
@@ -863,12 +863,6 @@ def get_metafield_definitions(shop, access_token):
 
     return query_shopify_graphql(shop, access_token, query)
 
-def get_access_token_for_shop(shop_name: str) -> str:
-    shop = Shop.query.filter_by(shop_domain=shop_name).first()
-    if not shop:
-        raise ValueError(f"No access token found for shop {shop_name}")
-    return shop.access_token
-
 @app.route("/app")
 def schema_dashboard():
     shop = session.get("shop") or request.args.get("shop")
@@ -1164,87 +1158,96 @@ def init_db():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-def extract_numeric_id(gid_or_string):
-    """Extract numeric ID from Shopify GID or string."""
-    match = re.search(r'(\d+)$', gid_or_string)
-    if match:
-        return match.group(1)
-    return None
+# Helper: fetch access token from DB
+def get_access_token_for_shop(shop):
+    store = StoreToken.query.filter_by(shop=shop).first()
+    return store.access_token if store else None
 
-def upsert_metafield(shop, access_token, resource_type, resource_id, namespace, key, value, type="json"):
-    """Upsert a metafield via REST Admin API."""
-    url = f"https://{shop}/admin/api/2026-01/{resource_type}/{resource_id}/metafields.json"
-    headers = {
-        "X-Shopify-Access-Token": access_token,
-        "Content-Type": "application/json"
-    }
+# Helper: upsert a single product metafield
+def upsert_product_metafield(shop, access_token, product_id, field_value):
+    url = f"https://{shop}/admin/api/2026-01/products/{product_id}/metafields.json"
     payload = {
         "metafield": {
-            "namespace": namespace,
-            "key": key,
-            "value": value,
-            "type": type
+            "namespace": "app_schema",
+            "key": field_value["key"],
+            "type": "json",
+            "value": field_value["value"]
         }
     }
-    resp = requests.post(url, json=payload, headers=headers)
-    return resp
+    resp = requests.post(url, json=payload, headers={"X-Shopify-Access-Token": access_token})
+    resp.raise_for_status()
+    return resp.json()
 
+# Helper: upsert a single collection metafield
+def upsert_collection_metafield(shop, access_token, collection_id, field_value):
+    url = f"https://{shop}/admin/api/2026-01/collections/{collection_id}/metafields.json"
+    payload = {
+        "metafield": {
+            "namespace": "app_schema",
+            "key": field_value["key"],
+            "type": "json",
+            "value": field_value["value"]
+        }
+    }
+    resp = requests.post(url, json=payload, headers={"X-Shopify-Access-Token": access_token})
+    resp.raise_for_status()
+    return resp.json()
+
+# Helper: batch iterator
+def batch_items(items, batch_size=BATCH_SIZE):
+    total = len(items)
+    for i in range(0, total, batch_size):
+        yield items[i:i + batch_size]
+
+# Main route: verify & create metafields
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
     shop = data.get("shop")
-    access_token = get_access_token_for_shop(shop)  # your function to retrieve the token
+    hmac = data.get("hmac")
+    id_token = data.get("id_token")
+
+    # Save latest session values (optional)
+    latest_values = {}
+    latest_values["hmac"] = hmac
+    latest_values["id_token"] = id_token
+
+    # Fetch access token
+    access_token = get_access_token_for_shop(shop)
+    if not access_token:
+        return jsonify({"error": f"No access token found for shop {shop}"}), 400
+
     product_mappings = data.get("product_mappings", {})
     collection_mappings = data.get("collection_mappings", {})
 
-    results = {"products": {}, "collections": {}}
-    batch_size = 10  # adjust for batching
-
-    # Process products in batches
-    product_items = list(product_mappings.items())
-    for i in range(0, len(product_items), batch_size):
-        batch = product_items[i:i + batch_size]
-        for gid_or_str, mapping in batch:
-            numeric_id = extract_numeric_id(gid_or_str)
-            if not numeric_id:
-                results["products"][gid_or_str] = "Invalid ID"
-                continue
+    # --- Process product metafields in batches ---
+    products = list(product_mappings.items())
+    for batch_num, batch in enumerate(batch_items(products), 1):
+        print(f"[INFO] Upserting product batch {batch_num}/{ceil(len(products)/BATCH_SIZE)}")
+        for product_id, field in batch:
             try:
-                resp = upsert_metafield(
-                    shop, access_token, "products", numeric_id,
-                    namespace="app_schema", key="prod_schema", value=mapping
-                )
-                if resp.status_code in (200, 201):
-                    results["products"][gid_or_str] = "Success"
-                else:
-                    results["products"][gid_or_str] = f"Failed: {resp.status_code} {resp.text}"
+                upsert_product_metafield(shop, access_token, product_id, field)
+                time.sleep(0.2)
+            except requests.HTTPError as e:
+                print(f"[ERROR] Failed product {product_id}: {e.response.text}")
             except Exception as e:
-                results["products"][gid_or_str] = f"Exception: {str(e)}"
-            time.sleep(0.2)  # small delay to respect rate limits
+                print(f"[ERROR] Failed product {product_id}: {str(e)}")
 
-    # Process collections in batches
-    collection_items = list(collection_mappings.items())
-    for i in range(0, len(collection_items), batch_size):
-        batch = collection_items[i:i + batch_size]
-        for gid_or_str, mapping in batch:
-            numeric_id = extract_numeric_id(gid_or_str)
-            if not numeric_id:
-                results["collections"][gid_or_str] = "Invalid ID"
-                continue
+    # --- Process collection metafields in batches ---
+    collections = list(collection_mappings.items())
+    for batch_num, batch in enumerate(batch_items(collections), 1):
+        print(f"[INFO] Upserting collection batch {batch_num}/{ceil(len(collections)/BATCH_SIZE)}")
+        for collection_id, field in batch:
             try:
-                resp = upsert_metafield(
-                    shop, access_token, "custom_collections", numeric_id,
-                    namespace="app_schema", key="coll_schema", value=mapping
-                )
-                if resp.status_code in (200, 201):
-                    results["collections"][gid_or_str] = "Success"
-                else:
-                    results["collections"][gid_or_str] = f"Failed: {resp.status_code} {resp.text}"
+                upsert_collection_metafield(shop, access_token, collection_id, field)
+                time.sleep(0.2)
+            except requests.HTTPError as e:
+                print(f"[ERROR] Failed collection {collection_id}: {e.response.text}")
             except Exception as e:
-                results["collections"][gid_or_str] = f"Exception: {str(e)}"
-            time.sleep(0.2)
+                print(f"[ERROR] Failed collection {collection_id}: {str(e)}")
 
-    return jsonify({"message": "Metafield upserts complete", "results": results})
+    return jsonify({"message": "All metafield updates completed successfully."})
+
 
 @app.route("/get_metafields", methods=["POST"])
 def get_metafields():
