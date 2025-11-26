@@ -40,6 +40,7 @@ app = Flask(__name__)
 allowed_origins = [
     "https://www.xxx",
     "https://xxx",
+    "https://nontransferrnick.myshopify.com"
 ]
 
 CORS(app, origins=allowed_origins, supports_credentials=True)
