@@ -1232,78 +1232,86 @@ def verify_and_create_metafields():
     shop = data.get("shop") or session.get("shop")
     hmac = data.get("hmac") or session.get("hmac")
     id_token = data.get("id_token") or session.get("id_token")
-    
+
     product_mappings = data.get("product_mappings", {})
     collection_mappings = data.get("collection_mappings", {})
 
-    # Fetch access token from DB
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
-
     if not access_token:
-        return jsonify({"error": "Access token not found for shop"}), 400
+        return jsonify({"error": "No access token for shop"}), 400
 
     results = {"products": {}, "collections": {}}
 
-    # --- Helper: determine Shopify metafield type based on value ---
-    def determine_metafield_type(value):
-        if isinstance(value, bool):
-            return "boolean"
-        try:
-            int(value)
-            return "number_integer"
-        except (ValueError, TypeError):
-            pass
-        try:
-            float(value)
-            return "number_decimal"
-        except (ValueError, TypeError):
-            pass
-        return "single_line_text_field"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
 
-    # --- Helper: upsert metafield for a resource ---
-    def upsert_metafield(resource_type, resource_id, namespace, key, value):
-        metafield_type = determine_metafield_type(value)
-        url = f"https://{shop}/admin/api/2026-01/{resource_type}/{resource_id}/metafields.json"
-        payload = {
-            "metafield": {
-                "namespace": namespace,
-                "key": key,
-                "type": metafield_type,
-                "value": value
-            }
-        }
-        headers = {
-            "Content-Type": "application/json",
-            "X-Shopify-Access-Token": access_token
-        }
-        resp = requests.post(url, json=payload, headers=headers)
+    # --- Helper to upsert a single JSON app-owned metafield ---
+    def upsert_app_metafield(resource_type, resource_id, mappings):
+        """
+        resource_type: 'products' or 'collections'
+        resource_id: Shopify GraphQL ID or numeric ID
+        mappings: dict { metafield_key: schema_field }
+        """
+        import json
+        json_value = json.dumps(mappings)
+
+        # Build mutation using .format() instead of f-strings
+        mutation = """
+        mutation upsertMetafield {{
+          metafieldsSet(input: {{
+            ownerId: "{owner_id}",
+            metafields: [{{
+              namespace: "app_schema",
+              key: "{resource_type}_schema",
+              type: "json",
+              value: "{json_value}"
+            }}]
+          }}) {{
+            metafields {{
+              id
+              key
+              namespace
+              value
+              type
+            }}
+            userErrors {{
+              field
+              message
+            }}
+          }}
+        }}
+        """.format(
+            owner_id=resource_id,
+            resource_type=resource_type,
+            json_value=json_value.replace('"', '\\"')
+        )
+
+        url = "https://{}/admin/api/2026-01/graphql.json".format(shop)
+        resp = requests.post(url, json={"query": mutation}, headers=headers)
         resp.raise_for_status()
         return resp.json()
 
-    # --- Upsert Product Metafields ---
-    for full_key, org_field in product_mappings.items():
-        if not org_field:
-            continue
+    # Upsert products
+    for product_id, mapping in product_mappings.items():
         try:
-            namespace, key = full_key.split(".", 1)
-            results["products"][full_key] = upsert_metafield("products", key, namespace, key, org_field)
+            results["products"][product_id] = upsert_app_metafield("product", product_id, mapping)
         except Exception as e:
-            results["products"][full_key] = f"Error: {str(e)}"
-            print(f"[ERROR] Failed to upsert product metafield {full_key}: {str(e)}")
+            results["products"][product_id] = {"error": str(e)}
+            print("[ERROR] Failed upsert for product {}: {}".format(product_id, e))
 
-    # --- Upsert Collection Metafields ---
-    for full_key, org_field in collection_mappings.items():
-        if not org_field:
-            continue
+    # Upsert collections
+    for collection_id, mapping in collection_mappings.items():
         try:
-            namespace, key = full_key.split(".", 1)
-            results["collections"][full_key] = upsert_metafield("collections", key, namespace, key, org_field)
+            results["collections"][collection_id] = upsert_app_metafield("collection", collection_id, mapping)
         except Exception as e:
-            results["collections"][full_key] = f"Error: {str(e)}"
-            print(f"[ERROR] Failed to upsert collection metafield {full_key}: {str(e)}")
+            results["collections"][collection_id] = {"error": str(e)}
+            print("[ERROR] Failed upsert for collection {}: {}".format(collection_id, e))
 
-    return jsonify({"message": "Metafield updates complete", "results": results})
+    return jsonify({"message": "App-owned metafields updated successfully", "results": results})
+
 
 @app.route("/get_metafields", methods=["POST"])
 def get_metafields():
