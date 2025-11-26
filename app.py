@@ -1,5 +1,5 @@
 import os
-import requests
+import requests, json, time
 from flask import Flask, request, jsonify, render_template_string, render_template, redirect, session
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
@@ -22,6 +22,10 @@ import base64
 import jwt
 from flask_sqlalchemy import SQLAlchemy
 import time
+from threading import Thread
+
+
+
 
 SCHEMA_CACHE = {
     "timestamp": 0,
@@ -36,6 +40,9 @@ load_dotenv()
 
 app = Flask(__name__)
 
+
+BATCH_SIZE = 10  # Number of products/collections per batch
+SLEEP_BETWEEN_REQUESTS = 0.2  # Delay between Shopify requests to avoid rate limits
 # Store Locally?
 allowed_origins = [
     "https://www.xxx",
@@ -1153,114 +1160,66 @@ def init_db():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/verify_and_create_metafields", methods=["POST"])
-def verify_and_create_metafields():
-    import json
-    import time
-
-    data = request.json
-    shop = data.get("shop")
-    posted_hmac = data.get("hmac")
-    id_token = data.get("id_token")
-    product_mappings = data.get("product_mappings", {})      # {metafield: schema_field}
-    collection_mappings = data.get("collection_mappings", {})
-
-    if not shop or not posted_hmac:
-        return jsonify({"error": "Missing shop or HMAC"}), 400
-
-    # Verify HMAC
-    if posted_hmac != latest_values.get("hmac"):
-        return jsonify({"error": "HMAC mismatch"}), 400
-
-    # Fetch store token
-    store = StoreToken.query.filter_by(shop=shop).first()
-    if not store or not store.access_token:
-        return jsonify({"error": "Store token missing"}), 400
-    access_token = store.access_token
-
+def upsert_metafields(shop, token, product_mappings, collection_mappings):
     headers = {
-        "X-Shopify-Access-Token": access_token,
-        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": token,
+        "Content-Type": "application/json"
     }
 
-    created_metafields = {"products": [], "collections": []}
+    def batch_items(items, type_):
+        for i in range(0, len(items), BATCH_SIZE):
+            batch = dict(list(items.items())[i:i+BATCH_SIZE])
+            for obj_id, schema in batch.items():
+                payload = {
+                    "metafield": {
+                        "namespace": "app_schema",
+                        "key": f"{type_}_schema",
+                        "type": "json",
+                        "value": json.dumps(schema)
+                    }
+                }
+                try:
+                    if type_ == "prod":
+                        url = f"https://{shop}/admin/api/2026-01/products/{obj_id}/metafields.json"
+                    else:
+                        url = f"https://{shop}/admin/api/2026-01/collections/{obj_id}/metafields.json"
 
-    # --- Helper to fetch paginated resources ---
-    def fetch_paginated(endpoint, key):
-        results = []
-        url = f"https://{shop}/admin/api/2026-01/{endpoint}.json?limit=250"
-        while url:
-            resp = requests.get(url, headers=headers)
-            resp.raise_for_status()
-            data_page = resp.json()
-            results.extend(data_page.get(key, []))
-            # Handle pagination via Link header
-            link_header = resp.headers.get("Link", "")
-            next_url = None
-            if 'rel="next"' in link_header:
-                parts = link_header.split(",")
-                for part in parts:
-                    if 'rel="next"' in part:
-                        next_url = part.split(";")[0].strip()[1:-1]  # Remove <>
-            url = next_url
-        return results
+                    response = requests.post(url, headers=headers, json=payload)
+                    response.raise_for_status()
+                    print(f"[SUCCESS] Upserted {type_} metafield for ID {obj_id}")
+                except Exception as e:
+                    print(f"[ERROR] Failed to upsert {type_} metafield for ID {obj_id}: {e}")
+                time.sleep(SLEEP_BETWEEN_REQUESTS)  # Small delay per item
 
-    # --- Update Products ---
+            print(f"[INFO] Completed batch {i // BATCH_SIZE + 1} of {type_}s")
+
+    # Process products and collections
     if product_mappings:
-        products = fetch_paginated("products", "products")
-        for product in products:
-            product_schema = {mf: field for mf, field in product_mappings.items() if field}
-            if not product_schema:
-                continue
-            payload = {
-                "metafield": {
-                    "namespace": "app_schema",
-                    "key": "prod_schema",
-                    "type": "json",
-                    "value": json.dumps(product_schema)
-                }
-            }
-            try:
-                resp = requests.post(f"https://{shop}/admin/api/2026-01/products/{product['id']}/metafields.json",
-                                     headers=headers, json=payload)
-                resp.raise_for_status()
-                created_metafields["products"].append(product['id'])
-            except Exception as e:
-                print(f"Failed to upsert product {product['id']} metafield:", e)
-                continue
-            time.sleep(0.2)  # Small delay to avoid rate limits
-
-    # --- Update Collections ---
+        print("[INFO] Starting product metafield upserts...")
+        batch_items(product_mappings, "prod")
     if collection_mappings:
-        collections = fetch_paginated("custom_collections", "custom_collections")
-        for coll in collections:
-            coll_schema = {mf: field for mf, field in collection_mappings.items() if field}
-            if not coll_schema:
-                continue
-            payload = {
-                "metafield": {
-                    "namespace": "app_schema",
-                    "key": "coll_schema",
-                    "type": "json",
-                    "value": json.dumps(coll_schema)
-                }
-            }
-            try:
-                resp = requests.post(f"https://{shop}/admin/api/2026-01/collections/{coll['id']}/metafields.json",
-                                     headers=headers, json=payload)
-                resp.raise_for_status()
-                created_metafields["collections"].append(coll['id'])
-            except Exception as e:
-                print(f"Failed to upsert collection {coll['id']} metafield:", e)
-                continue
-            time.sleep(0.2)
+        print("[INFO] Starting collection metafield upserts...")
+        batch_items(collection_mappings, "coll")
 
-    return jsonify({
-        "success": True,
-        "message": "App-owned metafields updated for all products/collections based on mappings",
-        "created_metafields": created_metafields
-    })
+    print("[INFO] All metafield updates complete.")
 
+@app.route("/verify_and_create_metafields", methods=["POST"])
+def verify_and_create_metafields():
+    data = request.json
+    shop = data.get("shop")
+    token_record = StoreToken.query.filter_by(shop=shop).first()
+    if not token_record or not token_record.access_token:
+        return jsonify({"error": "Store token missing"}), 400
+    token = token_record.access_token
+
+    product_mappings = data.get("product_mappings", {})
+    collection_mappings = data.get("collection_mappings", {})
+
+    # Launch the upsert in a background thread
+    thread = Thread(target=upsert_metafields, args=(shop, token, product_mappings, collection_mappings))
+    thread.start()
+
+    return jsonify({"success": True, "message": "Metafield update started in background. Changes will appear shortly."})
 
 @app.route("/get_metafields", methods=["POST"])
 def get_metafields():
