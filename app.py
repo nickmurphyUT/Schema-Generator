@@ -1300,40 +1300,108 @@ def get_metafields():
 
 @app.route("/get_app_schema_metafield", methods=["GET"])
 def get_app_schema_metafield():
+    print("=== Incoming /get_app_schema_metafield Request ===")
+    
     shop = request.args.get("shop")
-    type_ = request.args.get("type")
-    numeric_id = request.args.get("id")
+    gid = request.args.get("gid")
 
+    print(f"[Input] shop={shop}")
+    print(f"[Input] gid={gid}")
+
+    if not shop or not gid:
+        print("[Error] Missing shop or gid param")
+        return jsonify({"error": "Missing shop or gid"}), 400
+
+    # Lookup store access token
     store = StoreToken.query.filter_by(shop=shop).first()
-    if not store or not store.access_token:
-        return jsonify({"error": "Store token missing"}), 400
+
+    if not store:
+        print("[Error] No store record found.")
+        return jsonify({"error": "Store not registered"}), 400
+
+    if not store.access_token:
+        print("[Error] Store record found but missing access_token.")
+        return jsonify({"error": "Missing access token"}), 400
+
     token = store.access_token
+    print(f"[Store] Found access token for shop={shop}")
 
-    # Map type to ownerType and metafield key
-    mapping = {
-        "product": ("PRODUCT", "prod_schema"),
-        "collection": ("COLLECTION", "coll_schema"),
-        "blog": ("BLOG", "blog_schema"),
-        "page": ("PAGE", "page_schema")
-    }
-    if type_ not in mapping:
-        return jsonify({"error": "Invalid type"}), 400
+    # Decide metafield key based on gid prefix
+    metafield_key = None
+    if "gid://shopify/Product/" in gid:
+        metafield_key = "prod_schema"
+    elif "gid://shopify/Collection/" in gid:
+        metafield_key = "coll_schema"
+    elif "gid://shopify/Article/" in gid or "gid://shopify/Blog/" in gid:
+        metafield_key = "blog_schema"
+    elif "gid://shopify/Page/" in gid:
+        metafield_key = "page_schema"
+    else:
+        print(f"[Error] Could not determine metafield key from gid={gid}")
+        return jsonify({"error": "Invalid or unsupported gid"}), 400
 
-    owner_type, key = mapping[type_]
-    gid = f"gid://shopify/{owner_type}/{numeric_id}"
+    print(f"[Metafield] Using key={metafield_key}")
 
+    # Query with all node types so Shopify routes correctly
     query = """
     query getAppSchema($id: ID!) {
       node(id: $id) {
-        ... on Product { metafield(namespace:"app_schema", key:"prod_schema") { value } }
+        ... on Product  { metafield(namespace:"app_schema", key:"prod_schema") { value } }
         ... on Collection { metafield(namespace:"app_schema", key:"coll_schema") { value } }
         ... on Blog { metafield(namespace:"app_schema", key:"blog_schema") { value } }
+        ... on Article { metafield(namespace:"app_schema", key:"blog_schema") { value } }
         ... on Page { metafield(namespace:"app_schema", key:"page_schema") { value } }
       }
     }
     """
-    resp = graphql_request(shop, token, query, {"id": gid})
-    return jsonify(resp)
+
+    print("[GraphQL] Sending query to Shopify…")
+    print(f"[GraphQL] Variables: id={gid}")
+
+    response = graphql_request(shop, token, query, {"id": gid})
+
+    print("[GraphQL] Raw Response:")
+    print(response)
+
+    # Shopify returns errors array sometimes
+    if "errors" in response:
+        print("[Shopify Error] -------------------------")
+        print(response["errors"])
+        print("----------------------------------------")
+        return jsonify(response), 200
+
+    node = response.get("data", {}).get("node")
+
+    if not node:
+        print("[GraphQL] Node is null. Shopify did not recognize this GID.")
+        print(f"[Possible Cause] Invalid resource type in gid={gid}")
+        return jsonify({
+            "error": "Node not found for this GID",
+            "gid": gid,
+        }), 404
+
+    # Try to find metafield on node
+    metafield = None
+    for key in ["prod_schema", "coll_schema", "blog_schema", "page_schema"]:
+        if node.get("metafield") and node["metafield"]["value"]:
+            metafield = node["metafield"]
+            print(f"[Metafield] Found matching metafield={key}")
+            break
+
+    if not metafield:
+        print("[Metafield] No metafield found for this object.")
+        return jsonify({
+            "data": {
+                "metafield": None
+            }
+        }), 200
+
+    print("[Success] Returning metafield value.")
+    return jsonify({
+        "data": {
+            "metafield": metafield
+        }
+    }), 200
 
 
 
