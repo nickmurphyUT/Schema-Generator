@@ -1159,8 +1159,6 @@ def verify_and_create_metafields():
     shop = data.get("shop")
     posted_hmac = data.get("hmac")
     id_token = data.get("id_token")
-    product_mappings = data.get("product_mappings", {})
-    collection_mappings = data.get("collection_mappings", {})
 
     if not shop or not posted_hmac:
         return jsonify({"error": "Missing shop or HMAC"}), 400
@@ -1169,61 +1167,54 @@ def verify_and_create_metafields():
     if posted_hmac != latest_values.get("hmac"):
         return jsonify({"error": "HMAC mismatch"}), 400
 
-    # Fetch store token
+    # Fetch store token (the app token that can write app-owned metafields)
     store = StoreToken.query.filter_by(shop=shop).first()
     if not store or not store.access_token:
         return jsonify({"error": "Store token missing"}), 400
+
     access_token = store.access_token
 
-    headers = {
-        "X-Shopify-Access-Token": access_token,
-        "Content-Type": "application/json",
-    }
+    # ------------------------------
+    # 1️⃣ Create or update app-owned metafields on the SHOP
+    # ------------------------------
 
-    created_metafields = {"product": None, "collection": None}
+    metafields_to_set = [
+        ("prod_schema", "{}"),
+        ("coll_schema", "{}"),
+        ("blog_schema", "{}"),
+        ("page_schema", "{}")
+    ]
 
-    # --- Product schema metafield ---
-    if product_mappings:
-        product_payload = {
-            "metafield": {
-                "namespace": "app_schema",
-                "key": "product_schema_mappings",
-                "type": "json",
-                "description": "Product schema → metafield mappings",
-                "value": json.dumps(product_mappings)
+    upsert_query = """
+        mutation metafieldUpsert($input: MetafieldInput!) {
+            metafieldUpsert(input: $input) {
+                metafield { id namespace key value }
+                userErrors { field message }
             }
         }
-        try:
-            resp = requests.post(f"https://{shop}/admin/api/2026-01/metafields.json",
-                                 headers=headers, json=product_payload)
-            resp.raise_for_status()
-            created_metafields["product"] = resp.json().get("metafield")
-        except Exception as e:
-            return jsonify({"error": "Failed to create product metafield", "details": str(e)}), 500
+    """
 
-    # --- Collection schema metafield ---
-    if collection_mappings:
-        collection_payload = {
-            "metafield": {
+    results = {}
+
+    for key, default_value in metafields_to_set:
+
+        variables = {
+            "input": {
                 "namespace": "app_schema",
-                "key": "collection_schema_mappings",
+                "key": key,
+                "ownerId": f"gid://shopify/Shop/{shop}",
                 "type": "json",
-                "description": "Collection schema → metafield mappings",
-                "value": json.dumps(collection_mappings)
+                "value": default_value
             }
         }
-        try:
-            resp = requests.post(f"https://{shop}/admin/api/2026-01/metafields.json",
-                                 headers=headers, json=collection_payload)
-            resp.raise_for_status()
-            created_metafields["collection"] = resp.json().get("metafield")
-        except Exception as e:
-            return jsonify({"error": "Failed to create collection metafield", "details": str(e)}), 500
+
+        resp = graphql_request(shop, access_token, upsert_query, variables)
+        results[key] = resp
 
     return jsonify({
         "success": True,
-        "message": "App-owned metafields created successfully",
-        "created_metafields": created_metafields
+        "message": "App-owned metafields updated",
+        "results": results
     })
 
 
