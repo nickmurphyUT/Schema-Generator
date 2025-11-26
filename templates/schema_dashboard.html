@@ -154,48 +154,72 @@
 <div id="metafields-preview"></div>
 
 <script>
-const productMappings = {};
-const collectionMappings = {};
+/**
+ * Hold mappings explicitly keyed by Shopify ID
+ */
+const productMappings = {};      // { productGID: { metafieldKey: schemaField } }
+const collectionMappings = {};   // { collectionGID: { metafieldKey: schemaField } }
 
+/**
+ * Update all previews
+ */
 function updatePreview() {
   const productPreview = document.getElementById("product-mappings-preview");
   productPreview.innerHTML = "";
-  for (const [mf, field] of Object.entries(productMappings)) {
-    if (field) productPreview.innerHTML += `<li>${mf} → ${field}</li>`;
+  for (const [gid, mapping] of Object.entries(productMappings)) {
+    Object.entries(mapping).forEach(([mf, field]) => {
+      if (field) productPreview.innerHTML += `<li>${gid}: ${mf} → ${field}</li>`;
+    });
   }
 
   const collectionPreview = document.getElementById("collection-mappings-preview");
   collectionPreview.innerHTML = "";
-  for (const [mf, field] of Object.entries(collectionMappings)) {
-    if (field) collectionPreview.innerHTML += `<li>${mf} → ${field}</li>`;
+  for (const [gid, mapping] of Object.entries(collectionMappings)) {
+    Object.entries(mapping).forEach(([mf, field]) => {
+      if (field) collectionPreview.innerHTML += `<li>${gid}: ${mf} → ${field}</li>`;
+    });
   }
 
   const metaPreview = document.getElementById("meta-preview");
   metaPreview.innerHTML = "<b>Product Metafields:</b><br>";
-  for (const [mf, field] of Object.entries(productMappings)) {
-    if (field) metaPreview.innerHTML += `<li>${mf} → ${field}</li>`;
+  for (const [gid, mapping] of Object.entries(productMappings)) {
+    Object.entries(mapping).forEach(([mf, field]) => {
+      if (field) metaPreview.innerHTML += `<li>${gid}: ${mf} → ${field}</li>`;
+    });
   }
   metaPreview.innerHTML += "<b>Collection Metafields:</b><br>";
-  for (const [mf, field] of Object.entries(collectionMappings)) {
-    if (field) metaPreview.innerHTML += `<li>${mf} → ${field}</li>`;
+  for (const [gid, mapping] of Object.entries(collectionMappings)) {
+    Object.entries(mapping).forEach(([mf, field]) => {
+      if (field) metaPreview.innerHTML += `<li>${gid}: ${mf} → ${field}</li>`;
+    });
   }
 }
 
-// Listen for select changes
+/**
+ * Attach change listeners to <select> elements
+ */
 document.querySelectorAll(".product-map").forEach(select => {
   select.addEventListener("change", () => {
-    productMappings[select.dataset.mf] = select.value;
+    const gid = select.dataset.gid;   // MUST be explicitly provided from backend
+    const mf = select.dataset.mf;
+    if (!productMappings[gid]) productMappings[gid] = {};
+    productMappings[gid][mf] = select.value;
     updatePreview();
   });
 });
 document.querySelectorAll(".collection-map").forEach(select => {
   select.addEventListener("change", () => {
-    collectionMappings[select.dataset.mf] = select.value;
+    const gid = select.dataset.gid;   // MUST be explicitly provided from backend
+    const mf = select.dataset.mf;
+    if (!collectionMappings[gid]) collectionMappings[gid] = {};
+    collectionMappings[gid][mf] = select.value;
     updatePreview();
   });
 });
 
-// Upsert metafields
+/**
+ * Submit mappings to backend
+ */
 document.getElementById("createMetaBtn").onclick = async () => {
   const payload = {
     shop: '{{ shop_name or "Not found" }}',
@@ -216,11 +240,13 @@ document.getElementById("createMetaBtn").onclick = async () => {
     updatePreview();
   } catch (err) {
     console.error(err);
-    alert("Error creating metafields. Check console.");
+    alert("Error creating app-owned metafields. Check console.");
   }
 };
 
-// Fetch existing metafields
+/**
+ * Fetch current app-owned metafields (if any) and populate select boxes
+ */
 document.getElementById("fetchMetaBtn").onclick = async () => {
   const payload = {
     shop: '{{ shop_name or "Not found" }}',
@@ -235,35 +261,39 @@ document.getElementById("fetchMetaBtn").onclick = async () => {
       body: JSON.stringify(payload)
     });
     const data = await resp.json();
-    const preview = document.getElementById("metafields-preview");
-    preview.innerHTML = "";
 
     if (data.error) {
-      preview.innerHTML = `<span style="color:red;">${data.error}</span>`;
+      document.getElementById("metafields-preview").innerHTML = `<span style="color:red;">${data.error}</span>`;
       return;
     }
 
-    // Products
-    preview.innerHTML += "<h4>Products</h4><ul>";
+    // Populate productMappings from existing app-owned JSON
     data.data.products.edges.forEach(product => {
-      product.node.metafields.edges.forEach(mf => {
-        preview.innerHTML += `<li>${product.node.title}: ${mf.node.namespace}.${mf.node.key} → ${mf.node.value}</li>`;
-      });
+      if (product.node.app_schema) {
+        productMappings[product.node.id] = JSON.parse(product.node.app_schema.value);
+        Object.entries(productMappings[product.node.id]).forEach(([mf, field]) => {
+          const select = document.querySelector(`.product-map[data-mf="${mf}"]`);
+          if (select) select.value = field;
+        });
+      }
     });
-    preview.innerHTML += "</ul>";
 
-    // Collections
-    preview.innerHTML += "<h4>Collections</h4><ul>";
+    // Populate collectionMappings from existing app-owned JSON
     data.data.collections.edges.forEach(coll => {
-      coll.node.metafields.edges.forEach(mf => {
-        preview.innerHTML += `<li>${coll.node.title}: ${mf.node.namespace}.${mf.node.key} → ${mf.node.value}</li>`;
-      });
+      if (coll.node.app_schema) {
+        collectionMappings[coll.node.id] = JSON.parse(coll.node.app_schema.value);
+        Object.entries(collectionMappings[coll.node.id]).forEach(([mf, field]) => {
+          const select = document.querySelector(`.collection-map[data-mf="${mf}"]`);
+          if (select) select.value = field;
+        });
+      }
     });
-    preview.innerHTML += "</ul>";
+
+    updatePreview();
 
   } catch (err) {
     console.error(err);
-    alert("Error fetching metafields. Check console.");
+    alert("Error fetching app-owned metafields. Check console.");
   }
 };
 </script>
