@@ -1243,43 +1243,49 @@ def fetch_product_metafields(shop, access_token, product_id):
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
-    data = request.json or {}
-    shop = data.get("shop") or session.get("shop")
-    hmac = data.get("hmac") or session.get("hmac")
-    id_token = data.get("id_token") or session.get("id_token")
+    from math import ceil
+    import json
 
-    product_mappings = data.get("product_mappings", {})
-    collection_mappings = data.get("collection_mappings", {})
-
+    shop = request.json.get("shop") or session.get("shop")
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
-
-    results = {"products": {}, "collections": {}}
 
     headers = {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token
     }
 
-    # ---------------------------------------------------------
-    # Helper: fetch all public metafields on a product
-    # ---------------------------------------------------------
+    results = {"products": {}, "collections": {}}
+
+    # --- Helper: fetch all products ---
+    def fetch_all_products():
+        products = []
+        url = f"https://{shop}/admin/api/2026-01/products.json?limit=250"
+        while url:
+            resp = requests.get(url, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+            products.extend(data.get("products", []))
+            # check if there is a next page in the Link header
+            link = resp.headers.get("Link")
+            if link and 'rel="next"' in link:
+                url = link.split(";")[0].strip("<>")
+            else:
+                url = None
+        return products
+
+    # --- Helper: fetch product metafields ---
     def fetch_product_metafields(product_id):
         url = f"https://{shop}/admin/api/2026-01/products/{product_id}/metafields.json"
         resp = requests.get(url, headers=headers)
         resp.raise_for_status()
-        metafields = resp.json().get("metafields", [])
-        return {mf["key"]: mf["value"] for mf in metafields}
+        return {mf["key"]: mf["value"] for mf in resp.json().get("metafields", [])}
 
-    # ---------------------------------------------------------
-    # Helper: Upsert app-owned metafield via GraphQL
-    # ---------------------------------------------------------
+    # --- Helper: upsert app-owned JSON metafield via GraphQL ---
     def upsert_app_metafield(resource_type, resource_id, mappings):
-        import json
         json_value = json.dumps(mappings)
-
         mutation = """
         mutation upsertMetafield {{
           metafieldsSet(input: {{
@@ -1315,49 +1321,33 @@ def verify_and_create_metafields():
         resp.raise_for_status()
         return resp.json()
 
-    # ---------------------------------------------------------
-    # PRODUCT LOOP (NOW POPULATES VALUES)
-    # ---------------------------------------------------------
-    for product_id, mapping in product_mappings.items():
+    # --- Iterate over all products ---
+    products = fetch_all_products()
+    for product in products:
+        product_id = product["id"]
         try:
-            # Fetch actual metafields from Shopify
-            existing_values = fetch_product_metafields(product_id)
+            existing_metafields = fetch_product_metafields(product_id)
 
-            # Build final populated schema
-            populated = {}
-            for field_key, schema_obj in mapping.items():
-                schema_obj["value"] = existing_values.get(field_key)
-                populated[field_key] = schema_obj
+            # Build schema mapping dynamically for this product
+            populated_schema = {}
+            for key, value in existing_metafields.items():
+                populated_schema[key] = {"value": value, "type": "string"}  # adjust type if needed
 
-            # Write app-owned JSON metafield
-            results["products"][product_id] = upsert_app_metafield(
+            results["products"][str(product_id)] = upsert_app_metafield(
                 "product",
                 product_id,
-                populated
+                populated_schema
             )
 
         except Exception as e:
-            results["products"][product_id] = {"error": str(e)}
+            results["products"][str(product_id)] = {"error": str(e)}
             print(f"[ERROR] Failed upsert for product {product_id}: {e}")
 
-    # ---------------------------------------------------------
-    # COLLECTION LOOP (schema-only)
-    # ---------------------------------------------------------
-    for collection_id, mapping in collection_mappings.items():
-        try:
-            results["collections"][collection_id] = upsert_app_metafield(
-                "collection",
-                collection_id,
-                mapping
-            )
-        except Exception as e:
-            results["collections"][collection_id] = {"error": str(e)}
-            print(f"[ERROR] Failed upsert for collection {collection_id}: {e}")
-
     return jsonify({
-        "message": "App-owned metafields updated successfully",
+        "message": "App-owned metafields updated dynamically for all products",
         "results": results
     })
+
 
 
 @app.route("/get_metafields", methods=["POST"])
