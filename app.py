@@ -1226,6 +1226,21 @@ def batch_items(items, batch_size=BATCH_SIZE):
 from flask import request, jsonify, session
 import requests
 
+
+def fetch_product_metafields(shop, access_token, product_id):
+    url = f"https://{shop}/admin/api/2026-01/products/{product_id}/metafields.json"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+    data = resp.json().get("metafields", [])
+
+    # Build { key: value } dict
+    return {mf["key"]: mf["value"] for mf in data}
+
+
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json or {}
@@ -1248,17 +1263,23 @@ def verify_and_create_metafields():
         "X-Shopify-Access-Token": access_token
     }
 
-    # --- Helper to upsert a single JSON app-owned metafield ---
+    # ---------------------------------------------------------
+    # Helper: fetch all public metafields on a product
+    # ---------------------------------------------------------
+    def fetch_product_metafields(product_id):
+        url = f"https://{shop}/admin/api/2026-01/products/{product_id}/metafields.json"
+        resp = requests.get(url, headers=headers)
+        resp.raise_for_status()
+        metafields = resp.json().get("metafields", [])
+        return {mf["key"]: mf["value"] for mf in metafields}
+
+    # ---------------------------------------------------------
+    # Helper: Upsert app-owned metafield via GraphQL
+    # ---------------------------------------------------------
     def upsert_app_metafield(resource_type, resource_id, mappings):
-        """
-        resource_type: 'products' or 'collections'
-        resource_id: Shopify GraphQL ID or numeric ID
-        mappings: dict { metafield_key: schema_field }
-        """
         import json
         json_value = json.dumps(mappings)
 
-        # Build mutation using .format() instead of f-strings
         mutation = """
         mutation upsertMetafield {{
           metafieldsSet(input: {{
@@ -1289,28 +1310,54 @@ def verify_and_create_metafields():
             json_value=json_value.replace('"', '\\"')
         )
 
-        url = "https://{}/admin/api/2026-01/graphql.json".format(shop)
+        url = f"https://{shop}/admin/api/2026-01/graphql.json"
         resp = requests.post(url, json={"query": mutation}, headers=headers)
         resp.raise_for_status()
         return resp.json()
 
-    # Upsert products
+    # ---------------------------------------------------------
+    # PRODUCT LOOP (NOW POPULATES VALUES)
+    # ---------------------------------------------------------
     for product_id, mapping in product_mappings.items():
         try:
-            results["products"][product_id] = upsert_app_metafield("product", product_id, mapping)
+            # Fetch actual metafields from Shopify
+            existing_values = fetch_product_metafields(product_id)
+
+            # Build final populated schema
+            populated = {}
+            for field_key, schema_obj in mapping.items():
+                schema_obj["value"] = existing_values.get(field_key)
+                populated[field_key] = schema_obj
+
+            # Write app-owned JSON metafield
+            results["products"][product_id] = upsert_app_metafield(
+                "product",
+                product_id,
+                populated
+            )
+
         except Exception as e:
             results["products"][product_id] = {"error": str(e)}
-            print("[ERROR] Failed upsert for product {}: {}".format(product_id, e))
+            print(f"[ERROR] Failed upsert for product {product_id}: {e}")
 
-    # Upsert collections
+    # ---------------------------------------------------------
+    # COLLECTION LOOP (schema-only)
+    # ---------------------------------------------------------
     for collection_id, mapping in collection_mappings.items():
         try:
-            results["collections"][collection_id] = upsert_app_metafield("collection", collection_id, mapping)
+            results["collections"][collection_id] = upsert_app_metafield(
+                "collection",
+                collection_id,
+                mapping
+            )
         except Exception as e:
             results["collections"][collection_id] = {"error": str(e)}
-            print("[ERROR] Failed upsert for collection {}: {}".format(collection_id, e))
+            print(f"[ERROR] Failed upsert for collection {collection_id}: {e}")
 
-    return jsonify({"message": "App-owned metafields updated successfully", "results": results})
+    return jsonify({
+        "message": "App-owned metafields updated successfully",
+        "results": results
+    })
 
 
 @app.route("/get_metafields", methods=["POST"])
