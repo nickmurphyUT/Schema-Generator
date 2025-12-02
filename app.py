@@ -1324,24 +1324,33 @@ def upsert_app_metafield(shop, access_token, resource_id, resource_type, value_d
     resp.raise_for_status()
     return resp.json()
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.FileHandler("metafields.log"), logging.StreamHandler()]
+)
+
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     shop = request.json.get("shop") or session.get("shop")
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
+
     if not access_token:
+        logging.warning(f"No access token found for shop: {shop}")
         return jsonify({"error": "No access token for shop"}), 400
 
     def process_metafields():
         try:
             products = fetch_all_products(shop, access_token)
-            print(f"Fetched {len(products)} products for {shop}")
+            logging.info(f"Fetched {len(products)} products for shop {shop}")
 
             results = {}
             for i in range(0, len(products), BATCH_SIZE):
                 batch = products[i:i+BATCH_SIZE]
                 for product in batch:
-                    # Build your schema-based JSON from existing metafields
+                    # Build schema-based JSON from existing metafields
                     schema_value = {}
                     for mf in product.get("metafields", {}).get("edges", []):
                         node = mf["node"]
@@ -1349,20 +1358,22 @@ def verify_and_create_metafields():
                             "value": node["value"],
                             "type": node["type"]
                         }
+
                     try:
                         resp = upsert_app_metafield(shop, access_token, product["id"], "product", schema_value)
                         results[product["id"]] = resp
-                        print(f"Upserted app metafield for product {product['id']}")
+                        logging.info(f"Upserted app metafield for product {product['id']}")
                     except Exception as e:
                         results[product["id"]] = {"error": str(e)}
-                        print(f"[ERROR] Failed upsert for product {product['id']}: {e}")
-            print("Background processing completed.")
+                        logging.error(f"Failed upsert for product {product['id']}: {e}", exc_info=True)
+
+            logging.info(f"Background processing completed for shop {shop}")
         except Exception as e:
-            print(f"[ERROR] Background process failed: {e}")
+            logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
 
     threading.Thread(target=process_metafields, daemon=True).start()
+    logging.info(f"Started background processing for shop {shop}")
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
-
 
 
 @app.route("/get_metafields", methods=["POST"])
