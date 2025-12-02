@@ -1175,6 +1175,18 @@ logging.basicConfig(
 )
 
 # --- Helper functions ---
+
+def generate_default_organization_schema():
+    """
+    Fetch organization properties from Schema.org and return
+    a dict mapping property name -> default type ("string").
+    """
+    fields = fetch_organization_schema_properties()  # your existing function
+    schema_dict = {field: "string" for field in fields}  # default type
+    return schema_dict
+
+
+
 def get_access_token_for_shop(shop):
     store = StoreToken.query.filter_by(shop=shop).first()
     return store.access_token if store else None
