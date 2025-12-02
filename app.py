@@ -1251,9 +1251,11 @@ def fetch_all_products(shop, access_token):
 def verify_and_create_metafields():
     data = request.json
     shop = data.get("shop") or session.get("shop")
-    schema_definition = data.get("schema")  # frontend sends { key: type } for all fields
+    schema_definition = data.get("schema")
+
     if not schema_definition:
-        return jsonify({"error": "Missing schema definition"}), 400
+        logging.info("No schema provided, generating default Organization schema")
+        schema_definition = generate_default_organization_schema()
 
     access_token = get_access_token_for_shop(shop)
     if not access_token:
