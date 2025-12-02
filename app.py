@@ -1175,6 +1175,13 @@ logging.basicConfig(
 )
 
 # --- Helper functions ---
+def extract_numeric_id(gid: str) -> str:
+    """
+    Convert Shopify GID to numeric ID.
+    Example: "gid://shopify/Product/8085504557231" -> "8085504557231"
+    """
+    return gid.split("/")[-1]
+
 
 def generate_default_organization_schema():
     """
@@ -1274,48 +1281,57 @@ def verify_and_create_metafields():
         logging.warning(f"No access token found for shop: {shop}")
         return jsonify({"error": "No access token for shop"}), 400
 
-    def process_metafields():
-        try:
-            products = fetch_all_products(shop, access_token)
-            logging.info(f"Fetched {len(products)} products for shop {shop}")
+def process_metafields():
+    try:
+        products = fetch_all_products(shop, access_token)
+        logging.info(f"Fetched {len(products)} products for shop {shop}")
 
-            for i in range(0, len(products), BATCH_SIZE):
-                batch = products[i:i+BATCH_SIZE]
-                for product in batch:
-                    product_id = product["id"]
-                    try:
-                        existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        # Build full schema JSON
-                        schema_value = {}
-                        for field_key, field_type in schema_definition.items():
-                            # Use existing value if present, else default based on type
-                            val = existing_mfs.get(field_key)
-                            if val is None:
-                                # provide type-appropriate default
-                                if field_type == "string":
-                                    val = ""
-                                elif field_type == "number":
-                                    val = 0
-                                elif field_type == "boolean":
-                                    val = False
-                                else:
-                                    val = None
-                            schema_value[field_key] = val
+        for i in range(0, len(products), BATCH_SIZE):
+            batch = products[i:i+BATCH_SIZE]
+            for product in batch:
+                # Extract numeric ID from GID
+                product_id = extract_numeric_id(product["id"])
+                try:
+                    existing_mfs = fetch_product_metafields(shop, access_token, product_id)
 
-                        resp = upsert_app_metafield(shop, access_token, product_id, "product", schema_value)
-                        logging.info(f"Upserted product {product_id} with schema: {schema_value}")
-                        if resp.get("data", {}).get("metafieldsSet", {}).get("userErrors"):
-                            logging.error(f"Shopify userErrors for product {product_id}: {resp['data']['metafieldsSet']['userErrors']}")
-                    except Exception as e:
-                        logging.error(f"Failed processing product {product_id}: {e}", exc_info=True)
+                    # Build full schema JSON
+                    schema_value = {}
+                    for field_key, field_type in schema_definition.items():
+                        # Use existing value if present, else default based on type
+                        val = existing_mfs.get(field_key)
+                        if val is None:
+                            if field_type == "string":
+                                val = ""
+                            elif field_type == "number":
+                                val = 0
+                            elif field_type == "boolean":
+                                val = False
+                            else:
+                                val = None
+                        schema_value[field_key] = val
 
-            logging.info(f"Background processing completed for shop {shop}")
-        except Exception as e:
-            logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
+                    # Upsert app-owned JSON metafield using GraphQL
+                    resp = upsert_app_metafield(shop, access_token, product["id"], "product", schema_value)
+                    logging.info(f"Upserted product {product['id']} with schema: {schema_value}")
 
-    threading.Thread(target=process_metafields, daemon=True).start()
-    logging.info(f"Started background processing for shop {shop}")
-    return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+                    # Log Shopify user errors
+                    user_errors = resp.get("data", {}).get("metafieldsSet", {}).get("userErrors")
+                    if user_errors:
+                        logging.error(f"Shopify userErrors for product {product['id']}: {user_errors}")
+
+                except Exception as e:
+                    logging.error(f"Failed processing product {product['id']}: {e}", exc_info=True)
+
+        logging.info(f"Background processing completed for shop {shop}")
+
+    except Exception as e:
+        logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
+
+# Run in background thread
+threading.Thread(target=process_metafields, daemon=True).start()
+logging.info(f"Started background processing for shop {shop}")
+return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+
 
 
 
