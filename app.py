@@ -1303,7 +1303,7 @@ def upsert_app_metafield(shop, access_token, resource_id, resource_type, value_d
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token
     }
-    json_value = json.dumps(value_dict).replace('"', '\\"')
+    json_value = json.dumps(value_dict).replace('"', '\\"')  # serialize + escape
     mutation = """
     mutation upsertMetafield {
       metafieldsSet(input: {
@@ -1323,6 +1323,7 @@ def upsert_app_metafield(shop, access_token, resource_id, resource_type, value_d
     resp = requests.post(url, json={"query": mutation}, headers=headers)
     resp.raise_for_status()
     return resp.json()
+
 
 # Configure logging
 logging.basicConfig(
@@ -1354,10 +1355,13 @@ def verify_and_create_metafields():
                     schema_value = {}
                     for mf in product.get("metafields", {}).get("edges", []):
                         node = mf["node"]
-                        schema_value[node["key"]] = {
-                            "value": node["value"],
-                            "type": node["type"]
-                        }
+                        # Build simple JSON object with keys and values
+                        schema_value = {mf["node"]["key"]: mf["node"]["value"] 
+                                        for mf in product.get("metafields", {}).get("edges", [])}
+                        
+                        # Upsert as JSON
+                        resp = upsert_app_metafield(shop, access_token, product["id"], "product", schema_value)
+
 
                     try:
                         resp = upsert_app_metafield(shop, access_token, product["id"], "product", schema_value)
