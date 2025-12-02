@@ -1175,13 +1175,6 @@ logging.basicConfig(
 )
 
 # --- Helper functions ---
-def extract_numeric_id(gid: str) -> str:
-    """
-    Convert Shopify GID to numeric ID.
-    Example: "gid://shopify/Product/8085504557231" -> "8085504557231"
-    """
-    return gid.split("/")[-1]
-
 
 def generate_default_organization_schema():
     """
@@ -1335,8 +1328,6 @@ return jsonify({"message": "Started background processing of app-owned metafield
 
 
 
-
-
 @app.route("/get_metafields", methods=["POST"])
 def get_metafields():
     data = request.json
@@ -1415,6 +1406,12 @@ def get_metafields():
 
     return resp.json()
 
+def extract_numeric_id(gid: str) -> str:
+    """
+    Convert Shopify GID to numeric ID.
+    Example: "gid://shopify/Product/8085504557231" -> "8085504557231"
+    """
+    return gid.split("/")[-1]
 
 
 @app.route("/get_app_schema_metafield", methods=["GET"])
