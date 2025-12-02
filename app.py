@@ -1282,7 +1282,10 @@ def verify_and_create_metafields():
             for i in range(0, len(products), BATCH_SIZE):
                 batch = products[i:i+BATCH_SIZE]
                 for product in batch:
-                    product_id = product["id"]
+                    product_gid = product["id"]  # e.g., gid://shopify/Product/1234567890
+                    # Extract numeric ID from GID
+                    product_id = product_gid.split("/")[-1]
+
                     try:
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
                         # Build full schema JSON
@@ -1316,7 +1319,6 @@ def verify_and_create_metafields():
     threading.Thread(target=process_metafields, daemon=True).start()
     logging.info(f"Started background processing for shop {shop}")
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
-
 
 
 
