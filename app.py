@@ -1224,7 +1224,7 @@ def fetch_product_metafields(shop, access_token, product_id):
     # Return as {key: value}
     return {mf["key"]: mf["value"] for mf in data}
 
-def upsert_app_metafield_rest(shop, access_token, owner_gid, value_dict):
+def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     """
     Create or update a JSON app-owned metafield on a resource (e.g., product)
     using the Shopify REST Admin API, mirroring the provided curl.
