@@ -1224,70 +1224,120 @@ def fetch_product_metafields(shop, access_token, product_id):
     # Return as {key: value}
     return {mf["key"]: mf["value"] for mf in data}
 
+import json
+import requests  # Assuming requests is imported in your environment
+import logging # Already in use
+
+# --- New Helper Function for RMW Read Stage ---
+def _find_metafield_by_key_rest(shop, access_token, resource_type, resource_id, namespace, key):
+    """
+    Retrieves a specific metafield's ID and value using the REST API based on 
+    namespace and key. Necessary for implementing Read-Modify-Write (RMW).
+    Returns the metafield dictionary (containing 'id', 'value', etc.) or None.
+    """
+    # Use the plural resource type endpoint to list metafields
+    url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json"
+    headers = {
+        "X-Shopify-Access-Token": access_token
+    }
+    
+    # We must list all metafields for the resource and filter client-side
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+    
+    metafields = resp.json().get('metafields',)
+    
+    for mf in metafields:
+        if mf.get('namespace') == namespace and mf.get('key') == key:
+            return mf
+            
+    return None
+
+
 def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     """
     Create or update a JSON app-owned metafield on a resource (e.g., product)
-    using the Shopify REST Admin API, mirroring the provided curl.
-
-    Note: The REST API uses resource-specific endpoints (e.g., products/{id}/metafields.json).
-    The owner_gid is expected to be a Shopify GID string (e.g., 'gid://shopify/Product/8149887778991').
-    We must extract the resource type and ID from the GID for the REST URL.
+    using the Shopify REST Admin API with Read-Modify-Write (RMW) pattern.
     """
+    METAFIELD_NAMESPACE = "app_schema"
+    METAFIELD_KEY = "prod_schema"
     
-    # 1. Extract Resource Type and ID from the GID
-    # Example GID: 'gid://shopify/Product/8149887778991'
+    # 1. Extract Resource Type and ID from the GID (Original logic preserved)
     try:
-        # Split the string by the '/' character. A standard GID is 5 parts:
-        # ['gid:', '', 'shopify', 'Product', '8149887778991']
         parts = owner_gid.split('/')
-        
-        # Validate the basic structure (must have 5 parts and start with 'gid:')
-        if len(parts) < 5 or parts[0] != 'gid:':
+        if len(parts) < 5 or parts!= 'gid:':
              raise ValueError("Malformed GID structure. GID must start with 'gid:'.")
-        
-        # Resource type is the second to last part (e.g., 'Product')
         resource_type = parts[-2].lower()
-        
-        # Resource ID is the last part (e.g., '8149887778991')
         resource_id = parts[-1]
-        
     except Exception:
-        # Re-raise with the expected format description
         raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
 
-    # 2. Construct the REST API URL
-    # Format: /admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json
-    # Note the required pluralization for the resource type (e.g., product -> products)
-    url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json"
+    # --- RMW Step 1: Read Existing State ---
+    existing_metafield = _find_metafield_by_key_rest(
+        shop, access_token, resource_type, resource_id, METAFIELD_NAMESPACE, METAFIELD_KEY
+    )
+
+    if existing_metafield:
+        metafield_id = existing_metafield.get('id')
+        current_data = {}
+        
+        # RMW Step 2: Deserialization
+        try:
+            # Check if the existing value is an empty string before parsing
+            existing_value_str = existing_metafield.get('value')
+            if existing_value_str:
+                current_data = json.loads(existing_value_str)
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse existing metafield JSON for {owner_gid} (ID: {metafield_id}): {e}. Starting with empty object.")
+            # If parsing fails, start with an empty object to prevent corruption
+
+        # RMW Step 3: Object Mutation (Merge new value_dict into existing data)
+        # This prevents the partial value_dict from overwriting all existing keys.
+        merged_data = current_data.copy()
+        merged_data.update(value_dict)
+        
+        # RMW Step 4: Re-serialization
+        final_json_string = json.dumps(merged_data)
+        
+        # Determine URL and Method for Write operation (PUT for Update)
+        url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields/{metafield_id}.json"
+        http_method = requests.put
+        log_action = "Updated"
+    else:
+        # If metafield doesn't exist, we skip RMW and create a new one (POST)
+        final_json_string = json.dumps(value_dict)
+        
+        # Determine URL and Method for Write operation (POST for Create)
+        url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json"
+        http_method = requests.post
+        log_action = "Created"
+
+    # 5. Prepare the REST Payload for the Write operation
+    payload = {
+        "metafield": {
+            "type": "json",
+            "namespace": METAFIELD_NAMESPACE,
+            "key": METAFIELD_KEY, 
+            "value": final_json_string  # The full, merged JSON string
+        }
+    }
     
     headers = {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token
     }
 
-    # 3. Prepare the REST Payload
-    # The value must be a JSON *string* for type 'json'
-    json_value = json.dumps(value_dict)
+    logging.info(f"Sending {http_method.__name__.upper()} to: {url}")
+    logging.debug(f"Payload (Metafield Value String): {final_json_string}")
 
-    payload = {
-        "metafield": {
-            "type": "json",
-            "namespace": "app_schema",
-            "key": "prod_schema", 
-            "value": json_value
-        }
-    }
-
-    print(f"Sending POST to: {url}")
-    print(f"Payload: {json.dumps(payload, indent=2)}")
-
-    # 4. Make the Request
-    resp = requests.post(url, headers=headers, json=payload)
+    # RMW Step 5: Make the Request (PUT/POST)
+    resp = http_method(url, headers=headers, json=payload)
     
     # Check for REST API error status (4xx or 5xx)
-    resp.raise_for_status() 
+    resp.raise_for_status()
     
     response_json = resp.json()
+    logging.info(f"{log_action} {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}.")
 
     return response_json
 
