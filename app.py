@@ -1224,45 +1224,69 @@ def fetch_product_metafields(shop, access_token, product_id):
     # Return as {key: value}
     return {mf["key"]: mf["value"] for mf in data}
 
-def upsert_app_metafield(shop, access_token, owner_gid, resource_type, value_dict):
-    """Create or update a JSON app-owned metafield on a product."""
-    url = f"https://{shop}/admin/api/2026-01/graphql.json"
+def upsert_app_metafield_rest(shop, access_token, owner_gid, value_dict):
+    """
+    Create or update a JSON app-owned metafield on a resource (e.g., product)
+    using the Shopify REST Admin API, mirroring the provided curl.
+
+    Note: The REST API uses resource-specific endpoints (e.g., products/{id}/metafields.json).
+    The owner_gid is expected to be a Shopify GID string (e.g., 'gid://shopify/Product/8149887778991').
+    We must extract the resource type and ID from the GID for the REST URL.
+    """
+    
+    # 1. Extract Resource Type and ID from the GID
+    # Example GID: 'gid://shopify/Product/8149887778991'
+    try:
+        # Assuming a standard Shopify GID format
+        path_parts = urlparse(owner_gid).path.split('/')
+        resource_type = path_parts[-2].lower()  # 'product'
+        resource_id = path_parts[-1]            # '8149887778991'
+    except Exception:
+        raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
+
+    # 2. Construct the REST API URL
+    # Format: /admin/api/2026-01/{resource_type}/{resource_id}/metafields.json
+    # The REST API *always* requires a specific resource ID in the path for metafields.
+    url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json"
+    
     headers = {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token
     }
 
-    # Convert dict to JSON string (Shopify expects a string for "value" of type JSON)
+    # 3. Prepare the REST Payload
+    # The value must be a JSON *string* for type 'json'
     json_value = json.dumps(value_dict)
 
-    mutation = """
-    mutation($ownerId: ID!, $value: JSON!) {
-      metafieldsSet(input: {
-        ownerId: $ownerId,
-        metafields: [{
-          namespace: "app_schema",
-          key: "product_schema",
-          type: JSON!,
-          value: $value
-        }]
-      }) {
-        metafields { id key namespace value type }
-        userErrors { field message }
-      }
-    }
-    """
-
     payload = {
-        "query": mutation,
-        "variables": {
-            "ownerId": owner_gid,
+        "metafield": {
+            # Note: REST uses lowercase 'json', GraphQL uses uppercase 'JSON!'
+            "type": "json",
+            "namespace": "app_schema",
+            # The curl uses 'prod_schema', aligning with that for consistency
+            "key": "prod_schema", 
             "value": json_value
         }
     }
 
+    print(f"Sending POST to: {url}")
+    print(f"Payload: {json.dumps(payload, indent=2)}")
+
+    # 4. Make the Request
+    # REST API uses POST to create a new metafield or PUT to update an existing one.
+    # To mimic upsert logic, you'd typically first GET (or check the resource metadata), 
+    # but a simple POST is often used for a first attempt.
+    # To truly mimic the CURL (which is a POST), we use POST here.
     resp = requests.post(url, headers=headers, json=payload)
-    resp.raise_for_status()
-    return resp.json()
+    
+    # Check for REST API error status (4xx or 5xx)
+    resp.raise_for_status() 
+    
+    response_json = resp.json()
+
+    # The REST API POST response will contain the created metafield data.
+    # For updating (PUT), you would need the metafield ID.
+    return response_json
 
 
 
