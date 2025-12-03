@@ -1267,12 +1267,13 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
         # Example GID: 'gid://shopify/Product/8149887778991'
         parts = owner_gid.split('/')
         
-        # Validate the basic structure (must have 5 parts and start with 'gid:')
-        if len(parts) < 5 or parts!= 'gid:': # <-- GID parsing correction applied here
-             raise ValueError("Malformed GID structure. GID must start with 'gid:'.")
-        
+        # 1. Extract Resource Type and ID from the GID (FIXED LOGIC)
+        parts = owner_gid.split('/')
+        if len(parts) != 5 or parts[0] != 'gid:':
+            raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
         resource_type = parts[-2].lower()
         resource_id = parts[-1]
+
     except Exception:
         # Catch any exception during parsing and raise a clean error
         raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
