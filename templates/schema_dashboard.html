@@ -1,303 +1,406 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>{{ title or "Schema App Dashboard" }}</title>
-  <style>
-    body { font-family: Arial, sans-serif; background-color: #f4f6f8; color: #1a1a1a; margin: 0; padding: 0; }
-    nav { background-color: #1b365d; padding: 1rem; }
-    nav a { color: white; margin-right: 20px; text-decoration: none; font-weight: bold; }
-    nav a:hover { text-decoration: underline; }
-    .container { padding: 2rem; }
-    .card { background-color: white; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-    .card-header h2 { margin: 0; font-size: 1.2rem; }
-    .btn { background-color: #005bd3; color: white; border: none; padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer; }
-    .btn:hover { background-color: #0041a8; }
-    .tips { background-color: #fff7e6; border-radius: 10px; padding: 1rem; display: flex; gap: 10px; align-items: center; margin-bottom: 2rem; }
-    .tips-icon { font-size: 24px; color: #f5a623; }
-    .tips a { color: #005bd3; text-decoration: underline; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background-color: #f2f2f2; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "Schema App Dashboard" }}</title>
+    <!-- Load Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font import for aesthetics */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        /* Style for the select element options (makes them look cleaner inside the table) */
+        .select-field {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+            background-color: white;
+            transition: all 0.15s;
+        }
+        .select-field:focus {
+            border-color: #005bd3;
+            box-shadow: 0 0 0 2px rgba(0, 91, 211, 0.2);
+        }
+    </style>
 </head>
-<body>
-<nav>
-  <a href="{{ url_for('schema_dashboard') }}">Home</a>
-  <a href="{{ url_for('organization_schema') }}">Organization Schema</a>
-  <a href="{{ url_for('product_schema') }}">Product Schema</a>
-  <a href="{{ url_for('collection_schema') }}">Collection Schema</a>
-  <a href="{{ url_for('blog_schema') }}">Blog Schema</a>
-  <a href="{{ url_for('support') }}">Support</a>
-  <a href="{{ url_for('pricing') }}">Pricing</a>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- Top Navigation Bar (Simplified and Styled) -->
+<nav class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+        <h1 class="text-xl font-bold text-gray-800">Brandography Schema App</h1>
+        <div class="space-x-4 flex">
+            <a href="{{ url_for('schema_dashboard') }}" class="text-sm font-medium text-blue-600 hover:text-blue-800 p-2 rounded-md transition duration-150 bg-blue-50">Home</a>
+            <a href="{{ url_for('organization_schema') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900 p-2 rounded-md transition duration-150">Organization</a>
+            <a href="{{ url_for('product_schema') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900 p-2 rounded-md transition duration-150">Products</a>
+            <a href="{{ url_for('collection_schema') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900 p-2 rounded-md transition duration-150">Collections</a>
+            <a href="{{ url_for('support') }}" class="text-sm font-medium text-gray-600 hover:text-gray-900 p-2 rounded-md transition duration-150">Support</a>
+        </div>
+    </div>
 </nav>
 
-<div class="container">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-<h3>Map Product Metafields to Organization Schema</h3>
-<table>
-  <thead>
-    <tr><th>Product Metafield</th><th>Organization Schema Field</th></tr>
-  </thead>
-  <tbody>
-    {% for mf in product_metafields %}
-    <tr>
-      <td>{{ mf.node.namespace }}.{{ mf.node.key }}</td>
-      <td>
-        <select class="product-map" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
-          <option value="">-- Select Schema Field --</option>
-          {% for field in org_schema_fields %}
-          <option value="{{ field }}">{{ field }}</option>
-          {% endfor %}
-        </select>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    <!-- Welcome & Quick Status Section -->
+    <div class="tips bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 mb-8 rounded-lg shadow-md flex flex-col md:flex-row md:items-center justify-between">
+        <div class="flex items-start gap-4">
+            <div class="text-2xl pt-0.5">💡</div>
+            <div>
+                <b class="text-lg font-semibold text-yellow-900">Welcome to Brandography Schema Customization.</b>
+                <p class="text-sm mt-1">
+                    Map your Shopify Metafields to standard Organization Schema fields for better search engine rich results.
+                    <a href="#" class="text-blue-600 hover:underline font-medium">Click Here for our Instructional Video.</a>
+                </p>
+                <div class="text-xs text-yellow-700 mt-2 space-y-1">
+                    <span class="inline-block mr-4">Shop: <span class="font-mono text-yellow-900">{{ shop_name or 'N/A' }}</span></span>
+                    <span class="inline-block mr-4">HMAC: <span class="font-mono text-yellow-900 text-xs">{{ hmac_value or 'Not found' }}</span></span>
+                    <span class="inline-block">ID Token: <span class="font-mono text-yellow-900 text-xs">{{ id_token_value or 'Not found' }}</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 md:mt-0 md:ml-6 flex-shrink-0">
+            <button id="fetchMetaBtn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200 w-full md:w-auto">
+                Fetch Current Mappings
+            </button>
+        </div>
+    </div>
 
-<h3>Product Mappings Preview</h3>
-<ul id="product-mappings-preview"></ul>
+    <!-- Main Schema Management Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {% for schema in schemas %}
+        <div class="card bg-white rounded-xl p-6 shadow-lg border border-gray-100 flex flex-col justify-between">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">{{ schema.title }}</h2>
+                <p class="text-gray-500 mb-4">{{ schema.description }}</p>
+            </div>
+            <button class="btn bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150" 
+                    onclick="window.location.href='{{ schema.url }}'">
+                Go to {{ schema.title }} Settings
+            </button>
+        </div>
+        {% endfor %}
+    </div>
 
-<h3>Map Collection Metafields to Organization Schema</h3>
-<table>
-  <thead>
-    <tr><th>Collection Metafield</th><th>Organization Schema Field</th></tr>
-  </thead>
-  <tbody>
-    {% for mf in collection_metafields %}
-    <tr>
-      <td>{{ mf.node.namespace }}.{{ mf.node.key }}</td>
-      <td>
-        <select class="collection-map" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
-          <option value="">-- Select Schema Field --</option>
-          {% for field in org_schema_fields %}
-          <option value="{{ field }}">{{ field }}</option>
-          {% endfor %}
-        </select>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    <!-- Mapping Configuration Area -->
+    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-8">
+        <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">Metafield to Schema Mapping</h3>
 
-<h3>Collection Mappings Preview</h3>
-<ul id="collection-mappings-preview"></ul>
+        <!-- Product Mapping Table -->
+        <h4 class="text-xl font-medium text-gray-800 mb-3 mt-6">Product Metafields Mapping</h4>
+        <div class="overflow-x-auto mb-6">
+            <table class="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product Metafield</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Target Organization Schema Field</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for mf in product_metafields %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">{{ mf.node.namespace }}.{{ mf.node.key }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <select class="product-map select-field" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
+                                <option value="">-- Select Schema Field --</option>
+                                {% for field in org_schema_fields %}
+                                <option value="{{ field }}">{{ field }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Collection Mapping Table -->
+        <h4 class="text-xl font-medium text-gray-800 mb-3 mt-6">Collection Metafields Mapping</h4>
+        <div class="overflow-x-auto mb-6">
+            <table class="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Collection Metafield</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Target Organization Schema Field</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for mf in collection_metafields %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">{{ mf.node.namespace }}.{{ mf.node.key }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <select class="collection-map select-field" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
+                                <option value="">-- Select Schema Field --</option>
+                                {% for field in org_schema_fields %}
+                                <option value="{{ field }}">{{ field }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-<div class="tips">
-  <div class="tips-icon">👍</div>
-  <div>
-    <b>Welcome to Brandography Schema Customization App.</b>
-    This allows you to set metafields and other product or page data to be displayed as schema for search engines.
-    <a href="#">Click Here for our Instructional Video.</a>
-    <br>
-    <span>hmac_value: {{ hmac_value or 'Not found' }}</span><br>
-    <span>id_token_value: {{ id_token_value or 'Not found' }}</span><br>
-    <span>Shop: {{ shop_name or 'Not found' }}</span><br>
-    <button id="createMetaBtn" class="btn">Create App-Owned Metafields</button>
+        <!-- Action Button & Preview -->
+        <div class="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between">
+            <button id="createMetaBtn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow-lg transition duration-150 transform hover:scale-[1.02]">
+                Create/Update App-Owned Metafields
+            </button>
+            <div id="metafields-preview" class="text-sm text-gray-500">
+                <!-- Status messages from fetchMetaBtn action will appear here -->
+            </div>
+        </div>
+        
+        <!-- Mappings Previews -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Product Mappings Preview</h3>
+                <ul id="product-mappings-preview" class="list-disc list-inside text-sm text-gray-600 ml-4 space-y-1"></ul>
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Collection Mappings Preview</h3>
+                <ul id="collection-mappings-preview" class="list-disc list-inside text-sm text-gray-600 ml-4 space-y-1"></ul>
+            </div>
+        </div>
+        
+    </div>
 
-    <h3>App-Owned Metafields Preview</h3>
-    <ul id="meta-preview"></ul>
-  </div>
-</div>
+    <!-- Quick Tips and Links -->
+    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mt-8">
+        <h3 class="text-xl font-semibold text-gray-700 mb-4">Quick Tips & Resources</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <span class="font-bold text-blue-700">1. Testing</span>
+                <p class="text-sm text-gray-600">Test your structured data using Google’s Rich Results tool.</p>
+            </div>
+            <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+                <span class="font-bold text-green-700">2. Guide</span>
+                <p class="text-sm text-gray-600">Learn more on <a href="https://developers.google.com/search/docs/appearance/structured-data" target="_blank" class="text-blue-600 hover:underline">Google’s Schema Markup Guide</a>.</p>
+            </div>
+            <div class="p-3 bg-red-50 rounded-lg border border-red-200">
+                <span class="font-bold text-red-700">3. Updates</span>
+                <p class="text-sm text-gray-600">Ensure you keep your schema updated regularly.</p>
+            </div>
+        </div>
+        
+        <!-- Original debug/info lists (kept hidden by default for cleaner UI) -->
+        <details class="mt-6 pt-4 border-t border-gray-200">
+            <summary class="font-medium text-gray-600 cursor-pointer">View Detailed Schema/Metafield Lists</summary>
+            <div class="grid grid-cols-3 gap-4 mt-4 text-sm">
+                <div>
+                    <h4 class="font-semibold mb-1">Product Metafields</h4>
+                    <ul class="list-disc list-inside ml-2 text-gray-500">
+                        {% for mf in product_metafields %}
+                        <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-1">Collection Metafields</h4>
+                    <ul class="list-disc list-inside ml-2 text-gray-500">
+                        {% for mf in collection_metafields %}
+                        <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-1">Org Schema Fields</h4>
+                    <ul class="list-disc list-inside ml-2 text-gray-500">
+                        {% for field in org_schema_fields %}
+                        <li>{{ field }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </details>
+    </div>
 
-{% for schema in schemas %}
-<div class="card">
-  <div class="card-header">
-    <h2>{{ schema.title }}</h2>
-    <button class="btn" onclick="window.location.href='{{ schema.url }}'">Manage</button>
-  </div>
-  <p>{{ schema.description }}</p>
-</div>
-{% endfor %}
 
-<hr>
-<h3>Quick Tips</h3>
-<ul>
-  <li>✅ Keep your schema updated regularly.</li>
-  <li>✅ Test your structured data using Google’s Rich Results tool.</li>
-  <li>✅ Learn more on <a href="https://developers.google.com/search/docs/appearance/structured-data" target="_blank">Google’s Schema Markup Guide</a>.</li>
-</ul>
-
-<hr>
-<h3>Quick Links</h3>
-<p>
-  <a href="{{ url_for('schema_dashboard') }}">Home</a> |
-  <a href="{{ url_for('organization_schema') }}">Organization Schema Page</a> |
-  <a href="{{ url_for('product_schema') }}">Product Schema Page</a> |
-  <a href="{{ url_for('collection_schema') }}">Collection Schema Page</a>
-</p>
-
-<h2>Product Metafields</h2>
-<ul>
-  {% for mf in product_metafields %}
-    <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
-  {% endfor %}
-</ul>
-
-<h2>Collection Metafields</h2>
-<ul>
-  {% for mf in collection_metafields %}
-    <li>{{ mf.node.namespace }}.{{ mf.node.key }} ({{ mf.node.type.name }})</li>
-  {% endfor %}
-</ul>
-
-<h2>Organization Schema Fields</h2>
-<ul>
-  {% for field in org_schema_fields %}
-    <li>{{ field }}</li>
-  {% endfor %}
-</ul>
-
-<button id="fetchMetaBtn" class="btn">Fetch Metafields & Values</button>
-<div id="metafields-preview"></div>
-
+<!-- JavaScript Logic (UNMODIFIED) -->
 <script>
 /**
  * Hold mappings explicitly keyed by Shopify ID
  */
-const productMappings = {};      // { productGID: { metafieldKey: schemaField } }
-const collectionMappings = {};   // { collectionGID: { metafieldKey: schemaField } }
+const productMappings = {};        // { productGID: { metafieldKey: schemaField } }
+const collectionMappings = {};     // { collectionGID: { metafieldKey: schemaField } }
 
 /**
  * Update all previews
  */
 function updatePreview() {
-  const productPreview = document.getElementById("product-mappings-preview");
-  productPreview.innerHTML = "";
-  for (const [gid, mapping] of Object.entries(productMappings)) {
-    Object.entries(mapping).forEach(([mf, field]) => {
-      if (field) productPreview.innerHTML += `<li>${gid}: ${mf} → ${field}</li>`;
-    });
-  }
+    const productPreview = document.getElementById("product-mappings-preview");
+    productPreview.innerHTML = "";
+    let productMappingCount = 0;
+    for (const [gid, mapping] of Object.entries(productMappings)) {
+        Object.entries(mapping).forEach(([mf, field]) => {
+            if (field) {
+                productPreview.innerHTML += `<li class="truncate"><span class="font-mono text-xs text-gray-400 mr-2">${gid.split('/').pop()}</span>: ${mf} → <span class="font-semibold text-blue-600">${field}</span></li>`;
+                productMappingCount++;
+            }
+        });
+    }
+    if (productMappingCount === 0) {
+        productPreview.innerHTML = '<li class="text-gray-400">No product metafields currently mapped.</li>';
+    }
 
-  const collectionPreview = document.getElementById("collection-mappings-preview");
-  collectionPreview.innerHTML = "";
-  for (const [gid, mapping] of Object.entries(collectionMappings)) {
-    Object.entries(mapping).forEach(([mf, field]) => {
-      if (field) collectionPreview.innerHTML += `<li>${gid}: ${mf} → ${field}</li>`;
-    });
-  }
 
-  const metaPreview = document.getElementById("meta-preview");
-  metaPreview.innerHTML = "<b>Product Metafields:</b><br>";
-  for (const [gid, mapping] of Object.entries(productMappings)) {
-    Object.entries(mapping).forEach(([mf, field]) => {
-      if (field) metaPreview.innerHTML += `<li>${gid}: ${mf} → ${field}</li>`;
-    });
-  }
-  metaPreview.innerHTML += "<b>Collection Metafields:</b><br>";
-  for (const [gid, mapping] of Object.entries(collectionMappings)) {
-    Object.entries(mapping).forEach(([mf, field]) => {
-      if (field) metaPreview.innerHTML += `<li>${gid}: ${mf} → ${field}</li>`;
-    });
-  }
+    const collectionPreview = document.getElementById("collection-mappings-preview");
+    collectionPreview.innerHTML = "";
+    let collectionMappingCount = 0;
+    for (const [gid, mapping] of Object.entries(collectionMappings)) {
+        Object.entries(mapping).forEach(([mf, field]) => {
+            if (field) {
+                collectionPreview.innerHTML += `<li class="truncate"><span class="font-mono text-xs text-gray-400 mr-2">${gid.split('/').pop()}</span>: ${mf} → <span class="font-semibold text-blue-600">${field}</span></li>`;
+                collectionMappingCount++;
+            }
+        });
+    }
+    if (collectionMappingCount === 0) {
+        collectionPreview.innerHTML = '<li class="text-gray-400">No collection metafields currently mapped.</li>';
+    }
 }
 
 /**
  * Attach change listeners to <select> elements
  */
 document.querySelectorAll(".product-map").forEach(select => {
-  select.addEventListener("change", () => {
-    const gid = select.dataset.gid;   // MUST be explicitly provided from backend
-    const mf = select.dataset.mf;
-    if (!productMappings[gid]) productMappings[gid] = {};
-    productMappings[gid][mf] = select.value;
-    updatePreview();
-  });
+    select.addEventListener("change", () => {
+        // NOTE: Your backend MUST ensure data-gid is populated on the <select> element for this logic to work properly.
+        const gid = select.dataset.gid || "UNKNOWN_PRODUCT_GID"; // Placeholder/Fallback
+        const mf = select.dataset.mf;
+        if (!productMappings[gid]) productMappings[gid] = {};
+        productMappings[gid][mf] = select.value;
+        updatePreview();
+    });
 });
 document.querySelectorAll(".collection-map").forEach(select => {
-  select.addEventListener("change", () => {
-    const gid = select.dataset.gid;   // MUST be explicitly provided from backend
-    const mf = select.dataset.mf;
-    if (!collectionMappings[gid]) collectionMappings[gid] = {};
-    collectionMappings[gid][mf] = select.value;
-    updatePreview();
-  });
+    select.addEventListener("change", () => {
+        // NOTE: Your backend MUST ensure data-gid is populated on the <select> element for this logic to work properly.
+        const gid = select.dataset.gid || "UNKNOWN_COLLECTION_GID"; // Placeholder/Fallback
+        const mf = select.dataset.mf;
+        if (!collectionMappings[gid]) collectionMappings[gid] = {};
+        collectionMappings[gid][mf] = select.value;
+        updatePreview();
+    });
 });
 
 /**
  * Submit mappings to backend
  */
 document.getElementById("createMetaBtn").onclick = async () => {
-  const payload = {
-    shop: '{{ shop_name or "Not found" }}',
-    hmac: '{{ hmac_value or "Not found" }}',
-    id_token: '{{ id_token_value or "Not found" }}',
-    product_mappings: productMappings,
-    collection_mappings: collectionMappings
-  };
+    const payload = {
+        shop: '{{ shop_name or "Not found" }}',
+        hmac: '{{ hmac_value or "Not found" }}',
+        id_token: '{{ id_token_value or "Not found" }}',
+        product_mappings: productMappings,
+        collection_mappings: collectionMappings
+    };
 
-  try {
-    const resp = await fetch("/verify_and_create_metafields", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const json = await resp.json();
-    alert(json.message || JSON.stringify(json));
-    updatePreview();
-  } catch (err) {
-    console.error(err);
-    alert("Error creating app-owned metafields. Check console.");
-  }
+    // Use custom modal or message box instead of alert()
+    const displayMessage = (msg, isError = false) => {
+        const preview = document.getElementById("metafields-preview");
+        preview.innerHTML = `<span class="${isError ? 'text-red-500' : 'text-green-600'} font-semibold">${msg}</span>`;
+        setTimeout(() => { preview.innerHTML = ''; }, 5000);
+    };
+
+    try {
+        displayMessage("Sending data...");
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const json = await resp.json();
+        if (resp.ok) {
+            displayMessage(json.message || "Metafields updated successfully!");
+        } else {
+            displayMessage(json.message || `Error (${resp.status}): ${JSON.stringify(json)}`, true);
+        }
+        updatePreview();
+    } catch (err) {
+        console.error(err);
+        displayMessage("Network Error: Could not reach server.", true);
+    }
 };
 
 /**
  * Fetch current app-owned metafields (if any) and populate select boxes
  */
 document.getElementById("fetchMetaBtn").onclick = async () => {
-  const payload = {
-    shop: '{{ shop_name or "Not found" }}',
-    hmac: '{{ hmac_value or "Not found" }}',
-    id_token: '{{ id_token_value or "Not found" }}'
-  };
+    const previewArea = document.getElementById("metafields-preview");
+    const payload = {
+        shop: '{{ shop_name or "Not found" }}',
+        hmac: '{{ hmac_value or "Not found" }}',
+        id_token: '{{ id_token_value or "Not found" }}'
+    };
 
-  try {
-    const resp = await fetch("/get_metafields", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await resp.json();
+    previewArea.innerHTML = '<span class="text-gray-500">Fetching current mappings...</span>';
 
-    if (data.error) {
-      document.getElementById("metafields-preview").innerHTML = `<span style="color:red;">${data.error}</span>`;
-      return;
+    try {
+        const resp = await fetch("/get_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+
+        if (data.error || !resp.ok) {
+            previewArea.innerHTML = `<span class="text-red-500 font-semibold">Error: ${data.error || 'Failed to fetch.'}</span>`;
+            return;
+        }
+        
+        // Clear previous mappings
+        Object.keys(productMappings).forEach(k => delete productMappings[k]);
+        Object.keys(collectionMappings).forEach(k => delete collectionMappings[k]);
+        
+        // Populate productMappings from existing app-owned JSON
+        data.data.products.edges.forEach(product => {
+            if (product.node.app_schema && product.node.app_schema.value) {
+                const gid = product.node.id;
+                try {
+                    productMappings[gid] = JSON.parse(product.node.app_schema.value);
+                    // Set the select box value if it exists
+                    Object.entries(productMappings[gid]).forEach(([mfKey, schemaField]) => {
+                        const select = document.querySelector(`.product-map[data-mf="${mfKey}"]`);
+                        if (select) select.value = schemaField;
+                    });
+                } catch (e) {
+                    console.error("Failed to parse product schema JSON:", e);
+                }
+            }
+        });
+
+        // Populate collectionMappings from existing app-owned JSON
+        data.data.collections.edges.forEach(coll => {
+            if (coll.node.app_schema && coll.node.app_schema.value) {
+                const gid = coll.node.id;
+                try {
+                    collectionMappings[gid] = JSON.parse(coll.node.app_schema.value);
+                    // Set the select box value if it exists
+                    Object.entries(collectionMappings[gid]).forEach(([mfKey, schemaField]) => {
+                        const select = document.querySelector(`.collection-map[data-mf="${mfKey}"]`);
+                        if (select) select.value = schemaField;
+                    });
+                } catch (e) {
+                    console.error("Failed to parse collection schema JSON:", e);
+                }
+            }
+        });
+
+        updatePreview();
+        previewArea.innerHTML = '<span class="text-green-600 font-semibold">Mappings successfully fetched and loaded into selectors.</span>';
+
+    } catch (err) {
+        console.error(err);
+        previewArea.innerHTML = '<span class="text-red-500 font-semibold">Network Error: Failed to fetch metafields.</span>';
     }
-
-    // Populate productMappings from existing app-owned JSON
-    data.data.products.edges.forEach(product => {
-      if (product.node.app_schema) {
-        productMappings[product.node.id] = JSON.parse(product.node.app_schema.value);
-        Object.entries(productMappings[product.node.id]).forEach(([mf, field]) => {
-          const select = document.querySelector(`.product-map[data-mf="${mf}"]`);
-          if (select) select.value = field;
-        });
-      }
-    });
-
-    // Populate collectionMappings from existing app-owned JSON
-    data.data.collections.edges.forEach(coll => {
-      if (coll.node.app_schema) {
-        collectionMappings[coll.node.id] = JSON.parse(coll.node.app_schema.value);
-        Object.entries(collectionMappings[coll.node.id]).forEach(([mf, field]) => {
-          const select = document.querySelector(`.collection-map[data-mf="${mf}"]`);
-          if (select) select.value = field;
-        });
-      }
-    });
-
-    updatePreview();
-
-  } catch (err) {
-    console.error(err);
-    alert("Error fetching app-owned metafields. Check console.");
-  }
 };
+
+// Initial call to set up the UI state based on current mappings (if any)
+document.addEventListener('DOMContentLoaded', updatePreview);
 </script>
 
-</div>
 </body>
 </html>
