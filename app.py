@@ -1237,16 +1237,27 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     # 1. Extract Resource Type and ID from the GID
     # Example GID: 'gid://shopify/Product/8149887778991'
     try:
-        # Assuming a standard Shopify GID format
-        path_parts = urlparse(owner_gid).path.split('/')
-        resource_type = path_parts[-2].lower()  # 'product'
-        resource_id = path_parts[-1]            # '8149887778991'
+        # Split the string by the '/' character. A standard GID is 5 parts:
+        # ['gid:', '', 'shopify', 'Product', '8149887778991']
+        parts = owner_gid.split('/')
+        
+        # Validate the basic structure (must have 5 parts and start with 'gid:')
+        if len(parts) < 5 or parts[0] != 'gid:':
+             raise ValueError("Malformed GID structure. GID must start with 'gid:'.")
+        
+        # Resource type is the second to last part (e.g., 'Product')
+        resource_type = parts[-2].lower()
+        
+        # Resource ID is the last part (e.g., '8149887778991')
+        resource_id = parts[-1]
+        
     except Exception:
+        # Re-raise with the expected format description
         raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
 
     # 2. Construct the REST API URL
-    # Format: /admin/api/2026-01/{resource_type}/{resource_id}/metafields.json
-    # The REST API *always* requires a specific resource ID in the path for metafields.
+    # Format: /admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json
+    # Note the required pluralization for the resource type (e.g., product -> products)
     url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json"
     
     headers = {
@@ -1260,10 +1271,8 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
 
     payload = {
         "metafield": {
-            # Note: REST uses lowercase 'json', GraphQL uses uppercase 'JSON!'
             "type": "json",
             "namespace": "app_schema",
-            # The curl uses 'prod_schema', aligning with that for consistency
             "key": "prod_schema", 
             "value": json_value
         }
@@ -1273,10 +1282,6 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     print(f"Payload: {json.dumps(payload, indent=2)}")
 
     # 4. Make the Request
-    # REST API uses POST to create a new metafield or PUT to update an existing one.
-    # To mimic upsert logic, you'd typically first GET (or check the resource metadata), 
-    # but a simple POST is often used for a first attempt.
-    # To truly mimic the CURL (which is a POST), we use POST here.
     resp = requests.post(url, headers=headers, json=payload)
     
     # Check for REST API error status (4xx or 5xx)
@@ -1284,8 +1289,6 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     
     response_json = resp.json()
 
-    # The REST API POST response will contain the created metafield data.
-    # For updating (PUT), you would need the metafield ID.
     return response_json
 
 
