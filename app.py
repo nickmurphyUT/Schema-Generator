@@ -1185,6 +1185,29 @@ def generate_default_organization_schema():
     schema_dict = {field: "string" for field in fields}  # default type
     return schema_dict
 
+def fetch_existing_app_schema(shop, access_token, product_gid):
+    """Returns existing app_schema.product_schema as a dict, or {}."""
+    url = f"https://{shop}/admin/api/2026-01/graphql.json"
+    headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": access_token}
+
+    query = """
+    query($id: ID!) {
+      product(id: $id) {
+        metafield(namespace: "app_schema", key: "product_schema") {
+          value
+        }
+      }
+    }
+    """
+    resp = requests.post(url, json={"query": query, "variables": {"id": product_gid}}, headers=headers)
+    resp.raise_for_status()
+    node = resp.json()["data"]["product"]["metafield"]
+    if not node:
+        return {}
+    try:
+        return json.loads(node["value"])
+    except:
+        return {}
 
 
 def get_access_token_for_shop(shop):
@@ -1201,28 +1224,33 @@ def fetch_product_metafields(shop, access_token, product_id):
     # Return as {key: value}
     return {mf["key"]: mf["value"] for mf in data}
 
-def upsert_app_metafield(shop, access_token, resource_id, resource_type, value_dict):
-    """Upsert a JSON app-owned metafield for a product."""
+def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
     headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": access_token}
-    json_value = json.dumps(value_dict).replace('"', '\\"')  # serialize + escape
+
     mutation = """
-    mutation upsertMetafield {
+    mutation metafieldsSet($ownerId: ID!, $value: String!) {
       metafieldsSet(input: {
-        ownerId: "%s",
+        ownerId: $ownerId,
         metafields: [{
           namespace: "app_schema",
-          key: "%s_schema",
+          key: "product_schema",
           type: "json",
-          value: "%s"
+          value: $value
         }]
       }) {
-        metafields { id key namespace value type }
+        metafields { id key namespace value }
         userErrors { field message }
       }
     }
-    """ % (resource_id, resource_type, json_value)
-    resp = requests.post(url, json={"query": mutation}, headers=headers)
+    """
+
+    variables = {
+        "ownerId": owner_gid,
+        "value": json.dumps(value_dict)
+    }
+
+    resp = requests.post(url, json={"query": mutation, "variables": variables}, headers=headers)
     resp.raise_for_status()
     return resp.json()
 
@@ -1280,21 +1308,35 @@ def verify_and_create_metafields():
             logging.info(f"Fetched {len(products)} products for shop {shop}")
 
             for i in range(0, len(products), BATCH_SIZE):
-                batch = products[i:i+BATCH_SIZE]
+                batch = products[i:i + BATCH_SIZE]
                 for product in batch:
-                    product_gid = product["id"]  # e.g., gid://shopify/Product/1234567890
-                    # Extract numeric ID from GID
-                    product_id = product_gid.split("/")[-1]
+                    product_gid = product["id"]  # gid://shopify/Product/1234567890
 
                     try:
+                        # Extract numeric product ID for REST metafield lookup
+                        product_id = product_gid.split("/")[-1]
+
+                        # 1. Existing Shopify metafields (REST)
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        # Build full schema JSON
+
+                        # 2. Existing app-schema metafield (GraphQL)
+                        existing_app_schema = fetch_existing_app_schema(shop, access_token, product_gid)
+
+                        logging.info(f"Existing app schema for {product_gid}: {existing_app_schema}")
+
+                        # 3. Build the full merged schema
                         schema_value = {}
                         for field_key, field_type in schema_definition.items():
-                            # Use existing value if present, else default based on type
+                            # Priority 1: existing app schema metafield
+                            if field_key in existing_app_schema:
+                                schema_value[field_key] = existing_app_schema[field_key]
+                                continue
+
+                            # Priority 2: existing normal metafield
                             val = existing_mfs.get(field_key)
+
+                            # Priority 3: defaults
                             if val is None:
-                                # provide type-appropriate default
                                 if field_type == "string":
                                     val = ""
                                 elif field_type == "number":
@@ -1303,21 +1345,30 @@ def verify_and_create_metafields():
                                     val = False
                                 else:
                                     val = None
+
                             schema_value[field_key] = val
 
-                        resp = upsert_app_metafield(shop, access_token, product_id, "product", schema_value)
-                        logging.info(f"Upserted product {product_id} with schema: {schema_value}")
-                        if resp.get("data", {}).get("metafieldsSet", {}).get("userErrors"):
-                            logging.error(f"Shopify userErrors for product {product_id}: {resp['data']['metafieldsSet']['userErrors']}")
+                        # 4. Upsert the merged value
+                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_value)
+
+                        logging.info(f"Upserted app_schema.product_schema for {product_gid}: {schema_value}")
+
+                        # Shopify errors?
+                        errors = resp.get("data", {}).get("metafieldsSet", {}).get("userErrors")
+                        if errors:
+                            logging.error(f"Shopify userErrors for {product_gid}: {errors}")
+
                     except Exception as e:
-                        logging.error(f"Failed processing product {product_id}: {e}", exc_info=True)
+                        logging.error(f"Failed processing {product_gid}: {e}", exc_info=True)
 
             logging.info(f"Background processing completed for shop {shop}")
+
         except Exception as e:
-            logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
+            logging.error(f"Background process FAILED for shop {shop}: {e}", exc_info=True)
 
     threading.Thread(target=process_metafields, daemon=True).start()
     logging.info(f"Started background processing for shop {shop}")
+
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
 
 
