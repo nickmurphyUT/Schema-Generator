@@ -1390,29 +1390,38 @@ def fetch_all_products(shop, access_token):
         cursor = data["edges"][-1]["cursor"]
     return products
 
-def build_app_schema_json(schema_definition, existing_mfs):
+def build_app_schema_json(schema_definition, existing_metafields):
     """
-    Build the JSON to store in app_schema.prod_schema, pulling values from existing metafields.
+    Map actual product metafields into our app-owned JSON schema.
+    Includes detailed logging so we can see what is mapped.
     """
-    schema_value = {}
-    for field_key, field_type in schema_definition.items():
-        # Look across all namespaces
-        val = existing_mfs.get(f"custom.{field_key}") \
-              or existing_mfs.get(f"test_data.{field_key}") \
-              or existing_mfs.get(f"app_schema.{field_key}")
 
-        # fallback default if no value exists
-        if val is None:
-            if field_type == "string":
-                val = ""
-            elif field_type == "number":
-                val = 0
-            elif field_type == "boolean":
-                val = False
-            else:
-                val = None
-        schema_value[field_key] = val
-    return schema_value
+    output = {}
+
+    for field, default_val in schema_definition.items():
+
+        # metafield lookup key (namespace.key)
+        # ex: "custom.brand"
+        metafield_key = f"custom.{field}"  
+
+        # if present → use metafield value
+        if metafield_key in existing_metafields:
+            val = existing_metafields[metafield_key]
+            logging.info(f"🟢 Mapped metafield {metafield_key} -> schema field {field} = {val}")
+
+            # JSON decode if it looks like a dict or array
+            try:
+                output[field] = json.loads(val)
+            except Exception:
+                output[field] = val
+
+        else:
+            # nothing found → use default value
+            logging.info(f"⚪ No metafield for {metafield_key}, using default for {field}")
+            output[field] = default_val
+
+    logging.info(f"🔧 FINAL schema JSON: {json.dumps(output, indent=2)}")
+    return output
 
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
