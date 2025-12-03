@@ -1382,6 +1382,7 @@ def fetch_all_products(shop, access_token):
     return products
 
 # --- Main endpoint ---
+# --- Main endpoint ---
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
@@ -1403,34 +1404,40 @@ def verify_and_create_metafields():
             logging.info(f"Fetched {len(products)} products for shop {shop}")
 
             for i in range(0, len(products), BATCH_SIZE):
-                batch = products[i:i+BATCH_SIZE]
+                batch = products[i:i + BATCH_SIZE]
                 for product in batch:
                     product_gid = product["id"]  # e.g., gid://shopify/Product/1234567890
                     try:
                         product_id = product_gid.split("/")[-1]
 
-                        # Fetch existing metafields (optional; helps preserve existing values)
-                        existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        logging.info(f"Existing app schema for {product_gid}: {existing_mfs}")
+                        # --- Fetch existing app_schema.prod_schema metafield ---
+                        existing_metafield = _find_metafield_by_key_rest(
+                            shop, access_token, "product", product_id, "app_schema", "prod_schema"
+                        )
 
-                        # Build full schema JSON
-                        schema_value = {}
+                        current_data = {}
+                        if existing_metafield:
+                            try:
+                                current_data = json.loads(existing_metafield.get("value", "{}"))
+                            except json.JSONDecodeError:
+                                logging.warning(f"Failed to parse existing JSON for {product_gid}, starting fresh")
+                                current_data = {}
+
+                        # --- Merge schema_definition defaults into current_data ---
                         for field_key, field_type in schema_definition.items():
-                            val = existing_mfs.get(field_key)
-                            if val is None:
+                            if field_key not in current_data:
                                 if field_type == "string":
-                                    val = ""
+                                    current_data[field_key] = ""
                                 elif field_type == "number":
-                                    val = 0
+                                    current_data[field_key] = 0
                                 elif field_type == "boolean":
-                                    val = False
+                                    current_data[field_key] = False
                                 else:
-                                    val = None
-                            schema_value[field_key] = val
+                                    current_data[field_key] = None
 
-                        # Upsert metafield using REST API
-                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_value)
-                        logging.info(f"Upserted app_schema.product_schema for {product_gid}: {schema_value}")
+                        # --- Upsert merged JSON into app_schema.prod_schema ---
+                        resp = upsert_app_metafield(shop, access_token, product_gid, current_data)
+                        logging.info(f"Upserted app_schema.prod_schema for {product_gid}: {current_data}")
                         logging.debug(f"REST response: {resp}")
 
                     except Exception as e:
@@ -1445,6 +1452,7 @@ def verify_and_create_metafields():
     threading.Thread(target=process_metafields, daemon=True).start()
     logging.info(f"Started background processing for shop {shop}")
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+
 
 
 
