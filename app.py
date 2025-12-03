@@ -1390,20 +1390,38 @@ def fetch_all_products(shop, access_token):
         cursor = data["edges"][-1]["cursor"]
     return products
 
-# --- Main endpoint ---
+def build_app_schema_json(schema_definition, existing_mfs):
+    """
+    Build the JSON to store in app_schema.prod_schema, pulling values from existing metafields.
+    """
+    schema_value = {}
+    for field_key, field_type in schema_definition.items():
+        # Look across all namespaces
+        val = existing_mfs.get(f"custom.{field_key}") \
+              or existing_mfs.get(f"test_data.{field_key}") \
+              or existing_mfs.get(f"app_schema.{field_key}")
+
+        # fallback default if no value exists
+        if val is None:
+            if field_type == "string":
+                val = ""
+            elif field_type == "number":
+                val = 0
+            elif field_type == "boolean":
+                val = False
+            else:
+                val = None
+        schema_value[field_key] = val
+    return schema_value
+
+
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
     shop = data.get("shop") or session.get("shop")
-    schema_definition = data.get("schema")
-
-    if not schema_definition:
-        logging.info("No schema provided, generating default Organization schema")
-        schema_definition = generate_default_organization_schema()
-
+    schema_definition = data.get("schema") or generate_default_organization_schema()
     access_token = get_access_token_for_shop(shop)
     if not access_token:
-        logging.warning(f"No access token found for shop: {shop}")
         return jsonify({"error": "No access token for shop"}), 400
 
     def process_metafields():
@@ -1418,28 +1436,14 @@ def verify_and_create_metafields():
                     product_id = product_gid.split("/")[-1]
 
                     try:
-                        # Fetch all existing product metafields
+                        # Fetch all existing metafields for this product
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
                         logging.info(f"Existing metafields for {product_gid}: {existing_mfs}")
 
-                        # Build the JSON for app-owned metafield
-                        schema_value = {}
-                        for field_key, field_type in schema_definition.items():
-                            # Try to get value from existing metafields first
-                            val = existing_mfs.get(field_key)
-                            if val is None:
-                                # fallback default
-                                if field_type == "string":
-                                    val = ""
-                                elif field_type == "number":
-                                    val = 0
-                                elif field_type == "boolean":
-                                    val = False
-                                else:
-                                    val = None
-                            schema_value[field_key] = val
+                        # Build app-owned JSON with real values
+                        schema_value = build_app_schema_json(schema_definition, existing_mfs)
 
-                        # Upsert app-owned JSON metafield
+                        # Upsert app-owned metafield
                         resp = upsert_app_metafield(shop, access_token, product_gid, schema_value)
                         logging.info(f"Upserted app_schema.prod_schema for {product_gid}: {schema_value}")
                         logging.debug(f"REST response: {resp}")
@@ -1447,13 +1451,12 @@ def verify_and_create_metafields():
                     except Exception as e:
                         logging.error(f"Failed processing product {product_gid}: {e}", exc_info=True)
 
-            logging.info(f"Background processing completed for shop {shop}")
+            logging.info(f"Completed background processing for shop {shop}")
 
         except Exception as e:
             logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
 
     threading.Thread(target=process_metafields, daemon=True).start()
-    logging.info(f"Started background processing for shop {shop}")
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
 
 @app.route("/get_metafields", methods=["POST"])
