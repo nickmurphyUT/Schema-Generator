@@ -1323,7 +1323,6 @@ def fetch_all_products(shop, access_token):
     return products
 
 # --- Main endpoint ---
-# --- Main endpoint ---
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
@@ -1349,14 +1348,15 @@ def verify_and_create_metafields():
                 for product in batch:
                     product_gid = product["id"]  # e.g., gid://shopify/Product/1234567890
                     try:
-                        # Fetch existing app-owned metafield
-                        existing_mfs = fetch_product_metafields(shop, access_token, product_gid.split("/")[-1])
+                        product_id = product_gid.split("/")[-1]
+
+                        # Fetch existing metafields (optional; helps preserve existing values)
+                        existing_mfs = fetch_product_metafields(shop, access_token, product_id)
                         logging.info(f"Existing app schema for {product_gid}: {existing_mfs}")
 
                         # Build full schema JSON
                         schema_value = {}
                         for field_key, field_type in schema_definition.items():
-                            # If existing value exists in metafield, keep it; otherwise default
                             val = existing_mfs.get(field_key)
                             if val is None:
                                 if field_type == "string":
@@ -1369,14 +1369,10 @@ def verify_and_create_metafields():
                                     val = None
                             schema_value[field_key] = val
 
-                        # Upsert the app-owned metafield properly (pass dict directly)
-                        resp = upsert_app_metafield(shop, access_token, product_gid, "product", schema_value)
+                        # Upsert metafield using REST API
+                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_value)
                         logging.info(f"Upserted app_schema.product_schema for {product_gid}: {schema_value}")
-
-                        # Log any Shopify user errors
-                        user_errors = resp.get("data", {}).get("metafieldsSet", {}).get("userErrors")
-                        if user_errors:
-                            logging.error(f"Shopify userErrors for {product_gid}: {user_errors}")
+                        logging.debug(f"REST response: {resp}")
 
                     except Exception as e:
                         logging.error(f"Failed processing product {product_gid}: {e}", exc_info=True)
@@ -1390,6 +1386,7 @@ def verify_and_create_metafields():
     threading.Thread(target=process_metafields, daemon=True).start()
     logging.info(f"Started background processing for shop {shop}")
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+
 
 
 @app.route("/get_metafields", methods=["POST"])
