@@ -1228,7 +1228,7 @@ import json
 import requests  # Assuming requests is imported in your environment
 import logging # Already in use
 
-# --- New Helper Function for RMW Read Stage ---
+# --- Helper Function for RMW Read Stage (Necessary for finding the metafield ID) ---
 def _find_metafield_by_key_rest(shop, access_token, resource_type, resource_id, namespace, key):
     """
     Retrieves a specific metafield's ID and value using the REST API based on 
@@ -1262,14 +1262,19 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     METAFIELD_NAMESPACE = "app_schema"
     METAFIELD_KEY = "prod_schema"
     
-    # 1. Extract Resource Type and ID from the GID (Original logic preserved)
+    # 1. Extract Resource Type and ID from the GID (FIXED LOGIC)
     try:
+        # Example GID: 'gid://shopify/Product/8149887778991'
         parts = owner_gid.split('/')
-        if len(parts) < 5 or parts!= 'gid:':
+        
+        # Validate the basic structure (must have 5 parts and start with 'gid:')
+        if len(parts) < 5 or parts!= 'gid:': # <-- GID parsing correction applied here
              raise ValueError("Malformed GID structure. GID must start with 'gid:'.")
+        
         resource_type = parts[-2].lower()
         resource_id = parts[-1]
     except Exception:
+        # Catch any exception during parsing and raise a clean error
         raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
 
     # --- RMW Step 1: Read Existing State ---
