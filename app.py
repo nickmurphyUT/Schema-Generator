@@ -1224,24 +1224,25 @@ def fetch_product_metafields(shop, access_token, product_id):
     # Return as {key: value}
     return {mf["key"]: mf["value"] for mf in data}
 
-def upsert_app_metafield(shop, access_token, resource_id, resource_type, value_dict):
-    """
-    Upsert a JSON app-owned metafield correctly.
-    """
+def upsert_app_metafield(shop, access_token, owner_gid, resource_type, value_dict):
+    """Create or update a JSON app-owned metafield on a product."""
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
     headers = {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token
     }
 
+    # Convert dict to JSON string (Shopify expects a string for "value" of type JSON)
+    json_value = json.dumps(value_dict)
+
     mutation = """
-    mutation upsertMetafield($ownerId: ID!, $namespace: String!, $key: String!, $type: String!, $value: JSON!) {
+    mutation($ownerId: ID!, $value: JSON!) {
       metafieldsSet(input: {
         ownerId: $ownerId,
         metafields: [{
-          namespace: $namespace,
-          key: $key,
-          type: $type,
+          namespace: "app_schema",
+          key: "product_schema",
+          type: JSON!,
           value: $value
         }]
       }) {
@@ -1251,17 +1252,18 @@ def upsert_app_metafield(shop, access_token, resource_id, resource_type, value_d
     }
     """
 
-    variables = {
-        "ownerId": resource_id,
-        "namespace": "app_schema",
-        "key": f"{resource_type}_schema",
-        "type": "json",
-        "value": value_dict  # Pass the dict directly, **not as escaped string**
+    payload = {
+        "query": mutation,
+        "variables": {
+            "ownerId": owner_gid,
+            "value": json_value
+        }
     }
 
-    resp = requests.post(url, json={"query": mutation, "variables": variables}, headers=headers)
+    resp = requests.post(url, headers=headers, json=payload)
     resp.raise_for_status()
     return resp.json()
+
 
 
 def fetch_all_products(shop, access_token):
