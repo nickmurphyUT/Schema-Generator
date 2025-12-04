@@ -1271,21 +1271,20 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     METAFIELD_NAMESPACE = "app_schema"
     METAFIELD_KEY = "prod_schema"
     
-    # 1. Extract Resource Type and ID from the GID (FIXED LOGIC)
     try:
-        # Example GID: 'gid://shopify/Product/8149887778991'
-        parts = owner_gid.split('/')
-        
-        # 1. Extract Resource Type and ID from the GID (FIXED LOGIC)
-        parts = owner_gid.split('/')
-        if len(parts) != 5 or parts[0] != 'gid:':
-            raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
-        resource_type = parts[-2].lower()
-        resource_id = parts[-1]
-
+        parts = owner_gid.split("/")
+        # remove empty elements caused by double slashes
+        parts = [p for p in parts if p]
+    
+        # expected: ["gid:", "shopify", "Product", "8085504262319"]
+        if len(parts) != 4 or parts[0] != "gid:":
+            raise ValueError()
+    
+        resource_type = parts[2].lower()
+        resource_id = parts[3]
     except Exception:
-        # Catch any exception during parsing and raise a clean error
         raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
+
 
     # --- RMW Step 1: Read Existing State ---
     existing_metafield = _find_metafield_by_key_rest(
