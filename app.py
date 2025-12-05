@@ -1384,31 +1384,31 @@ def fetch_all_products(shop, access_token):
 
 def build_app_schema_json(schema_definition, existing_mfs, mappings):
     """
-    Build JSON to store in app_schema.prod_schema using assigned metafields from frontend.
-    
-    schema_definition: dict of schema fields with types (string, number, boolean)
-    existing_mfs: dict of Shopify metafield values for a product
-    mappings: dict mapping 'namespace.key' -> 'schema_field_name'
+    schema_definition: {field_name: type}  (string/number/boolean)
+    existing_mfs: {namespace.key: value}  actual Shopify metafield values
+    mappings: {namespace.key: schema_field_name} frontend mapping
+
+    Returns full JSON with populated values for upsert.
     """
-    schema_value = {}
+    schema_json = {}
 
     # Start with defaults
     for field_key, field_type in schema_definition.items():
         if field_type == "string":
-            schema_value[field_key] = ""
+            schema_json[field_key] = ""
         elif field_type == "number":
-            schema_value[field_key] = 0
+            schema_json[field_key] = 0
         elif field_type == "boolean":
-            schema_value[field_key] = False
+            schema_json[field_key] = False
         else:
-            schema_value[field_key] = None
+            schema_json[field_key] = None
 
-    # Fill values from mapped metafields
+    # Overwrite defaults with actual Shopify metafield values based on frontend mapping
     for mf_key, schema_field in mappings.items():
         if schema_field and mf_key in existing_mfs:
-            schema_value[schema_field] = existing_mfs[mf_key]
+            schema_json[schema_field] = existing_mfs[mf_key]
 
-    return schema_value
+    return schema_json
 
 
 
@@ -1436,23 +1436,23 @@ def verify_and_create_metafields():
                     product_id = product_gid.split("/")[-1]
 
                     try:
-                        # Fetch all existing metafields for this product
+                        # 1️⃣ Fetch current metafields from Shopify
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        logging.info(f"Existing metafields for {product_gid}: {existing_mfs}")
+                        logging.info(f"Fetched metafields for {product_gid}: {existing_mfs}")
 
-                        # Use the frontend mapping for this product (if any)
+                        # 2️⃣ Get frontend mapping for this product
                         mappings_for_product = product_mappings.get(product_gid, {})
 
-                        # Build schema JSON with real values
-                        schema_value = build_app_schema_json(schema_definition, existing_mfs, mappings_for_product)
-                        logging.info(f"Built schema JSON for {product_gid}: {schema_value}")
+                        # 3️⃣ Build schema JSON: defaults + actual values
+                        schema_json = build_app_schema_json(schema_definition, existing_mfs, mappings_for_product)
+                        logging.info(f"Built schema JSON for {product_gid}: {schema_json}")
 
-                        # Upsert app-owned metafield
-                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_value)
+                        # 4️⃣ Upsert JSON into app-owned metafield
+                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_json)
                         logging.info(f"Upserted app_schema.prod_schema for {product_gid}")
-                        logging.debug(f"REST response: {resp}")
+                        logging.debug(f"Upsert response: {resp}")
 
-                        # Add delay (~2s)
+                        # 5️⃣ Optional delay to avoid rate limits
                         time.sleep(2)
 
                     except Exception as e:
@@ -1465,6 +1465,7 @@ def verify_and_create_metafields():
 
     threading.Thread(target=process_metafields, daemon=True).start()
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+
 
 @app.route("/get_metafields", methods=["POST"])
 def get_metafields():
