@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,16 +90,12 @@
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">{{ mf.node.namespace }}.{{ mf.node.key }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                             <select class="product-map select-field" 
-                                    data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}"
-                                    data-gid="{{ product.node.id }}"> <!-- <-- add this -->
+                            <select class="product-map select-field" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
                                 <option value="">-- Select Schema Field --</option>
                                 {% for field in org_schema_fields %}
                                 <option value="{{ field }}">{{ field }}</option>
                                 {% endfor %}
                             </select>
-
-
                         </td>
                     </tr>
                     {% endfor %}
@@ -121,15 +118,12 @@
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">{{ mf.node.namespace }}.{{ mf.node.key }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <select class="collection-map select-field" 
-                                    data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}"
-                                    data-gid="{{ collection.node.id }}"> <!-- <-- add this -->
+                            <select class="collection-map select-field" data-mf="{{ mf.node.namespace }}.{{ mf.node.key }}">
                                 <option value="">-- Select Schema Field --</option>
                                 {% for field in org_schema_fields %}
                                 <option value="{{ field }}">{{ field }}</option>
                                 {% endfor %}
                             </select>
-
                         </td>
                     </tr>
                     {% endfor %}
@@ -291,7 +285,7 @@ document.getElementById("createMetaBtn").onclick = async () => {
         product_mappings: productMappings,
         collection_mappings: collectionMappings
     };
-alert(payload);
+
     // Use custom modal or message box instead of alert()
     const displayMessage = (msg, isError = false) => {
         const preview = document.getElementById("metafields-preview");
