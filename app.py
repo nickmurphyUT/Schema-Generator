@@ -305,21 +305,51 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
         return {"error": str(e), "details": str(e)}  # Return a more readable error
 
 
-#app status check? Remove?
 @app.route("/")
-def home():
-    shop = request.args.get("shop")
-    if not shop:
-        return jsonify({"error": "Missing shop parameter"}), 400
+def schema_dashboard():
+    shop = session.get("shop") or request.args.get("shop")
+    hmac = session.get("hmac") or request.args.get("hmac")
+    id_token = session.get("id_token") or request.args.get("id_token")
 
-    auth_url = (
-        f"https://{shop}/admin/oauth/authorize?"
-        f"client_id={SHOPIFY_API_KEY}&"
-        f"scope={SCOPES}&"
-        f"redirect_uri={REDIRECT_URI}&"
-        f"state=secure_random_string"
+    latest_values["hmac"] = hmac
+    latest_values["id_token"] = id_token
+
+    # Fetch access token from DB
+    store = StoreToken.query.filter_by(shop=shop).first()
+    access_token = store.access_token if store else None
+
+    product_metafields = []
+    collection_metafields = []
+
+    if access_token:
+        try:
+            meta_data = get_metafield_definitions(shop, access_token)
+            product_metafields = meta_data["data"]["productDefinitions"]["edges"]
+            collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
+        except Exception as e:
+            print("Error fetching metafield definitions:", str(e))
+
+    # ✅ Fetch cached organization fields
+    org_fields = fetch_organization_schema_properties()  # will use cache if valid
+
+    schemas = [
+        {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
+        {"title": "Product Schema", "url": "/app/products-schema-builder"},
+        {"title": "Collection Schema", "url": "/app/collections-schema-builder"},
+        {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
+    ]
+
+    return render_template(
+        "schema_dashboard.html",
+        schemas=schemas,
+        title="Schema App Dashboard",
+        shop_name=shop,
+        hmac_value=hmac,
+        id_token_value=id_token,
+        product_metafields=product_metafields,      
+        collection_metafields=collection_metafields,
+        org_schema_fields=org_fields   # <-- pass cached org schema to template
     )
-    return redirect(auth_url)
     
 #access token gen
 @app.route("/auth")
