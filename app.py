@@ -1415,6 +1415,7 @@ def build_app_schema_json(schema_definition, existing_mfs, mappings):
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
+    # These are global mappings by metafield key, not per product
     product_mappings = data.get("product_mappings", {})
     collection_mappings = data.get("collection_mappings", {})
     shop = data.get("shop") or session.get("shop")
@@ -1440,19 +1441,16 @@ def verify_and_create_metafields():
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
                         logging.info(f"Fetched metafields for {product_gid}: {existing_mfs}")
 
-                        # 2️⃣ Get frontend mapping for this product
-                        mappings_for_product = product_mappings.get(product_gid, {})
-
-                        # 3️⃣ Build schema JSON: defaults + actual values
-                        schema_json = build_app_schema_json(schema_definition, existing_mfs, mappings_for_product)
+                        # 2️⃣ Build schema JSON using global mappings
+                        schema_json = build_app_schema_json(schema_definition, existing_mfs, product_mappings)
                         logging.info(f"Built schema JSON for {product_gid}: {schema_json}")
 
-                        # 4️⃣ Upsert JSON into app-owned metafield
+                        # 3️⃣ Upsert JSON into app-owned metafield
                         resp = upsert_app_metafield(shop, access_token, product_gid, schema_json)
                         logging.info(f"Upserted app_schema.prod_schema for {product_gid}")
                         logging.debug(f"Upsert response: {resp}")
 
-                        # 5️⃣ Optional delay to avoid rate limits
+                        # 4️⃣ Optional delay to avoid rate limits
                         time.sleep(2)
 
                     except Exception as e:
@@ -1465,6 +1463,7 @@ def verify_and_create_metafields():
 
     threading.Thread(target=process_metafields, daemon=True).start()
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+
 
 
 @app.route("/get_metafields", methods=["POST"])
