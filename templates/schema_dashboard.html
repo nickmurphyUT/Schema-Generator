@@ -211,8 +211,8 @@
 /**
  * Hold mappings explicitly keyed by Shopify ID
  */
-const productMappings = {};        // { productGID: { metafieldKey: schemaField } }
-const collectionMappings = {};     // { collectionGID: { metafieldKey: schemaField } }
+const productMappings = {};     // { metafieldKey: schemaField }
+const collectionMappings = {};  // { metafieldKey: schemaField }
 
 /**
  * Update all previews
@@ -220,56 +220,45 @@ const collectionMappings = {};     // { collectionGID: { metafieldKey: schemaFie
 function updatePreview() {
     const productPreview = document.getElementById("product-mappings-preview");
     productPreview.innerHTML = "";
-    let productMappingCount = 0;
-    for (const [gid, mapping] of Object.entries(productMappings)) {
-        Object.entries(mapping).forEach(([mf, field]) => {
-            if (field) {
-                productPreview.innerHTML += `<li class="truncate"><span class="font-mono text-xs text-gray-400 mr-2">${gid.split('/').pop()}</span>: ${mf} → <span class="font-semibold text-blue-600">${field}</span></li>`;
-                productMappingCount++;
-            }
-        });
-    }
-    if (productMappingCount === 0) {
-        productPreview.innerHTML = '<li class="text-gray-400">No product metafields currently mapped.</li>';
-    }
 
+    let count = 0;
+    for (const [mf, field] of Object.entries(productMappings)) {
+        if (field) {
+            productPreview.innerHTML += `<li>${mf} → <span class="font-semibold text-blue-600">${field}</span></li>`;
+            count++;
+        }
+    }
+    if (count === 0) productPreview.innerHTML = '<li class="text-gray-400">No product metafields mapped.</li>';
 
     const collectionPreview = document.getElementById("collection-mappings-preview");
     collectionPreview.innerHTML = "";
-    let collectionMappingCount = 0;
-    for (const [gid, mapping] of Object.entries(collectionMappings)) {
-        Object.entries(mapping).forEach(([mf, field]) => {
-            if (field) {
-                collectionPreview.innerHTML += `<li class="truncate"><span class="font-mono text-xs text-gray-400 mr-2">${gid.split('/').pop()}</span>: ${mf} → <span class="font-semibold text-blue-600">${field}</span></li>`;
-                collectionMappingCount++;
-            }
-        });
+
+    count = 0;
+    for (const [mf, field] of Object.entries(collectionMappings)) {
+        if (field) {
+            collectionPreview.innerHTML += `<li>${mf} → <span class="font-semibold text-blue-600">${field}</span></li>`;
+            count++;
+        }
     }
-    if (collectionMappingCount === 0) {
-        collectionPreview.innerHTML = '<li class="text-gray-400">No collection metafields currently mapped.</li>';
-    }
+    if (count === 0) collectionPreview.innerHTML = '<li class="text-gray-400">No collection metafields mapped.</li>';
 }
+
 
 /**
  * Attach change listeners to <select> elements
  */
 document.querySelectorAll(".product-map").forEach(select => {
     select.addEventListener("change", () => {
-        // NOTE: Your backend MUST ensure data-gid is populated on the <select> element for this logic to work properly.
-        const gid = select.dataset.gid || "UNKNOWN_PRODUCT_GID"; // Placeholder/Fallback
-        const mf = select.dataset.mf;
-        if (!productMappings[gid]) productMappings[gid] = {};
-        productMappings[gid][mf] = select.value;
+        const mf = select.dataset.mf;  // e.g., "namespace.key"
+        productMappings[mf] = select.value;  // store globally
         updatePreview();
     });
 });
+
 document.querySelectorAll(".collection-map").forEach(select => {
     select.addEventListener("change", () => {
-        // NOTE: Your backend MUST ensure data-gid is populated on the <select> element for this logic to work properly.
-        const gid = select.dataset.gid || "UNKNOWN_COLLECTION_GID"; // Placeholder/Fallback
-        const mf = select.dataset.mf;
-        if (!collectionMappings[gid]) collectionMappings[gid] = {};
-        collectionMappings[gid][mf] = select.value;
+        const mf = select.dataset.mf;  // "namespace.key"
+        collectionMappings[mf] = select.value;  // store globally
         updatePreview();
     });
 });
@@ -278,15 +267,16 @@ document.querySelectorAll(".collection-map").forEach(select => {
  * Submit mappings to backend
  */
 document.getElementById("createMetaBtn").onclick = async () => {
+    // Payload contains global mappings only
     const payload = {
         shop: '{{ shop_name or "Not found" }}',
         hmac: '{{ hmac_value or "Not found" }}',
         id_token: '{{ id_token_value or "Not found" }}',
-        product_mappings: productMappings,
-        collection_mappings: collectionMappings
+        product_mappings: productMappings,      // { "namespace.key": "schemaField" }
+        collection_mappings: collectionMappings // { "namespace.key": "schemaField" }
     };
 
-    // Use custom modal or message box instead of alert()
+    // Helper to show temporary messages
     const displayMessage = (msg, isError = false) => {
         const preview = document.getElementById("metafields-preview");
         preview.innerHTML = `<span class="${isError ? 'text-red-500' : 'text-green-600'} font-semibold">${msg}</span>`;
@@ -294,21 +284,27 @@ document.getElementById("createMetaBtn").onclick = async () => {
     };
 
     try {
-        displayMessage("Sending data...");
+        displayMessage("Sending mappings to backend...");
+
         const resp = await fetch("/verify_and_create_metafields", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
+
         const json = await resp.json();
+
         if (resp.ok) {
-            displayMessage(json.message || "Metafields updated successfully!");
+            displayMessage(json.message || "All metafields successfully updated!");
         } else {
             displayMessage(json.message || `Error (${resp.status}): ${JSON.stringify(json)}`, true);
         }
+
+        // Update the preview area to reflect current selections
         updatePreview();
+
     } catch (err) {
-        console.error(err);
+        console.error("Network or fetch error:", err);
         displayMessage("Network Error: Could not reach server.", true);
     }
 };
@@ -346,19 +342,17 @@ document.getElementById("fetchMetaBtn").onclick = async () => {
         // Populate productMappings from existing app-owned JSON
         data.data.products.edges.forEach(product => {
             if (product.node.app_schema && product.node.app_schema.value) {
-                const gid = product.node.id;
                 try {
-                    productMappings[gid] = JSON.parse(product.node.app_schema.value);
-                    // Set the select box value if it exists
-                    Object.entries(productMappings[gid]).forEach(([mfKey, schemaField]) => {
+                    const schemaJson = JSON.parse(product.node.app_schema.value);
+                    Object.entries(schemaJson).forEach(([mfKey, field]) => {
+                        productMappings[mfKey] = field; // global
                         const select = document.querySelector(`.product-map[data-mf="${mfKey}"]`);
-                        if (select) select.value = schemaField;
+                        if (select) select.value = field;
                     });
-                } catch (e) {
-                    console.error("Failed to parse product schema JSON:", e);
-                }
+                } catch (e) { console.error(e); }
             }
         });
+
 
         // Populate collectionMappings from existing app-owned JSON
         data.data.collections.edges.forEach(coll => {
