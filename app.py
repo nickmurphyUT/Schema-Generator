@@ -306,7 +306,7 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
 
 
 @app.route("/")
-def schema_dashboard():
+def home():
     shop = session.get("shop") or request.args.get("shop")
     hmac = session.get("hmac") or request.args.get("hmac")
     id_token = session.get("id_token") or request.args.get("id_token")
@@ -908,7 +908,7 @@ def schema_dashboard():
     hmac = session.get("hmac") or request.args.get("hmac")
     id_token = session.get("id_token") or request.args.get("id_token")
 
-    latest_values["hmac"] = hmac
+    ["hmac"] = hmac
     latest_values["id_token"] = id_token
 
     # Fetch access token from DB
