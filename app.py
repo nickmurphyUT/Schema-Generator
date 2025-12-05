@@ -82,6 +82,13 @@ ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN") # Can be retrieved dynamically 
 SHOPIFY_ADMIN_ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN")
 SHOPIFY_API_VERSION = "2024-01"  # or current stable version
 
+
+# ---------------- DASHBOARD ----------------
+# store the latest dynamic values from Shopify
+latest_values = {
+    "hmac": None,
+    "id_token": None
+}
 # Initialize Flask app
 
 class StoreToken(db.Model):
@@ -858,12 +865,6 @@ def get_subscription_info(subscription_id):
     except Exception as e:
         app.logger.error("Error fetching subscription info: %s", str(e))
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
-# ---------------- DASHBOARD ----------------
-# store the latest dynamic values from Shopify
-latest_values = {
-    "hmac": None,
-    "id_token": None
-}
 
 
 def get_metafield_definitions(shop, access_token):
