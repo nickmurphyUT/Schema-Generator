@@ -1440,6 +1440,9 @@ def verify_and_create_metafields():
                         logging.info(f"Upserted app_schema.prod_schema for {product_gid}: {schema_value}")
                         logging.debug(f"REST response: {resp}")
 
+                        # Add delay
+                        time.sleep(0.5)  # 150ms
+
                     except Exception as e:
                         logging.error(f"Failed processing product {product_gid}: {e}", exc_info=True)
 
