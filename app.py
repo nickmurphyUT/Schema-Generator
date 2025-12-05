@@ -1441,7 +1441,7 @@ def verify_and_create_metafields():
                         logging.debug(f"REST response: {resp}")
 
                         # Add delay
-                        time.sleep(0.5)  # 150ms
+                        time.sleep(2)  # 150ms
 
                     except Exception as e:
                         logging.error(f"Failed processing product {product_gid}: {e}", exc_info=True)
