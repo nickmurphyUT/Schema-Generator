@@ -1258,105 +1258,137 @@ def _find_metafield_by_key_rest(shop, access_token, resource_type, resource_id, 
 
 def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     """
-    Create or update a JSON app-owned metafield on a resource (e.g., product)
-    using the Shopify REST Admin API with Read-Modify-Write (RMW) pattern.
+    Read-modify-write upsert for an app-owned JSON metafield.
+    Creates or updates app_schema.prod_schema on any Shopify resource.
     """
-    METAFIELD_NAMESPACE = "app_schema"
-    METAFIELD_KEY = "prod_schema"
-    
+
+    NAMESPACE = "app_schema"
+    KEY = "prod_schema"
+
+    # -------------------------------
+    # Parse owner_gid safely
+    # -------------------------------
     try:
+        # gid://shopify/Product/12345
         parts = owner_gid.split("/")
-        # remove empty elements caused by double slashes
-        parts = [p for p in parts if p]
-    
-        # expected: ["gid:", "shopify", "Product", "8085504262319"]
+        parts = [p for p in parts if p]  # remove accidental empty segments
+
         if len(parts) != 4 or parts[0] != "gid:":
             raise ValueError()
-    
-        resource_type = parts[2].lower()
+
+        resource_type = parts[2].lower()   # Product → product
         resource_id = parts[3]
+
     except Exception:
-        raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
+        raise ValueError(
+            "Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'."
+        )
 
-
-    # --- RMW Step 1: Read Existing State ---
-    existing_metafield = _find_metafield_by_key_rest(
-        shop, access_token, resource_type, resource_id, METAFIELD_NAMESPACE, METAFIELD_KEY
+    # -------------------------------
+    # Step 1: Read existing metafield (REST)
+    # -------------------------------
+    existing = _find_metafield_by_key_rest(
+        shop,
+        access_token,
+        resource_type,
+        resource_id,
+        NAMESPACE,
+        KEY
     )
 
-    if existing_metafield:
-        metafield_id = existing_metafield.get('id')
-        current_data = {}
-        
-        # RMW Step 2: Deserialization
-        try:
-            # Check if the existing value is an empty string before parsing
-            existing_value_str = existing_metafield.get('value')
-            if existing_value_str:
-                current_data = json.loads(existing_value_str)
-        except json.JSONDecodeError as e:
-            logging.error(f"Failed to parse existing metafield JSON for {owner_gid} (ID: {metafield_id}): {e}. Starting with empty object.")
-            # If parsing fails, start with an empty object to prevent corruption
+    existing_data = {}
+    metafield_id = None
 
-        # RMW Step 3: Object Mutation (Merge new value_dict into existing data)
-        # This prevents the partial value_dict from overwriting all existing keys.
-        merged_data = current_data.copy()
-        merged_data.update(value_dict)
-        
-        # RMW Step 4: Re-serialization
-        final_json_string = json.dumps(merged_data)
-        
-        # Determine URL and Method for Write operation (PUT for Update)
-        url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields/{metafield_id}.json"
-        http_method = requests.put
-        log_action = "Updated"
+    # -------------------------------
+    # Step 2: Parse JSON safely
+    # -------------------------------
+    if existing:
+        metafield_id = existing.get("id")
+        raw_value = existing.get("value")
+
+        if raw_value:
+            try:
+                existing_data = json.loads(raw_value)
+            except json.JSONDecodeError as e:
+                logging.error(
+                    f"Metafield JSON corrupt for {owner_gid} (ID {metafield_id}). "
+                    f"Resetting to empty. Error: {e}"
+                )
+                existing_data = {}
+
+    # -------------------------------
+    # Step 3: Merge existing + new
+    # -------------------------------
+    merged = {**existing_data, **value_dict}
+
+    # -------------------------------
+    # Step 4: Serialize JSON
+    # -------------------------------
+    final_json = json.dumps(merged)
+
+    # -------------------------------
+    # Step 5: Write (POST or PUT)
+    # -------------------------------
+    if metafield_id:
+        # Update
+        url = (
+            f"https://{shop}/admin/api/2026-01/"
+            f"{resource_type}s/{resource_id}/metafields/{metafield_id}.json"
+        )
+        method = requests.put
+        action = "Updated"
     else:
-        # If metafield doesn't exist, we skip RMW and create a new one (POST)
-        final_json_string = json.dumps(value_dict)
-        
-        # Determine URL and Method for Write operation (POST for Create)
-        url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json"
-        http_method = requests.post
-        log_action = "Created"
+        # Create
+        url = (
+            f"https://{shop}/admin/api/2026-01/"
+            f"{resource_type}s/{resource_id}/metafields.json"
+        )
+        method = requests.post
+        action = "Created"
 
-    # 5. Prepare the REST Payload for the Write operation
     payload = {
         "metafield": {
             "type": "json",
-            "namespace": METAFIELD_NAMESPACE,
-            "key": METAFIELD_KEY, 
-            "value": final_json_string  # The full, merged JSON string
+            "namespace": NAMESPACE,
+            "key": KEY,
+            "value": final_json,
         }
     }
-    
+
     headers = {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": access_token
+        "X-Shopify-Access-Token": access_token,
     }
 
-    logging.info(f"Sending {http_method.__name__.upper()} to: {url}")
-    logging.debug(f"Payload (Metafield Value String): {final_json_string}")
+    logging.info(f"[UPsert] {action} metafield at {url}")
+    logging.debug(f"[UPsert] Payload JSON: {final_json}")
 
-    # RMW Step 5: Make the Request (PUT/POST)
-    resp = http_method(url, headers=headers, json=payload)
-    
-    # Check for REST API error status (4xx or 5xx)
+    resp = method(url, headers=headers, json=payload)
     resp.raise_for_status()
-    
-    response_json = resp.json()
-    logging.info(f"{log_action} {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}.")
 
-    return response_json
+    result = resp.json()
+    logging.info(f"[UPsert] {action} {NAMESPACE}.{KEY} for {owner_gid}")
+
+    return result
+
 
 
 
 def fetch_all_products(shop, access_token):
-    """Fetch all products with their metafields (paginated)."""
+    """
+    Fetch *all* products using GraphQL pagination.
+    Returns list of { id }
+    """
+
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
-    headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": access_token}
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token,
+    }
 
     products = []
     cursor = None
+
     while True:
         query = """
         query ($cursor: String) {
@@ -1364,23 +1396,61 @@ def fetch_all_products(shop, access_token):
                 pageInfo { hasNextPage }
                 edges {
                     cursor
-                    node {
-                        id
-                    }
+                    node { id }
                 }
             }
         }
         """
-        variables = {"cursor": cursor}
-        resp = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
+
+        resp = requests.post(
+            url,
+            json={"query": query, "variables": {"cursor": cursor}},
+            headers=headers,
+        )
         resp.raise_for_status()
+
         data = resp.json()["data"]["products"]
+
         for edge in data["edges"]:
             products.append(edge["node"])
+
         if not data["pageInfo"]["hasNextPage"]:
             break
+
         cursor = data["edges"][-1]["cursor"]
+
     return products
+
+
+
+def build_app_schema_json(schema_definition, existing_mfs, mappings):
+    """
+    Build a complete schema JSON filled with:
+    - defaults from schema_definition
+    - overwritten values from Shopify metafields using frontend mappings
+    """
+
+    result = {}
+
+    # Defaults
+    for field, t in schema_definition.items():
+        if t == "string":
+            result[field] = ""
+        elif t == "number":
+            result[field] = 0
+        elif t == "boolean":
+            result[field] = False
+        else:
+            result[field] = None
+
+    # Overwrite defaults with mapped metafields
+    for mf_key, schema_field in mappings.items():
+        if schema_field and mf_key in existing_mfs:
+            result[schema_field] = existing_mfs[mf_key]
+
+    return result
+
+
 
 def build_app_schema_json(schema_definition, existing_mfs, mappings):
     """
@@ -1414,10 +1484,19 @@ def build_app_schema_json(schema_definition, existing_mfs, mappings):
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
+    """
+    Full background job:
+    - Fetch all products
+    - Read product metafields
+    - Build complete schema JSON
+    - Upsert into app_schema.prod_schema
+    """
+
     data = request.json
-    # These are global mappings by metafield key, not per product
+
     product_mappings = data.get("product_mappings", {})
     collection_mappings = data.get("collection_mappings", {})
+
     shop = data.get("shop") or session.get("shop")
     schema_definition = data.get("schema") or generate_default_organization_schema()
     access_token = get_access_token_for_shop(shop)
@@ -1425,47 +1504,44 @@ def verify_and_create_metafields():
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    def process_metafields():
+    def run():
         try:
             products = fetch_all_products(shop, access_token)
-            logging.info(f"Fetched {len(products)} products for shop {shop}")
+            logging.info(f"Found {len(products)} products.")
 
-            for i in range(0, len(products), BATCH_SIZE):
-                batch = products[i:i+BATCH_SIZE]
-                for product in batch:
-                    product_gid = product["id"]
-                    product_id = product_gid.split("/")[-1]
+            for idx, product in enumerate(products):
+                gid = product["id"]
+                pid = gid.split("/")[-1]
 
-                    try:
-                        # 1️⃣ Fetch current metafields from Shopify
-                        existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        logging.info(f"Fetched metafields for {product_gid}: {existing_mfs}")
+                try:
+                    # Read actual metafields
+                    existing_mfs = fetch_product_metafields(shop, access_token, pid)
+                    logging.info(f"[{idx}] {gid} metafields: {existing_mfs}")
 
-                        # 2️⃣ Build schema JSON using global mappings
-                        schema_json = build_app_schema_json(schema_definition, existing_mfs, product_mappings)
-                        logging.info(f"Built schema JSON for {product_gid}: {schema_json}")
+                    # Build schema JSON
+                    schema_json = build_app_schema_json(
+                        schema_definition, existing_mfs, product_mappings
+                    )
+                    logging.info(f"[{idx}] Built schema JSON: {schema_json}")
 
-                        # 3️⃣ Upsert JSON into app-owned metafield
-                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_json)
-                        logging.info(f"Upserted app_schema.prod_schema for {product_gid}")
-                        logging.debug(f"Upsert response: {resp}")
+                    # Upsert
+                    upsert_app_metafield(shop, access_token, gid, schema_json)
+                    logging.info(f"[{idx}] Upsert successful for {gid}")
 
-                        # 4️⃣ Optional delay to avoid rate limits
-                        time.sleep(2)
+                    time.sleep(2)  # avoid API throttling
 
-                    except Exception as e:
-                        logging.error(f"Failed processing product {product_gid}: {e}", exc_info=True)
+                except Exception as e:
+                    logging.error(f"[{idx}] Failed product {gid}: {e}", exc_info=True)
 
-            logging.info(f"Completed background processing for shop {shop}")
+            logging.info("Completed upserting metafields for all products.")
 
         except Exception as e:
-            logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
+            logging.error(f"Fatal background error: {e}", exc_info=True)
 
-    threading.Thread(target=process_metafields, daemon=True).start()
-    return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+    threading.Thread(target=run, daemon=True).start()
 
-
-
+    return jsonify({"message": "Background process started."})
+    
 @app.route("/get_metafields", methods=["POST"])
 def get_metafields():
     data = request.json
