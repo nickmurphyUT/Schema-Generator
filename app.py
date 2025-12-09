@@ -1412,6 +1412,60 @@ def build_app_schema_json(schema_definition, existing_mfs, mappings):
 
 
 
+def build_schema_from_mappings(product_data, existing_mfs, mappings):
+    """
+    Build a schema JSON containing only the fields selected on the frontend.
+
+    product_data: dict of product attributes (title, vendor, variants, etc.)
+    existing_mfs: dict of Shopify metafields {namespace.key: value}
+    mappings: list of dicts [{schemaField, sourceField}] from frontend
+    """
+    schema_json = {}
+
+    for mapping in mappings:
+        schema_field = mapping.get("schemaField")
+        source_field = mapping.get("sourceField")
+        if not schema_field or not source_field:
+            continue
+
+        value = None
+
+        if source_field.startswith("metafield: "):
+            # Extract the namespace.key from the source_field
+            mf_key = source_field.replace("metafield: ", "").strip()
+            value = existing_mfs.get(mf_key)
+        else:
+            # Handle standard product attributes
+            value = extract_product_attribute(product_data, source_field)
+
+        if value is not None:
+            schema_json[schema_field] = value
+
+    return schema_json
+
+
+def extract_product_attribute(product_data, attr_path):
+    """
+    Extract a value from product_data using dot/bracket notation like:
+    - 'product.title'
+    - 'variants[].sku'
+    - 'product.tags[]'
+    """
+    try:
+        if attr_path.startswith("product."):
+            key = attr_path.split(".", 1)[1]
+            return product_data.get(key)
+        elif attr_path.startswith("variants[]."):
+            key = attr_path.split("[]", 1)[1].lstrip(".")
+            return [v.get(key) for v in product_data.get("variants", []) if key in v]
+        elif attr_path.endswith("[]"):
+            key = attr_path.rstrip("[]")
+            return product_data.get(key)
+        return product_data.get(attr_path)
+    except Exception:
+        return None
+
+
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
@@ -1420,9 +1474,8 @@ def verify_and_create_metafields():
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    # New frontend payload: dynamic schema rows
-    product_schema_mappings = data.get("product_schema_mappings", [])  # list of {schemaField, sourceField}
-    schema_definition = data.get("schema") or generate_default_organization_schema()
+    # frontend payload: dynamic schema rows
+    product_schema_mappings = data.get("product_schema_mappings", [])
 
     def process_products():
         try:
@@ -1440,10 +1493,8 @@ def verify_and_create_metafields():
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
                         logging.info(f"Fetched metafields for {product_gid}: {existing_mfs}")
 
-                        # 2️⃣ Build schema JSON from dynamic mappings
-                        # Convert list of mappings to dict: {sourceField: schemaField}
-                        mapping_dict = {m['sourceField']: m['schemaField'] for m in product_schema_mappings if m['schemaField'] and m['sourceField']}
-                        schema_json = build_app_schema_json(schema_definition, existing_mfs, mapping_dict)
+                        # 2️⃣ Build schema JSON from frontend mappings
+                        schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
                         logging.info(f"Built schema JSON for {product_gid}: {schema_json}")
 
                         # 3️⃣ Upsert JSON into app-owned metafield
@@ -1462,10 +1513,10 @@ def verify_and_create_metafields():
         except Exception as e:
             logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
 
-    # Run in background to avoid blocking
     threading.Thread(target=process_products, daemon=True).start()
 
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+
 
 
 @app.route("/get_metafields", methods=["POST"])
