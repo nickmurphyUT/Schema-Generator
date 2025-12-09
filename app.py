@@ -1414,11 +1414,8 @@ def build_app_schema_json(schema_definition, existing_mfs, mappings):
 
 def build_schema_from_mappings(product_data, existing_mfs, mappings):
     """
-    Build a schema JSON containing only the fields selected on the frontend.
-
-    product_data: dict of product attributes (title, vendor, variants, etc.)
-    existing_mfs: dict of Shopify metafields {namespace.key: value}
-    mappings: list of dicts [{schemaField, sourceField}] from frontend
+    Build a schema JSON containing fields selected on the frontend.
+    Ensures that product attributes like 'title' are always included, even if empty.
     """
     schema_json = {}
 
@@ -1431,17 +1428,19 @@ def build_schema_from_mappings(product_data, existing_mfs, mappings):
         value = None
 
         if source_field.startswith("metafield: "):
-            # Extract the namespace.key from the source_field
             mf_key = source_field.replace("metafield: ", "").strip()
-            value = existing_mfs.get(mf_key)
+            value = existing_mfs.get(mf_key, "")
         else:
             # Handle standard product attributes
             value = extract_product_attribute(product_data, source_field)
+            # Force inclusion: if value is None, default to empty string
+            if value is None:
+                value = ""
 
-        if value is not None:
-            schema_json[schema_field] = value
+        schema_json[schema_field] = value
 
     return schema_json
+
 
 
 def extract_product_attribute(product_data, attr_path):
@@ -1454,16 +1453,17 @@ def extract_product_attribute(product_data, attr_path):
     try:
         if attr_path.startswith("product."):
             key = attr_path.split(".", 1)[1]
-            return product_data.get(key)
+            return product_data.get(key, "")
         elif attr_path.startswith("variants[]."):
             key = attr_path.split("[]", 1)[1].lstrip(".")
-            return [v.get(key) for v in product_data.get("variants", []) if key in v]
+            return [v.get(key, "") for v in product_data.get("variants", [])]
         elif attr_path.endswith("[]"):
             key = attr_path.rstrip("[]")
-            return product_data.get(key)
-        return product_data.get(attr_path)
+            return product_data.get(key, [])
+        return product_data.get(attr_path, "")
     except Exception:
-        return None
+        return ""
+
 
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
