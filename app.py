@@ -1351,12 +1351,16 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
 
 
 def fetch_all_products(shop, access_token):
-    """Fetch all products with their metafields (paginated)."""
+    """Fetch full product objects (title, vendor, etc) using GraphQL pagination."""
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
-    headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": access_token}
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
 
     products = []
     cursor = None
+
     while True:
         query = """
         query ($cursor: String) {
@@ -1366,21 +1370,41 @@ def fetch_all_products(shop, access_token):
                     cursor
                     node {
                         id
+                        title
+                        vendor
+                        handle
+                        description
+                        bodyHtml
+                        status
+                        tags
+                        createdAt
+                        updatedAt
                     }
                 }
             }
         }
         """
-        variables = {"cursor": cursor}
-        resp = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
+
+        resp = requests.post(
+            url,
+            json={"query": query, "variables": {"cursor": cursor}},
+            headers=headers
+        )
         resp.raise_for_status()
+
         data = resp.json()["data"]["products"]
+
+        # append full product objects
         for edge in data["edges"]:
             products.append(edge["node"])
+
         if not data["pageInfo"]["hasNextPage"]:
             break
+
         cursor = data["edges"][-1]["cursor"]
+
     return products
+
 
 def build_app_schema_json(schema_definition, existing_mfs, mappings):
     """
