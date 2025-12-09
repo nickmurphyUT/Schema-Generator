@@ -1304,7 +1304,7 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
         merged_data.update(value_dict)
         
         # RMW Step 4: Re-serialization
-        final_json_string = json.dumps(merged_data)
+        final_json_string = json.dumps(value_dict)
         
         # Determine URL and Method for Write operation (PUT for Update)
         url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields/{metafield_id}.json"
