@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,7 +10,7 @@
         /* Custom font import for aesthetics */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        /* Style for the select element options (makes them look cleaner inside the table) */
+        /* Style for the select element options */
         .select-field {
             padding: 4px 8px;
             border-radius: 4px;
@@ -26,8 +25,6 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-
-
 
 <!-- PRODUCT SCHEMA MAPPING UI -->
 <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-8">
@@ -45,6 +42,14 @@
         class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
         + Add Schema Mapping
     </button>
+
+    <button id="sendToBackendBtn"
+        class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
+        Save & Generate Schema Metafields
+    </button>
+
+    <!-- Status preview -->
+    <div id="metafields-preview" class="mt-4 text-sm text-gray-500"></div>
 
 </div>
 
@@ -95,22 +100,15 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
     row.dataset.rowId = id;
 
     row.innerHTML = `
-
         <!-- Schema Field -->
         <div class="flex-1 flex flex-col gap-2">
             <label class="text-sm text-gray-600 font-medium">Schema Field</label>
-
-            <!-- Dropdown of common Schema.org fields -->
             <select class="schema-select p-2 border rounded bg-white">
                 <option value="">Select Schema Field</option>
                 ${commonSchemaFields.map(f => `
-                    <option value="${f}" ${defaultSchema === f ? "selected" : ""}>
-                        ${f}
-                    </option>
+                    <option value="${f}" ${defaultSchema === f ? "selected" : ""}>${f}</option>
                 `).join("")}
             </select>
-
-            <!-- Text input for custom schema field -->
             <input type="text"
                 class="schema-input p-2 border rounded"
                 placeholder="Or write your own…"
@@ -129,9 +127,7 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
         </div>
 
         <!-- Delete Button -->
-        <button class="delete-row bg-red-500 text-white px-3 py-2 rounded self-center">
-            X
-        </button>
+        <button class="delete-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
     `;
 
     /* DELETE functionality */
@@ -167,8 +163,43 @@ function updateMappings() {
 document.getElementById("addMappingBtn").onclick = () => {
     createSchemaRow();
 };
-</script>
 
+/* ============= SEND TO BACKEND BUTTON ============= */
+document.getElementById("sendToBackendBtn").onclick = async () => {
+    const payload = {
+        shop: '{{ shop_name or "Not found" }}',
+        hmac: '{{ hmac_value or "Not found" }}',
+        id_token: '{{ id_token_value or "Not found" }}',
+        product_schema_mappings: mappings
+    };
+
+    const previewArea = document.getElementById("metafields-preview");
+    previewArea.innerHTML = '<span class="text-gray-500">Sending schema mappings…</span>';
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await resp.json();
+
+        if (resp.ok) {
+            previewArea.innerHTML =
+                `<span class="text-green-600 font-semibold">${result.message || "Saved successfully!"}</span>`;
+        } else {
+            previewArea.innerHTML =
+                `<span class="text-red-500 font-semibold">Error: ${result.error || JSON.stringify(result)}</span>`;
+        }
+
+    } catch (err) {
+        console.error("Schema save error:", err);
+        previewArea.innerHTML =
+            '<span class="text-red-500 font-semibold">Network Error: Could not reach server.</span>';
+    }
+};
+</script>
 
 </body>
 </html>
