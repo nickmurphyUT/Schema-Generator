@@ -1415,17 +1415,16 @@ def build_app_schema_json(schema_definition, existing_mfs, mappings):
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    # These are global mappings by metafield key, not per product
-    product_mappings = data.get("product_mappings", {})
-    collection_mappings = data.get("collection_mappings", {})
     shop = data.get("shop") or session.get("shop")
-    schema_definition = data.get("schema") or generate_default_organization_schema()
     access_token = get_access_token_for_shop(shop)
-
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    def process_metafields():
+    # New frontend payload: dynamic schema rows
+    product_schema_mappings = data.get("product_schema_mappings", [])  # list of {schemaField, sourceField}
+    schema_definition = data.get("schema") or generate_default_organization_schema()
+
+    def process_products():
         try:
             products = fetch_all_products(shop, access_token)
             logging.info(f"Fetched {len(products)} products for shop {shop}")
@@ -1437,12 +1436,14 @@ def verify_and_create_metafields():
                     product_id = product_gid.split("/")[-1]
 
                     try:
-                        # 1️⃣ Fetch current metafields from Shopify
+                        # 1️⃣ Fetch current Shopify metafields
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
                         logging.info(f"Fetched metafields for {product_gid}: {existing_mfs}")
 
-                        # 2️⃣ Build schema JSON using global mappings
-                        schema_json = build_app_schema_json(schema_definition, existing_mfs, product_mappings)
+                        # 2️⃣ Build schema JSON from dynamic mappings
+                        # Convert list of mappings to dict: {sourceField: schemaField}
+                        mapping_dict = {m['sourceField']: m['schemaField'] for m in product_schema_mappings if m['schemaField'] and m['sourceField']}
+                        schema_json = build_app_schema_json(schema_definition, existing_mfs, mapping_dict)
                         logging.info(f"Built schema JSON for {product_gid}: {schema_json}")
 
                         # 3️⃣ Upsert JSON into app-owned metafield
@@ -1450,8 +1451,8 @@ def verify_and_create_metafields():
                         logging.info(f"Upserted app_schema.prod_schema for {product_gid}")
                         logging.debug(f"Upsert response: {resp}")
 
-                        # 4️⃣ Optional delay to avoid rate limits
-                        time.sleep(2)
+                        # 4️⃣ Optional delay for Shopify rate limits
+                        time.sleep(1)
 
                     except Exception as e:
                         logging.error(f"Failed processing product {product_gid}: {e}", exc_info=True)
@@ -1461,9 +1462,10 @@ def verify_and_create_metafields():
         except Exception as e:
             logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
 
-    threading.Thread(target=process_metafields, daemon=True).start()
-    return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+    # Run in background to avoid blocking
+    threading.Thread(target=process_products, daemon=True).start()
 
+    return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
 
 
 @app.route("/get_metafields", methods=["POST"])
