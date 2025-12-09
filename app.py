@@ -1469,6 +1469,7 @@ def extract_product_attribute(product_data, attr_path):
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
+    logging.info(f"INPUT: {data}")
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
     if not access_token:
