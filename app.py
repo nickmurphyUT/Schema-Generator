@@ -1534,9 +1534,9 @@ def verify_and_create_metafields():
                         # 2️⃣ Build schema JSON from frontend mappings
                         schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
                         logging.info(f"Built schema JSON for {product_gid}: {schema_json}")
-                        schema_metafield_json = wrap_flattened_json_in_schema(schema_json)
+                        schema_json = wrap_flattened_json_in_schema(schema_json)
                         # 3️⃣ Upsert JSON into app-owned metafield
-                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_metafield_json)
+                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_json)
                         logging.info(f"Upserted app_schema.prod_schema for {product_gid}")
                         logging.debug(f"Upsert response: {resp}")
 
