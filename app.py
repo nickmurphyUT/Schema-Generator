@@ -1491,6 +1491,7 @@ def verify_and_create_metafields():
                         # 1️⃣ Fetch current Shopify metafields
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
                         logging.info(f"Fetched metafields for {product_gid}: {existing_mfs}")
+                        logging.info(f"Fetched PROD DATA for {product}")
 
                         # 2️⃣ Build schema JSON from frontend mappings
                         schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
