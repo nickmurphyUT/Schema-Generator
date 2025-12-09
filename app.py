@@ -1486,7 +1486,7 @@ def extract_product_attribute(product_data, attr_path):
         return ""
 
 
-def (flattened_json):
+def wrap_flattened_json_in_schema(flattened_json):
     """
     Takes a dict and wraps it in a minimal schema.org Product structure
     """
