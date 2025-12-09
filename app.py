@@ -1444,25 +1444,24 @@ def build_schema_from_mappings(product_data, existing_mfs, mappings):
 
 
 def extract_product_attribute(product_data, attr_path):
-    """
-    Extract a value from product_data using dot/bracket notation like:
-    - 'product.title'
-    - 'variants[].sku'
-    - 'product.tags[]'
-    """
+     logging.info(f"Product Data: {product_data}")
+    # Support `product.x` syntax even though product_data has no `product` root
+    if attr_path.startswith("product."):
+        attr_path = attr_path.replace("product.", "", 1)
+
     try:
-        if attr_path.startswith("product."):
-            key = attr_path.split(".", 1)[1]
-            return product_data.get(key, "")
-        elif attr_path.startswith("variants[]."):
-            key = attr_path.split("[]", 1)[1].lstrip(".")
-            return [v.get(key, "") for v in product_data.get("variants", [])]
-        elif attr_path.endswith("[]"):
-            key = attr_path.rstrip("[]")
-            return product_data.get(key, [])
-        return product_data.get(attr_path, "")
+        # simple top-level attribute
+        if "." not in attr_path:
+            return product_data.get(attr_path, "")
+        # nested future-proofing
+        parts = attr_path.split(".")
+        value = product_data
+        for p in parts:
+            value = value.get(p, "")
+        return value
     except Exception:
         return ""
+
 
 
 
