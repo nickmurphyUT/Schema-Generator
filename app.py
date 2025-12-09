@@ -1444,7 +1444,6 @@ def build_schema_from_mappings(product_data, existing_mfs, mappings):
 
 
 def extract_product_attribute(product_data, attr_path):
-     logging.info(f"Product Data: {product_data}")
     # Support `product.x` syntax even though product_data has no `product` root
     if attr_path.startswith("product."):
         attr_path = attr_path.replace("product.", "", 1)
