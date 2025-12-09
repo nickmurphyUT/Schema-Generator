@@ -1486,6 +1486,20 @@ def extract_product_attribute(product_data, attr_path):
         return ""
 
 
+def wrap_flattened_json_in_schema(flattened_json):
+    """
+    Takes a dict and wraps it in a minimal schema.org Product structure
+    """
+    schema_wrapped = {
+        "@context": "http://schema.org/",
+        "@type": "Product"
+    }
+
+    # Merge flattened JSON inside
+    schema_wrapped.update(flattened_json)
+
+    return schema_wrapped
+
 
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
@@ -1520,7 +1534,7 @@ def verify_and_create_metafields():
                         # 2️⃣ Build schema JSON from frontend mappings
                         schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
                         logging.info(f"Built schema JSON for {product_gid}: {schema_json}")
-
+                        schema_metafield_json = wrap_flattened_json_in_schema(schema_json)
                         # 3️⃣ Upsert JSON into app-owned metafield
                         resp = upsert_app_metafield(shop, access_token, product_gid, schema_json)
                         logging.info(f"Upserted app_schema.prod_schema for {product_gid}")
