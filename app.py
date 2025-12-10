@@ -1537,7 +1537,7 @@ def ensure_metaobject_definition(shop, access_token):
       }
     }
     """
-    resp2 = shopify_graphql(shop, access_token, create_mut)
+    resp2 = query_shopify_graphql(shop, access_token, create_mut)
     return resp2["data"]["metaobjectDefinitionCreate"]["createdDefinition"]["id"]
 
 
@@ -1552,7 +1552,7 @@ def get_config_metaobject_entry(shop, access_token):
       }
     }
     """
-    resp = shopify_graphql(shop, access_token, query)
+    resp = query_shopify_graphql(shop, access_token, query)
     nodes = resp.get("data", {}).get("metaobjects", {}).get("nodes", [])
     return nodes[0] if nodes else None
 
@@ -1576,7 +1576,7 @@ def create_config_entry(shop, access_token, mappings_json):
         "  }"
         "}"
     )
-    return shopify_graphql(shop, access_token, mutation)
+    return query_shopify_graphql(shop, access_token, mutation)
 
 def update_config_entry(shop, access_token, entry_id, mappings_json):
     mappings_str = json.dumps(mappings_json)
@@ -1599,7 +1599,7 @@ def update_config_entry(shop, access_token, entry_id, mappings_json):
         "}"
     )
 
-    return shopify_graphql(shop, access_token, mutation)
+    return query_shopify_graphql(shop, access_token, mutation)
 
 
 
