@@ -78,17 +78,8 @@ const productFieldOptions = [
 ];
 
 /* ============= COMMON SCHEMA FIELDS ============= */
-const commonSchemaFields = [
-    "brand",
-    "sku",
-    "gtin",
-    "mpn",
-    "description",
-    "color",
-    "material",
-    "category",
-    "custom…"
-];
+// Replace hard-coded fields with cached org schema fields
+const commonSchemaFields = {{ org_schema_fields | tojson }};
 
 /* ============= CREATE ROW ============= */
 function createSchemaRow(defaultSchema = "", defaultSource = "") {
@@ -205,7 +196,6 @@ const savedMappings = {{ config_entry.get("product_schema_mappings", []) | tojso
 if (savedMappings.length > 0) {
     savedMappings.forEach(m => createSchemaRow(m.schemaField, m.sourceField));
 } else {
-    // Start with one empty row
     createSchemaRow();
 }
 </script>
