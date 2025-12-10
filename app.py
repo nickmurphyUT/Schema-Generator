@@ -1502,73 +1502,67 @@ def wrap_flattened_json_in_schema(flattened_json):
 
 
 #metaobject helper functions for config file
-
 def ensure_metaobject_definition(shop, access_token):
     # First, check if the metaobject definition already exists
-    query = {
-        "query": """
-        query {
-          metaobjectDefinitionByType(type: "app_schema") {
-            id
-          }
-        }
-        """
+    query = """
+    query {
+      metaobjectDefinitionByType(type: "app_schema") {
+        id
+      }
     }
+    """
 
     resp = query_shopify_graphql(shop, access_token, query)
     existing = resp.get("data", {}).get("metaobjectDefinitionByType")
 
     if existing and "id" in existing:
-        logging.info("Metaobject definition already exists: {}".format(existing["id"]))
+        logging.info(f"Metaobject definition already exists: {existing['id']}")
         return existing["id"]
 
     logging.info("Metaobject definition not found, creating...")
 
-    # Corrected mutation with the proper string type for fieldDefinitions
-    create_query = {
-        "query": """
-        mutation {
-          metaobjectDefinitionCreate(definition: {
-            name: "App Schema",
-            type: "app_schema",
-            fieldDefinitions: [
-              {
-                name: "config",
-                key: "config",
-                type: "single_line_text_field",
-                required: false
-              }
-            ]
-          }) {
-            metaobjectDefinition {
-              id
-            }
-            userErrors {
-              message
-              field
-            }
+    create_query = """
+    mutation {
+      metaobjectDefinitionCreate(definition: {
+        name: "App Schema",
+        type: "app_schema",
+        fieldDefinitions: [
+          {
+            name: "config",
+            key: "config",
+            type: "single_line_text_field",
+            required: false
           }
+        ]
+      }) {
+        metaobjectDefinition {
+          id
         }
-        """
+        userErrors {
+          message
+          field
+        }
+      }
     }
+    """
 
     resp2 = query_shopify_graphql(shop, access_token, create_query)
-
-    logging.info("create response: {}".format(resp2))
+    logging.info(f"create response: {resp2}")
 
     node = resp2.get("data", {}).get("metaobjectDefinitionCreate", {})
     errors = node.get("userErrors")
     created = node.get("metaobjectDefinition")
 
     if errors:
-        logging.error("Shopify metaobjectDefinitionCreate userErrors: {}".format(errors))
+        logging.error(f"Shopify metaobjectDefinitionCreate userErrors: {errors}")
         raise Exception("Failed to create metaobject definition")
 
     if not created:
-        logging.error("Shopify metaobjectDefinitionCreate missing metaobjectDefinition: {}".format(resp2))
+        logging.error(f"Shopify metaobjectDefinitionCreate missing metaobjectDefinition: {resp2}")
         raise Exception("Failed to create metaobject definition")
 
     return created["id"]
+
 
 
 def ensure_config_entry(shop, access_token, product_schema_mappings):
