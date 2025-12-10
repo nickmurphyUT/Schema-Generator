@@ -311,6 +311,51 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
         app.logger.error(f"Error in query_shopify_graphql_webhook: {str(e)}")
         return {"error": str(e), "details": str(e)}  # Return a more readable error
 
+def fetch_config_entry(shop, access_token):
+    """
+    Fetch the app_schema metaobject for this shop and return the config JSON
+    """
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json",
+    }
+
+    query = {
+        "query": """
+        query {
+          metaobjects(type: "app_schema", first: 1) {
+            edges {
+              node {
+                id
+                config: field(key: "config") {
+                  value
+                }
+              }
+            }
+          }
+        }
+        """
+    }
+
+    r = requests.post(
+        "https://{}/admin/api/2025-10/graphql.json".format(shop),
+        headers=headers,
+        data=json.dumps(query)
+    )
+    r.raise_for_status()
+    resp = r.json()
+    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
+
+    if not edges:
+        return {}  # no config object yet
+
+    config_str = edges[0]["node"]["config"]["value"]
+    try:
+        return json.loads(config_str)
+    except Exception:
+        logging.warning("Failed to parse config JSON, returning raw string")
+        return {"raw": config_str}
+
 
 @app.route("/")
 def home():
@@ -327,14 +372,20 @@ def home():
 
     product_metafields = []
     collection_metafields = []
+    config_entry = {}
 
     if access_token:
         try:
+            # Fetch product & collection metafield definitions
             meta_data = get_metafield_definitions(shop, access_token)
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
+
+            # Fetch the config metaobject to pre-populate frontend
+            config_entry = fetch_config_entry(shop, access_token)
+
         except Exception as e:
-            print("Error fetching metafield definitions:", str(e))
+            print("Error fetching metafield definitions or config entry:", str(e))
 
     # ✅ Fetch cached organization fields
     org_fields = fetch_organization_schema_properties()  # will use cache if valid
@@ -353,10 +404,12 @@ def home():
         shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token,
-        product_metafields=product_metafields,      
+        product_metafields=product_metafields,
         collection_metafields=collection_metafields,
-        org_schema_fields=org_fields   # <-- pass cached org schema to template
+        org_schema_fields=org_fields,   # cached org schema
+        config_entry=config_entry       # <-- pass existing config to template
     )
+
     
 #access token gen
 @app.route("/auth")
