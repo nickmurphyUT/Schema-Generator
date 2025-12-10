@@ -1501,23 +1501,150 @@ def wrap_flattened_json_in_schema(flattened_json):
     return schema_wrapped
 
 
+#metaobject helper functions for config file
+
+def ensure_metaobject_definition(shop, access_token):
+    query = """
+    {
+      metaobjectDefinitionByHandle(handle: "app_config") {
+        id
+      }
+    }
+    """
+    resp = shopify_graphql(shop, access_token, query)
+
+    # already exists
+    existing = resp.get("data", {}).get("metaobjectDefinitionByHandle")
+    if existing:
+        return existing["id"]
+
+    # create it
+    create_mut = """
+    mutation CreateMetaobjectDefinition {
+      metaobjectDefinitionCreate(definition: {
+        name: "App Config"
+        handle: "app_config"
+        fieldDefinitions: [
+          {
+            name: "product_schema_mappings"
+            key: "product_schema_mappings"
+            type: single_line_text_field
+          }
+        ]
+      }) {
+        createdDefinition { id }
+        userErrors { field message }
+      }
+    }
+    """
+    resp2 = shopify_graphql(shop, access_token, create_mut)
+    return resp2["data"]["metaobjectDefinitionCreate"]["createdDefinition"]["id"]
+
+
+def get_config_metaobject_entry(shop, access_token):
+    query = """
+    {
+      metaobjects(type: "app_config", first: 1) {
+        nodes {
+          id
+          product_schema_mappings: field(key: "product_schema_mappings") { value }
+        }
+      }
+    }
+    """
+    resp = shopify_graphql(shop, access_token, query)
+    nodes = resp.get("data", {}).get("metaobjects", {}).get("nodes", [])
+    return nodes[0] if nodes else None
+
+def create_config_entry(shop, access_token, mappings_json):
+    mappings_str = json.dumps(mappings_json)
+    quoted = json.dumps(mappings_str)
+
+    mutation = (
+        "mutation {"
+        "  metaobjectCreate(metaobject: {"
+        '    type: "app_config"'
+        "    fields: ["
+        "      {"
+        '        key: "product_schema_mappings"'
+        "        value: " + quoted +
+        "      }"
+        "    ]"
+        "  }) {"
+        "    metaobject { id }"
+        "    userErrors { field message }"
+        "  }"
+        "}"
+    )
+    return shopify_graphql(shop, access_token, mutation)
+
+def update_config_entry(shop, access_token, entry_id, mappings_json):
+    mappings_str = json.dumps(mappings_json)
+    quoted_mappings = json.dumps(mappings_str)
+    quoted_id = json.dumps(entry_id)[1:-1]  # remove extra quotes for GID
+
+    mutation = (
+        "mutation {"
+        "  metaobjectUpdate(id: \"" + quoted_id + "\", metaobject: {"
+        "    fields: ["
+        "      {"
+        '        key: "product_schema_mappings"'
+        "        value: " + quoted_mappings +
+        "      }"
+        "    ]"
+        "  }) {"
+        "    metaobject { id }"
+        "    userErrors { field message }"
+        "  }"
+        "}"
+    )
+
+    return shopify_graphql(shop, access_token, mutation)
+
+
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    logging.info(f"INPUT: {data}")
+    logging.info("INPUT: %s", data)
+
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    # frontend payload: dynamic schema rows
+    # FRONTEND CONFIG TO SAVE
     product_schema_mappings = data.get("product_schema_mappings", [])
 
+    # 1️⃣ Ensure we have metaobject definition
+    ensure_metaobject_definition(shop, access_token)
+
+    # 2️⃣ Upsert config entry
+    entry = get_config_metaobject_entry(shop, access_token)
+
+    if entry:
+        logging.info("Updating config metaobject entry…")
+        update_config_entry(
+            shop,
+            access_token,
+            entry["id"],
+            {"product_schema_mappings": product_schema_mappings}
+        )
+    else:
+        logging.info("Creating new config metaobject entry…")
+        create_config_entry(
+            shop,
+            access_token,
+            {"product_schema_mappings": product_schema_mappings}
+        )
+
+    logging.info("Config saved successfully.")
+
+    # ------------ Continue your product-thread code ------------
     def process_products():
         try:
             products = fetch_all_products(shop, access_token)
-            logging.info(f"Fetched {len(products)} products for shop {shop}")
+            logging.info("Fetched %d products for shop %s", len(products), shop)
 
             for i in range(0, len(products), BATCH_SIZE):
                 batch = products[i:i+BATCH_SIZE]
@@ -1526,34 +1653,29 @@ def verify_and_create_metafields():
                     product_id = product_gid.split("/")[-1]
 
                     try:
-                        # 1️⃣ Fetch current Shopify metafields
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        logging.info(f"Fetched metafields for {product_gid}: {existing_mfs}")
-                        logging.info(f"Fetched PROD DATA for {product}")
 
-                        # 2️⃣ Build schema JSON from frontend mappings
-                        schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
-                        logging.info(f"Built schema JSON for {product_gid}: {schema_json}")
+                        schema_json = build_schema_from_mappings(
+                            product, existing_mfs, product_schema_mappings
+                        )
+
                         schema_json = wrap_flattened_json_in_schema(schema_json)
-                        # 3️⃣ Upsert JSON into app-owned metafield
-                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_json)
-                        logging.info(f"Upserted app_schema.prod_schema for {product_gid}")
-                        logging.debug(f"Upsert response: {resp}")
+                        upsert_app_metafield(shop, access_token, product_gid, schema_json)
 
-                        # 4️⃣ Optional delay for Shopify rate limits
                         time.sleep(1)
 
                     except Exception as e:
-                        logging.error(f"Failed processing product {product_gid}: {e}", exc_info=True)
+                        logging.error("Failed processing %s: %s", product_gid, e, exc_info=True)
 
-            logging.info(f"Completed background processing for shop {shop}")
+            logging.info("Completed background processing for shop %s", shop)
 
         except Exception as e:
-            logging.error(f"Background process failed for shop {shop}: {e}", exc_info=True)
+            logging.error("Background process failed for shop %s: %s", shop, e, exc_info=True)
 
     threading.Thread(target=process_products, daemon=True).start()
 
-    return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+    return jsonify({"message": "Config saved and background processing started."})
+
 
 
 
