@@ -1504,12 +1504,6 @@ def wrap_flattened_json_in_schema(flattened_json):
 #metaobject helper functions for config file
 
 def ensure_metaobject_definition(shop, access_token):
-    url = "https://" + shop + "/admin/api/2024-10/graphql.json"
-    headers = {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": access_token
-    }
-
     query = {
         "query": """
         query {
@@ -1520,22 +1514,26 @@ def ensure_metaobject_definition(shop, access_token):
         """
     }
 
-    resp = requests.post(url, headers=headers, json=query).json()
+    resp = shopify_graphql(shop, access_token, query)
+    existing = resp.get("data", {}).get("metaobjectDefinitionByType")
 
-    # If definition already exists, return it
-    if resp.get("data") and resp["data"].get("metaobjectDefinitionByType"):
-        return resp["data"]["metaobjectDefinitionByType"]["id"]
+    if existing and "id" in existing:
+        logging.info("Metaobject definition already exists: {}".format(existing["id"]))
+        return existing["id"]
 
-    # Create definition if it doesn't exist
+    logging.info("Metaobject definition not found, creating...")
+
     create_query = {
         "query": """
         mutation {
           metaobjectDefinitionCreate(definition: {
             name: "App Schema",
             type: "app_schema",
-            fieldDefinitions: []
+            fieldDefinitions: [
+              { name: "config", key: "config", type: SINGLE_LINE_TEXT, required: false }
+            ]
           }) {
-            createdDefinition {
+            metaobjectDefinition {
               id
             }
             userErrors {
@@ -1547,15 +1545,120 @@ def ensure_metaobject_definition(shop, access_token):
         """
     }
 
-    resp2 = requests.post(url, headers=headers, json=create_query).json()
+    resp2 = shopify_graphql(shop, access_token, create_query)
 
-    # Log full error response when failing
-    if "data" not in resp2 or resp2["data"]["metaobjectDefinitionCreate"].get("createdDefinition") is None:
-        print("Shopify metaobjectDefinitionCreate error:")
-        print(resp2)
+    logging.info("create response: {}".format(resp2))
+
+    node = resp2.get("data", {}).get("metaobjectDefinitionCreate", {})
+    errors = node.get("userErrors")
+    created = node.get("metaobjectDefinition")
+
+    if errors:
+        logging.error("Shopify metaobjectDefinitionCreate userErrors: {}".format(errors))
         raise Exception("Failed to create metaobject definition")
 
-    return resp2["data"]["metaobjectDefinitionCreate"]["createdDefinition"]["id"]
+    if not created:
+        logging.error("Shopify metaobjectDefinitionCreate missing metaobjectDefinition: {}".format(resp2))
+        raise Exception("Failed to create metaobject definition")
+
+    return created["id"]
+
+def ensure_config_entry(shop, access_token, product_schema_mappings):
+    # First try to fetch existing config object
+    query = {
+        "query": """
+        query {
+          metaobjects(type: "app_schema", first: 1) {
+            edges {
+              node {
+                id
+                config: field(key: "config") {
+                  value
+                }
+              }
+            }
+          }
+        }
+        """
+    }
+
+    resp = shopify_graphql(shop, access_token, query)
+    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
+
+    payload_json = json.dumps({
+        "product_schema_mappings": product_schema_mappings
+    })
+
+    # If exists → update
+    if edges:
+        entry_id = edges[0]["node"]["id"]
+        logging.info("Existing config object found: {}".format(entry_id))
+
+        update_mutation = {
+            "query": """
+            mutation UpdateConfig($id: ID!, $config: String!) {
+              metaobjectUpdate(id: $id, metaobject: {
+                fields: [{ key: "config", value: $config }]
+              }) {
+                metaobject {
+                  id
+                }
+                userErrors {
+                  field
+                  message
+                }
+              }
+            }
+            """,
+            "variables": {
+                "id": entry_id,
+                "config": payload_json
+            }
+        }
+
+        resp2 = shopify_graphql(shop, access_token, update_mutation)
+        logging.info("Updated config object: {}".format(resp2))
+        return entry_id
+
+    # Create new config entry
+    logging.info("No config entry exists — creating a new one.")
+
+    create_mutation = {
+        "query": """
+        mutation CreateConfig($config: String!) {
+          metaobjectCreate(metaobject: {
+            type: "app_schema",
+            fields: [{ key: "config", value: $config }]
+          }) {
+            metaobject {
+              id
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """,
+        "variables": {
+            "config": payload_json
+        }
+    }
+
+    resp3 = shopify_graphql(shop, access_token, create_mutation)
+    node = resp3.get("data", {}).get("metaobjectCreate", {})
+    errors = node.get("userErrors")
+    created = node.get("metaobject")
+
+    if errors:
+        logging.error("metaobjectCreate userErrors: {}".format(errors))
+        raise Exception("Failed to create config entry")
+
+    if not created:
+        logging.error("metaobjectCreate missing metaobject: {}".format(resp3))
+        raise Exception("Failed to create config entry")
+
+    return created["id"]
 
 
 
@@ -1624,45 +1727,27 @@ def update_config_entry(shop, access_token, entry_id, mappings_json):
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    logging.info("INPUT: %s", data)
+    logging.info("INPUT: {}".format(data))
 
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    # FRONTEND CONFIG TO SAVE
+    # frontend payload: dynamic schema rows
     product_schema_mappings = data.get("product_schema_mappings", [])
 
-    # 1️⃣ Ensure we have metaobject definition
-    ensure_metaobject_definition(shop, access_token)
+    # ensure metaobject definition & config entry
+    metaobject_def_id = ensure_metaobject_definition(shop, access_token)
+    config_entry_id = ensure_config_entry(shop, access_token, product_schema_mappings)
 
-    # 2️⃣ Upsert config entry
-    entry = get_config_metaobject_entry(shop, access_token)
+    logging.info("Metaobject definition: {}".format(metaobject_def_id))
+    logging.info("Config entry: {}".format(config_entry_id))
 
-    if entry:
-        logging.info("Updating config metaobject entry…")
-        update_config_entry(
-            shop,
-            access_token,
-            entry["id"],
-            {"product_schema_mappings": product_schema_mappings}
-        )
-    else:
-        logging.info("Creating new config metaobject entry…")
-        create_config_entry(
-            shop,
-            access_token,
-            {"product_schema_mappings": product_schema_mappings}
-        )
-
-    logging.info("Config saved successfully.")
-
-    # ------------ Continue your product-thread code ------------
     def process_products():
         try:
             products = fetch_all_products(shop, access_token)
-            logging.info("Fetched %d products for shop %s", len(products), shop)
+            logging.info("Fetched {} products for shop {}".format(len(products), shop))
 
             for i in range(0, len(products), BATCH_SIZE):
                 batch = products[i:i+BATCH_SIZE]
@@ -1671,28 +1756,36 @@ def verify_and_create_metafields():
                     product_id = product_gid.split("/")[-1]
 
                     try:
+                        # Fetch existing metafields
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
+                        logging.info("Fetched metafields for {}: {}".format(product_gid, existing_mfs))
+                        logging.info("Fetched PROD DATA for {}".format(product))
 
-                        schema_json = build_schema_from_mappings(
-                            product, existing_mfs, product_schema_mappings
-                        )
+                        # Build schema JSON
+                        schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
+                        logging.info("Built schema JSON for {}: {}".format(product_gid, schema_json))
 
                         schema_json = wrap_flattened_json_in_schema(schema_json)
-                        upsert_app_metafield(shop, access_token, product_gid, schema_json)
 
+                        # Upsert metafield
+                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_json)
+                        logging.info("Upserted app_schema.prod_schema for {}".format(product_gid))
+                        logging.debug("Upsert response: {}".format(resp))
+
+                        # delay to prevent Shopify rate limits
                         time.sleep(1)
 
                     except Exception as e:
-                        logging.error("Failed processing %s: %s", product_gid, e, exc_info=True)
+                        logging.error("Failed processing product {}: {}".format(product_gid, e), exc_info=True)
 
-            logging.info("Completed background processing for shop %s", shop)
+            logging.info("Completed background processing for shop {}".format(shop))
 
         except Exception as e:
-            logging.error("Background process failed for shop %s: %s", shop, e, exc_info=True)
+            logging.error("Background process failed for shop {}: {}".format(shop, e), exc_info=True)
 
     threading.Thread(target=process_products, daemon=True).start()
 
-    return jsonify({"message": "Config saved and background processing started."})
+    return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
 
 
 
