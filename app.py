@@ -1504,15 +1504,14 @@ def wrap_flattened_json_in_schema(flattened_json):
 #metaobject helper functions for config file
 
 def ensure_metaobject_definition(shop, access_token):
-    query = {
-        "query": """
+    # MUST be a plain string
+    query = """
         query {
           metaobjectDefinitionByType(type: "app_schema") {
             id
           }
         }
-        """
-    }
+    """
 
     resp = query_shopify_graphql(shop, access_token, query)
     existing = resp.get("data", {}).get("metaobjectDefinitionByType")
@@ -1523,8 +1522,8 @@ def ensure_metaobject_definition(shop, access_token):
 
     logging.info("Metaobject definition not found, creating...")
 
-    create_query = {
-        "query": """
+    # MUST be a plain string
+    create_query = """
         mutation {
           metaobjectDefinitionCreate(definition: {
             name: "App Schema",
@@ -1542,8 +1541,7 @@ def ensure_metaobject_definition(shop, access_token):
             }
           }
         }
-        """
-    }
+    """
 
     resp2 = query_shopify_graphql(shop, access_token, create_query)
 
@@ -1562,6 +1560,7 @@ def ensure_metaobject_definition(shop, access_token):
         raise Exception("Failed to create metaobject definition")
 
     return created["id"]
+
 
 def ensure_config_entry(shop, access_token, product_schema_mappings):
     # First try to fetch existing config object
