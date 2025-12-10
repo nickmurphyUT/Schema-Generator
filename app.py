@@ -1511,7 +1511,7 @@ def ensure_metaobject_definition(shop, access_token):
       }
     }
     """
-    resp = shopify_graphql(shop, access_token, query)
+    resp = query_shopify_graphql(shop, access_token, query)
 
     # already exists
     existing = resp.get("data", {}).get("metaobjectDefinitionByHandle")
