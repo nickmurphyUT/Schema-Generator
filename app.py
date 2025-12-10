@@ -1514,7 +1514,7 @@ def ensure_metaobject_definition(shop, access_token):
         """
     }
 
-    resp = shopify_graphql(shop, access_token, query)
+    resp = query_shopify_graphql(shop, access_token, query)
     existing = resp.get("data", {}).get("metaobjectDefinitionByType")
 
     if existing and "id" in existing:
@@ -1545,7 +1545,7 @@ def ensure_metaobject_definition(shop, access_token):
         """
     }
 
-    resp2 = shopify_graphql(shop, access_token, create_query)
+    resp2 = query_shopify_graphql(shop, access_token, create_query)
 
     logging.info("create response: {}".format(resp2))
 
@@ -1582,7 +1582,7 @@ def ensure_config_entry(shop, access_token, product_schema_mappings):
         """
     }
 
-    resp = shopify_graphql(shop, access_token, query)
+    resp = query_shopify_graphql(shop, access_token, query)
     edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
 
     payload_json = json.dumps({
@@ -1616,7 +1616,7 @@ def ensure_config_entry(shop, access_token, product_schema_mappings):
             }
         }
 
-        resp2 = shopify_graphql(shop, access_token, update_mutation)
+        resp2 = query_shopify_graphql(shop, access_token, update_mutation)
         logging.info("Updated config object: {}".format(resp2))
         return entry_id
 
@@ -1645,7 +1645,7 @@ def ensure_config_entry(shop, access_token, product_schema_mappings):
         }
     }
 
-    resp3 = shopify_graphql(shop, access_token, create_mutation)
+    resp3 = query_shopify_graphql(shop, access_token, create_mutation)
     node = resp3.get("data", {}).get("metaobjectCreate", {})
     errors = node.get("userErrors")
     created = node.get("metaobject")
