@@ -199,6 +199,15 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
             '<span class="text-red-500 font-semibold">Network Error: Could not reach server.</span>';
     }
 };
+
+/* ============= PREPOPULATE SAVED SCHEMA ============= */
+const savedMappings = {{ config_entry.get("product_schema_mappings", []) | tojson }};
+if (savedMappings.length > 0) {
+    savedMappings.forEach(m => createSchemaRow(m.schemaField, m.sourceField));
+} else {
+    // Start with one empty row
+    createSchemaRow();
+}
 </script>
 
 </body>
