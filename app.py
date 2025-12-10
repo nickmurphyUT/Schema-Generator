@@ -1504,41 +1504,59 @@ def wrap_flattened_json_in_schema(flattened_json):
 #metaobject helper functions for config file
 
 def ensure_metaobject_definition(shop, access_token):
-    query = """
-    {
-      metaobjectDefinitionByHandle(handle: "app_config") {
-        id
-      }
+    url = "https://" + shop + "/admin/api/2024-10/graphql.json"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
     }
-    """
-    resp = query_shopify_graphql(shop, access_token, query)
 
-    # already exists
-    existing = resp.get("data", {}).get("metaobjectDefinitionByHandle")
-    if existing:
-        return existing["id"]
-
-    # create it
-    create_mut = """
-    mutation CreateMetaobjectDefinition {
-      metaobjectDefinitionCreate(definition: {
-        name: "App Config"
-        handle: "app_config"
-        fieldDefinitions: [
-          {
-            name: "product_schema_mappings"
-            key: "product_schema_mappings"
-            type: single_line_text_field
+    query = {
+        "query": """
+        query {
+          metaobjectDefinitionByType(type: "app_schema") {
+            id
           }
-        ]
-      }) {
-        createdDefinition { id }
-        userErrors { field message }
-      }
+        }
+        """
     }
-    """
-    resp2 = query_shopify_graphql(shop, access_token, create_mut)
+
+    resp = requests.post(url, headers=headers, json=query).json()
+
+    # If definition already exists, return it
+    if resp.get("data") and resp["data"].get("metaobjectDefinitionByType"):
+        return resp["data"]["metaobjectDefinitionByType"]["id"]
+
+    # Create definition if it doesn't exist
+    create_query = {
+        "query": """
+        mutation {
+          metaobjectDefinitionCreate(definition: {
+            name: "App Schema",
+            type: "app_schema",
+            fieldDefinitions: []
+          }) {
+            createdDefinition {
+              id
+            }
+            userErrors {
+              message
+              field
+            }
+          }
+        }
+        """
+    }
+
+    resp2 = requests.post(url, headers=headers, json=create_query).json()
+
+    # Log full error response when failing
+    if "data" not in resp2 or resp2["data"]["metaobjectDefinitionCreate"].get("createdDefinition") is None:
+        print("Shopify metaobjectDefinitionCreate error:")
+        print(resp2)
+        raise Exception("Failed to create metaobject definition")
+
     return resp2["data"]["metaobjectDefinitionCreate"]["createdDefinition"]["id"]
+
 
 
 def get_config_metaobject_entry(shop, access_token):
