@@ -1587,14 +1587,14 @@ def ensure_config_entry(shop, access_token, product_schema_mappings):
     resp = query_shopify_graphql(shop, access_token, query)
     edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
 
+    # Properly serialize and escape the payload
     payload_json = json.dumps({
         "product_schema_mappings": product_schema_mappings
     })
 
-    # If exists → update
     if edges:
         entry_id = edges[0]["node"]["id"]
-        logging.info("Existing config object found: {}".format(entry_id))
+        logging.info(f"Existing config object found: {entry_id}")
 
         update_mutation = {
             "query": """
@@ -1614,12 +1614,12 @@ def ensure_config_entry(shop, access_token, product_schema_mappings):
             """,
             "variables": {
                 "id": entry_id,
-                "config": payload_json
+                "config": payload_json  # <-- already a proper JSON string
             }
         }
 
         resp2 = query_shopify_graphql(shop, access_token, update_mutation)
-        logging.info("Updated config object: {}".format(resp2))
+        logging.info(f"Updated config object: {resp2}")
         return entry_id
 
     # Create new config entry
@@ -1643,7 +1643,7 @@ def ensure_config_entry(shop, access_token, product_schema_mappings):
         }
         """,
         "variables": {
-            "config": payload_json
+            "config": payload_json  # <-- ensure this is a string
         }
     }
 
@@ -1653,14 +1653,15 @@ def ensure_config_entry(shop, access_token, product_schema_mappings):
     created = node.get("metaobject")
 
     if errors:
-        logging.error("metaobjectCreate userErrors: {}".format(errors))
+        logging.error(f"metaobjectCreate userErrors: {errors}")
         raise Exception("Failed to create config entry")
 
     if not created:
-        logging.error("metaobjectCreate missing metaobject: {}".format(resp3))
+        logging.error(f"metaobjectCreate missing metaobject: {resp3}")
         raise Exception("Failed to create config entry")
 
     return created["id"]
+
 
 
 
