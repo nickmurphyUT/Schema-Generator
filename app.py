@@ -1951,36 +1951,47 @@ def create_config_entry(shop, access_token, mappings_json):
 
 def update_config_entry(shop, access_token, entry_id, updates):
     """
-    updates: dict that contains only the fields you want to change
-    e.g. { "product_schema_mappings": [...] }
+    Merge updates into the existing app config metaobject.
+    `updates` should be a dict like:
+    {
+        "product_schema_mappings": [...],
+        "collection_schema_mappings": [...]
+    }
     """
-    # fetch existing config
-    existing = fetch_config_entry(shop, access_token)
+    # 1️⃣ Fetch current config
+    current_config = fetch_config_entry(shop, access_token) or {}
 
-    # merge
-    merged = {**existing, **updates}
+    # 2️⃣ Merge updates into existing config
+    merged_config = current_config.copy()
+    merged_config.update(updates)
 
-    # stringify twice for Shopify
-    merged_str = json.dumps(merged)
-    quoted_value = json.dumps(merged_str)
+    # 3️⃣ Serialize
+    config_str = json.dumps(merged_config)
+    quoted_id = json.dumps(entry_id)[1:-1]  # remove extra quotes for GID
 
-    # Shopify GID cannot be wrapped twice, strip extra quotes
-    quoted_id = json.dumps(entry_id)[1:-1]
-
-    mutation = (
-        "mutation {"
-        "  metaobjectUpdate(id: \"" + quoted_id + "\", metaobject: {"
-        "    fields: ["
-        "      { key: \"config\", value: " + quoted_value + " }"
-        "    ]"
-        "  }) {"
-        "    metaobject { id }"
-        "    userErrors { field message }"
-        "  }"
-        "}"
-    )
+    # 4️⃣ Build GraphQL mutation
+    mutation = {
+        "query": """
+        mutation UpdateConfig($id: ID!, $config: String!) {
+          metaobjectUpdate(
+            id: $id
+            metaobject: {
+              fields: [{ key: "config", value: $config }]
+            }
+          ) {
+            metaobject { id }
+            userErrors { field message }
+          }
+        }
+        """,
+        "variables": {
+            "id": quoted_id,
+            "config": config_str
+        }
+    }
 
     return query_shopify_graphql(shop, access_token, mutation)
+
 
 
 
