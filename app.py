@@ -2047,17 +2047,16 @@ def verify_and_create_collection_metafields():
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    # frontend payload: dynamic schema rows for collections
     collection_schema_mappings = data.get("collection_schema_mappings", [])
 
-    # store collection mappings in metaobject config entry
+    # same metaobject definition as products
     metaobject_def_id = ensure_metaobject_definition(shop, access_token)
 
+    # ❗ FIXED: remove invalid argument
     config_entry_id = ensure_config_entry(
         shop,
         access_token,
-        collection_schema_mappings,
-        field="collection_schema_mappings"   # if your ensure() supports named fields
+        collection_schema_mappings
     )
 
     logging.info("Collection metaobject definition: {}".format(metaobject_def_id))
@@ -2078,8 +2077,7 @@ def verify_and_create_collection_metafields():
                     try:
                         existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
 
-                        # build schema for this collection
-                        schema_json = build_collection_schema_from_mappings(
+                        schema_json = build_schema_from_mappings(
                             col,
                             existing_mfs,
                             collection_schema_mappings
@@ -2087,8 +2085,7 @@ def verify_and_create_collection_metafields():
 
                         schema_json = wrap_flattened_json_in_schema(schema_json)
 
-                        # upsert to collections namespace
-                        upsert_collection_app_metafield(
+                        upsert_collection_metafield(
                             shop,
                             access_token,
                             col_gid,
