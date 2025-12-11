@@ -1949,51 +1949,36 @@ def create_config_entry(shop, access_token, mappings_json):
     )
     return query_shopify_graphql(shop, access_token, mutation)
 
-def update_config_entry(shop, access_token, entry_id, updates):
+def update_config_entry(shop, access_token, entry_id, mappings_json, key_name="product_schema_mappings"):
     """
-    Merge updates into the existing app config metaobject.
-    `updates` should be a dict like:
-    {
-        "product_schema_mappings": [...],
-        "collection_schema_mappings": [...]
-    }
+    Update a config metaobject field with properly serialized JSON.
+    `key_name` should be "product_schema_mappings" or "collection_schema_mappings".
     """
-    # 1️⃣ Fetch current config
-    current_config = fetch_config_entry(shop, access_token) or {}
-
-    # 2️⃣ Merge updates into existing config
-    merged_config = current_config.copy()
-    merged_config.update(updates)
-
-    # 3️⃣ Serialize the merged config as a JSON string (Shopify expects a string)
-    config_str = json.dumps(merged_config)
-
-    # 4️⃣ Prepare the ID for GraphQL
+    # 1️⃣ Convert JSON to string, then double-quote it for Shopify GraphQL
+    mappings_str = json.dumps(mappings_json)
+    quoted_mappings = json.dumps(mappings_str)
     quoted_id = json.dumps(entry_id)[1:-1]  # remove extra quotes for GID
 
-    # 5️⃣ Build GraphQL mutation
-    mutation = {
-        "query": """
-        mutation UpdateConfig($id: ID!, $config: String!) {
-          metaobjectUpdate(
-            id: $id
-            metaobject: {
-              fields: [{ key: "config", value: $config }]
-            }
-          ) {
-            metaobject { id }
-            userErrors { field message }
-          }
-        }
-        """,
-        "variables": {
-            "id": quoted_id,
-            "config": config_str  # ✅ ensure this is a string
-        }
-    }
+    # 2️⃣ Build mutation
+    mutation = (
+        "mutation {"
+        f'  metaobjectUpdate(id: "{quoted_id}", metaobject: {{'
+        "    fields: ["
+        "      {"
+        f'        key: "{key_name}"'
+        f"        value: {quoted_mappings}"
+        "      }"
+        "    ]"
+        "  }) {"
+        "    metaobject { id }"
+        "    userErrors { field message }"
+        "  }"
+        "}"
+    )
 
-    # 6️⃣ Execute the GraphQL request
+    # 3️⃣ Run the query
     return query_shopify_graphql(shop, access_token, mutation)
+
 
 
 
@@ -2015,7 +2000,8 @@ def verify_and_create_metafields():
 
     # Ensure config entry exists and merge product schema
     config_entry_id = ensure_config_entry(shop, access_token, product_schema_mappings)
-    update_config_entry(shop, access_token, config_entry_id, {"product_schema_mappings": product_schema_mappings})
+    update_config_entry(shop, access_token, config_entry_id, product_schema_mappings, key_name="product_schema_mappings")
+
 
     logging.info("Metaobject definition: {}".format(metaobject_def_id))
     logging.info("Config entry: {}".format(config_entry_id))
@@ -2066,7 +2052,8 @@ def verify_and_create_collection_metafields():
 
     # Ensure config entry exists and merge collection schema
     config_entry_id = ensure_config_entry(shop, access_token, collection_schema_mappings)
-    update_config_entry(shop, access_token, config_entry_id, {"collection_schema_mappings": collection_schema_mappings})
+    update_config_entry(shop, access_token, config_entry_id, collection_schema_mappings, key_name="collection_schema_mappings")
+
 
     logging.info("Collection metaobject definition: {}".format(metaobject_def_id))
     logging.info("Collection config entry: {}".format(config_entry_id))
