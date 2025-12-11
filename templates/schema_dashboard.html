@@ -178,7 +178,7 @@ document.getElementById("saveCollectionBtn").onclick = async () => {
     preview.innerHTML = '<span class="text-gray-500">Saving…</span>';
 
     try {
-        const resp = await fetch("/verify_and_create_metafields", {
+        const resp = await fetch("/verify_and_create_collection_metafields", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
