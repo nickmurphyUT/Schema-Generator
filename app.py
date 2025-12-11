@@ -2085,7 +2085,7 @@ def verify_and_create_collection_metafields():
 
                         schema_json = wrap_flattened_json_in_schema(schema_json)
 
-                        upsert_collection_metafield(
+                        upsert_collection_app_metafield(
                             shop,
                             access_token,
                             col_gid,
