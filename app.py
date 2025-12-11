@@ -1965,11 +1965,13 @@ def update_config_entry(shop, access_token, entry_id, updates):
     merged_config = current_config.copy()
     merged_config.update(updates)
 
-    # 3️⃣ Serialize
+    # 3️⃣ Serialize the merged config as a JSON string (Shopify expects a string)
     config_str = json.dumps(merged_config)
+
+    # 4️⃣ Prepare the ID for GraphQL
     quoted_id = json.dumps(entry_id)[1:-1]  # remove extra quotes for GID
 
-    # 4️⃣ Build GraphQL mutation
+    # 5️⃣ Build GraphQL mutation
     mutation = {
         "query": """
         mutation UpdateConfig($id: ID!, $config: String!) {
@@ -1986,10 +1988,11 @@ def update_config_entry(shop, access_token, entry_id, updates):
         """,
         "variables": {
             "id": quoted_id,
-            "config": config_str
+            "config": config_str  # ✅ ensure this is a string
         }
     }
 
+    # 6️⃣ Execute the GraphQL request
     return query_shopify_graphql(shop, access_token, mutation)
 
 
