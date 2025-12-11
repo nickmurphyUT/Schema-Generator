@@ -1911,6 +1911,28 @@ def ensure_config_entry(shop, access_token, product_schema_mappings):
         return created["id"]
 
 
+def merge_and_update_config(shop, access_token, field_key, new_mappings):
+    """
+    Merge new mappings into existing config entry without overwriting the other field.
+    """
+    config_entry = get_config_metaobject_entry(shop, access_token)
+    if not config_entry:
+        config_id = ensure_config_entry(shop, access_token)
+        existing = {"product_schema_mappings": [], "collection_schema_mappings": []}
+    else:
+        config_id = config_entry["id"]
+        # Extract existing fields safely
+        existing_product = json.loads(config_entry.get("product_schema_mappings", {}).get("value") or "[]")
+        existing_collection = json.loads(config_entry.get("collection_schema_mappings", {}).get("value") or "[]")
+        existing = {
+            "product_schema_mappings": existing_product,
+            "collection_schema_mappings": existing_collection
+        }
+
+    # Merge new mappings
+    existing[field_key] = new_mappings
+    update_config_entry(shop, access_token, config_id, existing[field_key], field_key)
+    return config_id
 
 def get_config_metaobject_entry(shop, access_token):
     query = """
@@ -1991,7 +2013,7 @@ def verify_and_create_metafields():
     metaobject_def_id = ensure_metaobject_definition(shop, access_token)
 
     # Ensure config entry exists and merge product schema
-    config_entry_id = ensure_config_entry(shop, access_token, product_schema_mappings)
+    config_entry_id = merge_and_update_config(shop, access_token, "product_schema_mappings", product_schema_mappings)
     update_config_entry(shop, access_token, config_entry_id, product_schema_mappings, "product_schema_mappings")
 
 
@@ -2043,7 +2065,7 @@ def verify_and_create_collection_metafields():
     metaobject_def_id = ensure_metaobject_definition(shop, access_token)
 
     # Ensure config entry exists and merge collection schema
-    config_entry_id = ensure_config_entry(shop, access_token, collection_schema_mappings)
+    config_entry_id = merge_and_update_config(shop, access_token, "collection_schema_mappings", collection_schema_mappings)
     # For collections
     update_config_entry(shop, access_token, config_entry_id, collection_schema_mappings, "collection_schema_mappings")
 
