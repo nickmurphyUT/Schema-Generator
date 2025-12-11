@@ -1851,7 +1851,7 @@ def merge_and_update_config(shop, access_token, field_key, new_mappings):
 def get_config_metaobject_entry(shop, access_token):
     query = """
     {
-      metaobjects(type: "app_config", first: 1) {
+      metaobjects(type: "app_schema", first: 1) {
         nodes {
           id
           product_schema_mappings: field(key: "product_schema_mappings") { value }
