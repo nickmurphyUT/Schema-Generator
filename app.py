@@ -2007,28 +2007,23 @@ def verify_and_create_metafields():
 
     product_schema_mappings = data.get("product_schema_mappings", [])
 
-    # Ensure metaobject definition & get config entry
+    # Ensure metaobject definition exists
     metaobject_def_id = ensure_metaobject_definition(shop, access_token)
-    config_entry_id = ensure_config_entry(shop, access_token)
 
-    # Merge product mappings into shared config
-    update_config_entry(
-        shop,
-        access_token,
-        config_entry_id,
-        {"product_schema_mappings": product_schema_mappings}
-    )
+    # Ensure config entry exists and merge product schema
+    config_entry_id = ensure_config_entry(shop, access_token, product_schema_mappings)
+    update_config_entry(shop, access_token, config_entry_id, {"product_schema_mappings": product_schema_mappings})
 
     logging.info("Metaobject definition: {}".format(metaobject_def_id))
-    logging.info("Config entry (merged): {}".format(config_entry_id))
+    logging.info("Config entry: {}".format(config_entry_id))
 
     def process_products():
         try:
             products = fetch_all_products(shop, access_token)
-            logging.info("Fetched {} products for shop {}".format(len(products), shop))
+            logging.info("Fetched {} products".format(len(products)))
 
             for i in range(0, len(products), BATCH_SIZE):
-                batch = products[i:i+BATCH_SIZE]
+                batch = products[i:i + BATCH_SIZE]
                 for product in batch:
                     product_gid = product["id"]
                     product_id = product_gid.split("/")[-1]
@@ -2042,7 +2037,8 @@ def verify_and_create_metafields():
                     except Exception as e:
                         logging.error("Failed processing product {}: {}".format(product_gid, e), exc_info=True)
 
-            logging.info("Completed product background processing for shop {}".format(shop))
+            logging.info("Completed product background processing for {}".format(shop))
+
         except Exception as e:
             logging.error("Product background failed: {}".format(e), exc_info=True)
 
@@ -2060,49 +2056,7 @@ def verify_and_create_collection_metafields():
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    collection_schema_mappings = data.get("collection_schema_mappings", [])
-
-    # Ensure metaobject definition & get config entry
-    metaobject_def_id = ensure_metaobject_definition(shop, access_token)
-    config_entry_id = ensure_config_entry(shop, access_token)
-
-    # Merge collection mappings into shared config
-    update_config_entry(
-        shop,
-        access_token,
-        config_entry_id,
-        {"collection_schema_mappings": collection_schema_mappings}
-    )
-
-    logging.info("Metaobject definition: {}".format(metaobject_def_id))
-    logging.info("Config entry (merged): {}".format(config_entry_id))
-
-    def process_collections():
-        try:
-            collections = fetch_all_collections(shop, access_token)
-            logging.info("Fetched {} collections".format(len(collections)))
-
-            for i in range(0, len(collections), BATCH_SIZE):
-                batch = collections[i:i+BATCH_SIZE]
-                for col in batch:
-                    col_gid = col["id"]
-                    col_id = col_gid.split("/")[-1]
-
-                    try:
-                        existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
-                        schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
-                        schema_json = wrap_flattened_json_in_schema(schema_json)
-                        upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
-                        time.sleep(1)
-                    except Exception as e:
-                        logging.error("Failed processing collection {}: {}".format(col_gid, e), exc_info=True)
-
-            logging.info("Completed collection background processing for shop {}".format(shop))
-        except Exception as e:
-            logging.error("Collection background failed: {}".format(e), exc_info=True)
-
-    threading.Thread(target=process_collections, daemon=True).start()
-    return jsonify({"message": "Started background processing of collection schema mappings."})
+    collection_schema_mappings = data.get("co
 
 
 
