@@ -1794,121 +1794,19 @@ def ensure_metaobject_definition(shop, access_token):
 
 
 
-def ensure_config_entry(shop, access_token, product_schema_mappings):
-    headers = {
-        "X-Shopify-Access-Token": access_token,
-        "Content-Type": "application/json",
-    }
+def ensure_config_entry(shop, access_token):
+    """
+    Fetch existing config entry or create a new one.
+    Always returns the single app_config metaobject ID.
+    """
+    entry = get_config_metaobject_entry(shop, access_token)
+    if entry:
+        return entry["id"]
+    # No entry exists, create empty default with both fields
+    empty_mappings = {"product_schema_mappings": [], "collection_schema_mappings": []}
+    resp = create_config_entry(shop, access_token, empty_mappings)
+    return resp["data"]["metaobject"]["id"]
 
-    payload_json = json.dumps({"product_schema_mappings": product_schema_mappings})
-
-    # 1️⃣ Check if a config object already exists
-    query_check = {
-        "query": """
-        query {
-          metaobjects(type: "app_schema", first: 1) {
-            edges {
-              node {
-                id
-                config: field(key: "config") {
-                  value
-                }
-              }
-            }
-          }
-        }
-        """
-    }
-
-    r = requests.post(
-        "https://{}/admin/api/2025-10/graphql.json".format(shop),
-        headers=headers,
-        data=json.dumps(query_check)
-    )
-    r.raise_for_status()
-    resp = r.json()
-    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
-
-    if edges:
-        # 2️⃣ Update existing config object
-        entry_id = edges[0]["node"]["id"]
-        logging.info("Existing config object found: {}".format(entry_id))
-
-        mutation_update = {
-            "query": """
-            mutation UpdateConfig($id: ID!, $config: String!) {
-              metaobjectUpdate(id: $id, metaobject: {
-                fields: [{ key: "config", value: $config }]
-              }) {
-                metaobject { id }
-                userErrors { field message }
-              }
-            }
-            """,
-            "variables": {
-                "id": entry_id,
-                "config": payload_json
-            }
-        }
-
-        r2 = requests.post(
-            "https://{}/admin/api/2025-10/graphql.json".format(shop),
-            headers=headers,
-            data=json.dumps(mutation_update)
-        )
-        r2.raise_for_status()
-        resp2 = r2.json()
-        logging.info("Updated config object: {}".format(resp2))
-
-        errors = resp2.get("data", {}).get("metaobjectUpdate", {}).get("userErrors", [])
-        if errors:
-            logging.error("Update userErrors: {}".format(errors))
-            raise Exception("Failed to update config object: {}".format(errors))
-        return entry_id
-
-    else:
-        # 3️⃣ Create new config object
-        logging.info("No config entry exists — creating a new one.")
-
-        mutation_create = {
-            "query": """
-            mutation CreateConfig($config: String!) {
-              metaobjectCreate(metaobject: {
-                type: "app_schema",
-                fields: [{ key: "config", value: $config }]
-              }) {
-                metaobject { id }
-                userErrors { field message }
-              }
-            }
-            """,
-            "variables": {
-                "config": payload_json
-            }
-        }
-
-        r3 = requests.post(
-            "https://{}/admin/api/2025-10/graphql.json".format(shop),
-            headers=headers,
-            data=json.dumps(mutation_create)
-        )
-        r3.raise_for_status()
-        resp3 = r3.json()
-
-        node = resp3.get("data", {}).get("metaobjectCreate", {})
-        errors = node.get("userErrors", [])
-        created = node.get("metaobject")
-
-        if errors:
-            logging.error("metaobjectCreate userErrors: {}".format(errors))
-            raise Exception("Failed to create config entry: {}".format(errors))
-
-        if not created:
-            logging.error("metaobjectCreate missing metaobject: {}".format(resp3))
-            raise Exception("Failed to create config entry")
-
-        logging.info("Created config object: {}".format(created["id"]))
-        return created["id"]
 
 
 def merge_and_update_config(shop, access_token, field_key, new_mappings):
