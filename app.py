@@ -1949,19 +1949,29 @@ def create_config_entry(shop, access_token, mappings_json):
     )
     return query_shopify_graphql(shop, access_token, mutation)
 
-def update_config_entry(shop, access_token, entry_id, mappings_json):
-    mappings_str = json.dumps(mappings_json)
-    quoted_mappings = json.dumps(mappings_str)
-    quoted_id = json.dumps(entry_id)[1:-1]  # remove extra quotes for GID
+def update_config_entry(shop, access_token, entry_id, updates):
+    """
+    updates: dict that contains only the fields you want to change
+    e.g. { "product_schema_mappings": [...] }
+    """
+    # fetch existing config
+    existing = fetch_config_entry(shop, access_token)
+
+    # merge
+    merged = {**existing, **updates}
+
+    # stringify twice for Shopify
+    merged_str = json.dumps(merged)
+    quoted_value = json.dumps(merged_str)
+
+    # Shopify GID cannot be wrapped twice, strip extra quotes
+    quoted_id = json.dumps(entry_id)[1:-1]
 
     mutation = (
         "mutation {"
         "  metaobjectUpdate(id: \"" + quoted_id + "\", metaobject: {"
         "    fields: ["
-        "      {"
-        '        key: "product_schema_mappings"'
-        "        value: " + quoted_mappings +
-        "      }"
+        "      { key: \"config\", value: " + quoted_value + " }"
         "    ]"
         "  }) {"
         "    metaobject { id }"
@@ -1971,6 +1981,7 @@ def update_config_entry(shop, access_token, entry_id, mappings_json):
     )
 
     return query_shopify_graphql(shop, access_token, mutation)
+
 
 
 
