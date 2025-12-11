@@ -1802,35 +1802,51 @@ def ensure_config_entry(shop, access_token):
     entry = get_config_metaobject_entry(shop, access_token)
     if entry:
         return entry["id"]
+
     # No entry exists, create empty default with both fields
     empty_mappings = {"product_schema_mappings": [], "collection_schema_mappings": []}
     resp = create_config_entry(shop, access_token, empty_mappings)
-    return resp["data"]["metaobject"]["id"]
+
+    # Safely parse response
+    metaobject_create = resp.get("data", {}).get("metaobjectCreate")
+    if not metaobject_create or not metaobject_create.get("metaobject"):
+        user_errors = metaobject_create.get("userErrors") if metaobject_create else None
+        raise Exception(f"Failed to create config entry. UserErrors: {user_errors}")
+
+    return metaobject_create["metaobject"]["id"]
+
 
 
 
 def merge_and_update_config(shop, access_token, field_key, new_mappings):
     """
-    Merge new mappings into existing config entry without overwriting the other field.
+    Merge new mappings into the single shared config entry without overwriting the other field.
+    field_key: 'product_schema_mappings' or 'collection_schema_mappings'
     """
+    # Fetch existing entry
     config_entry = get_config_metaobject_entry(shop, access_token)
-    if not config_entry:
-        config_id = ensure_config_entry(shop, access_token)
-        existing = {"product_schema_mappings": [], "collection_schema_mappings": []}
-    else:
+
+    if config_entry:
         config_id = config_entry["id"]
-        # Extract existing fields safely
+        # Safely extract existing fields, defaulting to empty list
         existing_product = json.loads(config_entry.get("product_schema_mappings", {}).get("value") or "[]")
         existing_collection = json.loads(config_entry.get("collection_schema_mappings", {}).get("value") or "[]")
         existing = {
             "product_schema_mappings": existing_product,
             "collection_schema_mappings": existing_collection
         }
+    else:
+        # No entry exists, create new with empty arrays
+        config_id = ensure_config_entry(shop, access_token)
+        existing = {"product_schema_mappings": [], "collection_schema_mappings": []}
 
-    # Merge new mappings
+    # Merge new mappings for the specified field
     existing[field_key] = new_mappings
-    update_config_entry(shop, access_token, config_id, existing[field_key], field_key)
+
+    # Update the metaobject with both fields to preserve everything
+    update_config_entry(shop, access_token, config_id, existing, field_key=None)
     return config_id
+
 
 def get_config_metaobject_entry(shop, access_token):
     query = """
@@ -1869,19 +1885,29 @@ def create_config_entry(shop, access_token, mappings_json):
     )
     return query_shopify_graphql(shop, access_token, mutation)
 
-def update_config_entry(shop, access_token, entry_id, mappings_json, field_key):
+
+def update_config_entry(shop, access_token, entry_id, mappings_json, field_key=None):
     """
-    field_key: 'product_schema_mappings' or 'collection_schema_mappings'
+    Update the config metaobject.
+    - If field_key is provided, only update that field
+    - If field_key is None, update all fields in mappings_json
     """
-    mappings_str = json.dumps(mappings_json)
-    quoted_mappings = json.dumps(mappings_str)
-    quoted_id = json.dumps(entry_id)[1:-1]  # remove extra quotes for GID
+    quoted_id = json.dumps(entry_id)[1:-1]
+
+    # Build fields array
+    if field_key:
+        fields = [{"key": field_key, "value": json.dumps(mappings_json)}]
+    else:
+        fields = [{"key": k, "value": json.dumps(v)} for k, v in mappings_json.items()]
+
+    # Convert fields to GraphQL string
+    fields_str = ", ".join(
+        f'{{ key: "{f["key"]}", value: {f["value"]} }}' for f in fields
+    )
 
     mutation = (
         f'mutation {{'
-        f'  metaobjectUpdate(id: "{quoted_id}", metaobject: {{'
-        f'    fields: [{{ key: "{field_key}", value: {quoted_mappings} }}]'
-        f'  }}) {{'
+        f'  metaobjectUpdate(id: "{quoted_id}", metaobject: {{ fields: [{fields_str}] }}) {{'
         f'    metaobject {{ id }}'
         f'    userErrors {{ field message }}'
         f'  }}'
@@ -1889,6 +1915,7 @@ def update_config_entry(shop, access_token, entry_id, mappings_json, field_key):
     )
 
     return query_shopify_graphql(shop, access_token, mutation)
+
 
 
 
