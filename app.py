@@ -1992,7 +1992,7 @@ def verify_and_create_metafields():
 
     # Ensure config entry exists and merge product schema
     config_entry_id = ensure_config_entry(shop, access_token, product_schema_mappings)
-    update_config_entry(shop, access_token, config_entry_id, product_schema_mappings, key_name="product_schema_mappings")
+    update_config_entry(shop, access_token, config_entry_id, product_schema_mappings, "product_schema_mappings")
 
 
     logging.info("Metaobject definition: {}".format(metaobject_def_id))
@@ -2044,7 +2044,8 @@ def verify_and_create_collection_metafields():
 
     # Ensure config entry exists and merge collection schema
     config_entry_id = ensure_config_entry(shop, access_token, collection_schema_mappings)
-    update_config_entry(shop, access_token, config_entry_id, collection_schema_mappings, key_name="collection_schema_mappings")
+    # For collections
+    update_config_entry(shop, access_token, config_entry_id, collection_schema_mappings, "collection_schema_mappings")
 
 
     logging.info("Collection metaobject definition: {}".format(metaobject_def_id))
