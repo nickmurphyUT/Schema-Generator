@@ -1221,6 +1221,182 @@ logging.basicConfig(
 )
 
 # --- Helper functions ---
+def fetch_collection_metafields(shop, access_token, collection_id):
+    """
+    Fetch all metafields for a collection via REST API.
+    Returns a dict of {namespace.key: value}
+    """
+    url = f"https://{shop}/admin/api/2026-01/collections/{collection_id}/metafields.json"
+    headers = {"X-Shopify-Access-Token": access_token}
+
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+
+    metafields = resp.json().get("metafields", [])
+
+    mf_dict = {}
+    for mf in metafields:
+        key = f"{mf['namespace']}.{mf['key']}"
+        mf_dict[key] = mf.get("value")
+
+    return mf_dict
+
+def fetch_all_collections(shop, access_token):
+    """Fetch all collections (custom + smart) with GraphQL pagination."""
+    url = f"https://{shop}/admin/api/2026-01/graphql.json"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
+
+    collections = []
+    cursor = None
+
+    while True:
+        query = """
+        query ($cursor: String) {
+          collections(first: 100, after: $cursor) {
+            pageInfo { hasNextPage }
+            edges {
+              cursor
+              node {
+                id
+                title
+                handle
+                description
+                updatedAt
+              }
+            }
+          }
+        }
+        """
+
+        resp = requests.post(
+            url,
+            json={"query": query, "variables": {"cursor": cursor}},
+            headers=headers
+        )
+        resp.raise_for_status()
+
+        data = resp.json()["data"]["collections"]
+
+        for edge in data["edges"]:
+            collections.append(edge["node"])
+
+        if not data["pageInfo"]["hasNextPage"]:
+            break
+
+        cursor = data["edges"][-1]["cursor"]
+
+    return collections
+
+def upsert_collection_app_metafield(shop, access_token, collection_gid, value_dict):
+    """
+    Create or update app_schema collection metafield using REST RMW pattern.
+    """
+    METAFIELD_NAMESPACE = "app_schema"
+    METAFIELD_KEY = "collection_schema"
+
+    # Parse GID
+    try:
+        parts = [p for p in collection_gid.split("/") if p]
+        # ["gid:", "shopify", "Collection", "12345"]
+        if len(parts) != 4 or parts[0] != "gid:":
+            raise ValueError()
+        resource_type = parts[2].lower()  # collection
+        resource_id = parts[3]
+    except Exception:
+        raise ValueError("Invalid collection_gid format")
+
+    # RMW Step 1: Read
+    existing = _find_metafield_by_key_rest(
+        shop, access_token, resource_type, resource_id,
+        METAFIELD_NAMESPACE, METAFIELD_KEY
+    )
+
+    if existing:
+        metafield_id = existing["id"]
+
+        try:
+            current_data = json.loads(existing.get("value") or "{}")
+        except:
+            current_data = {}
+
+        merged = current_data.copy()
+        merged.update(value_dict)
+        final_json = json.dumps(merged)
+
+        url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields/{metafield_id}.json"
+        method = requests.put
+        log = "Updated"
+
+    else:
+        final_json = json.dumps(value_dict)
+        url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json"
+        method = requests.post
+        log = "Created"
+
+    payload = {
+        "metafield": {
+            "type": "json",
+            "namespace": METAFIELD_NAMESPACE,
+            "key": METAFIELD_KEY,
+            "value": final_json
+        }
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
+
+    resp = method(url, headers=headers, json=payload)
+    resp.raise_for_status()
+
+    logging.info(f"{log} {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {collection_gid}")
+
+    return resp.json()
+    
+def extract_collection_attribute(collection_data, attr_path):
+    # support collection.x
+    if attr_path.startswith("collection."):
+        attr_path = attr_path.replace("collection.", "", 1)
+
+    try:
+        if "." not in attr_path:
+            return collection_data.get(attr_path, "")
+        parts = attr_path.split(".")
+        val = collection_data
+        for p in parts:
+            val = val.get(p, "")
+        return val
+    except Exception:
+        return ""
+
+def build_collection_schema_from_mappings(collection_data, existing_mfs, mappings):
+    schema_json = {}
+
+    for mapping in mappings:
+        schema_field = mapping.get("schemaField")
+        source_field = mapping.get("sourceField")
+
+        if not schema_field or not source_field:
+            continue
+
+        # metafields
+        if source_field.startswith("collection.metafield: "):
+            mf_key = source_field.replace("collection.metafield: ", "").strip()
+            value = existing_mfs.get(mf_key, "")
+        else:
+            # collection attributes
+            value = extract_collection_attribute(collection_data, source_field)
+            if value is None:
+                value = ""
+
+        schema_json[schema_field] = value
+
+    return schema_json
+
 
 def generate_default_organization_schema():
     """
@@ -1860,6 +2036,78 @@ def verify_and_create_metafields():
     threading.Thread(target=process_products, daemon=True).start()
 
     return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
+
+@app.route("/verify_and_create_collection_metafields", methods=["POST"])
+def verify_and_create_collection_metafields():
+    data = request.json
+    logging.info("INPUT (collections): {}".format(data))
+
+    shop = data.get("shop") or session.get("shop")
+    access_token = get_access_token_for_shop(shop)
+    if not access_token:
+        return jsonify({"error": "No access token for shop"}), 400
+
+    # frontend payload: dynamic schema rows for collections
+    collection_schema_mappings = data.get("collection_schema_mappings", [])
+
+    # store collection mappings in metaobject config entry
+    metaobject_def_id = ensure_metaobject_definition(shop, access_token)
+
+    config_entry_id = ensure_config_entry(
+        shop,
+        access_token,
+        collection_schema_mappings,
+        field="collection_schema_mappings"   # if your ensure() supports named fields
+    )
+
+    logging.info("Collection metaobject definition: {}".format(metaobject_def_id))
+    logging.info("Collection config entry: {}".format(config_entry_id))
+
+    def process_collections():
+        try:
+            collections = fetch_all_collections(shop, access_token)
+            logging.info("Fetched {} collections".format(len(collections)))
+
+            for i in range(0, len(collections), BATCH_SIZE):
+                batch = collections[i:i+BATCH_SIZE]
+
+                for col in batch:
+                    col_gid = col["id"]
+                    col_id = col_gid.split("/")[-1]
+
+                    try:
+                        existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
+
+                        # build schema for this collection
+                        schema_json = build_collection_schema_from_mappings(
+                            col,
+                            existing_mfs,
+                            collection_schema_mappings
+                        )
+
+                        schema_json = wrap_flattened_json_in_schema(schema_json)
+
+                        # upsert to collections namespace
+                        upsert_collection_app_metafield(
+                            shop,
+                            access_token,
+                            col_gid,
+                            schema_json
+                        )
+
+                        time.sleep(1)
+
+                    except Exception as e:
+                        logging.error("Collection error {}: {}".format(col_gid, e), exc_info=True)
+
+            logging.info("Completed collection background processing for {}".format(shop))
+
+        except Exception as e:
+            logging.error("Collection background failed: {}".format(e), exc_info=True)
+
+    threading.Thread(target=process_collections, daemon=True).start()
+
+    return jsonify({"message": "Started background processing of collection schema mappings."})
 
 
 
