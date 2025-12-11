@@ -53,6 +53,157 @@
 
 </div>
 
+
+
+    <!-- COLLECTION SCHEMA MAPPING UI -->
+<div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-8">
+
+    <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
+        Collection Schema Generator
+    </h3>
+
+    <div id="collection-mapping-container" class="space-y-4 mb-6"></div>
+
+    <button id="addCollectionBtn"
+        class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
+        + Add Schema Mapping
+    </button>
+
+    <button id="saveCollectionBtn"
+        class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
+        Save & Generate Collection Schema Metafields
+    </button>
+
+    <div id="collection-preview" class="mt-4 text-sm text-gray-500"></div>
+</div>
+<script>
+/* ============= COLLECTION STATE ============= */
+let collectionMappings = [];
+let collectionRowId = 0;
+
+/* ============= COLLECTION FIELD OPTIONS ============= */
+const collectionFieldOptions = [
+    "collection.title",
+    "collection.handle",
+    "collection.sort_order",
+    "collection.updated_at",
+    {% for mf in collection_metafields %}
+        "metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",
+    {% endfor %}
+];
+
+/* ============= CREATE COLLECTION ROW ============= */
+function createCollectionRow(defaultSchema = "", defaultSource = "") {
+    const id = collectionRowId++;
+    const container = document.getElementById("collection-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <!-- Schema Field -->
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="collection-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${commonSchemaFields.map(f => `
+                    <option value="${f}" ${defaultSchema === f ? "selected" : ""}>${f}</option>
+                `).join("")}
+            </select>
+            <input type="text"
+                class="collection-schema-input p-2 border rounded"
+                placeholder="Or write your own…"
+                value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
+        </div>
+
+        <!-- Source Field -->
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
+            <select class="collection-source p-2 border rounded bg-white">
+                <option value="">Select Collection Attribute</option>
+                ${collectionFieldOptions.map(o => `
+                    <option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>
+                `).join("")}
+            </select>
+        </div>
+
+        <!-- Delete Button -->
+        <button class="delete-collection-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+    `;
+
+    row.querySelector(".delete-collection-row").onclick = () => {
+        row.remove();
+        updateCollectionMappings();
+    };
+
+    row.querySelector(".collection-schema-select").onchange = updateCollectionMappings;
+    row.querySelector(".collection-schema-input").oninput = updateCollectionMappings;
+    row.querySelector(".collection-source").onchange = updateCollectionMappings;
+
+    container.appendChild(row);
+    updateCollectionMappings();
+}
+
+/* ============= UPDATE COLLECTION STATE ============= */
+function updateCollectionMappings() {
+    collectionMappings = [...document.querySelectorAll("#collection-mapping-container > div")]
+        .map(row => {
+            const schemaSelect = row.querySelector(".collection-schema-select").value.trim();
+            const schemaInput = row.querySelector(".collection-schema-input").value.trim();
+            const source = row.querySelector(".collection-source").value.trim();
+
+            return {
+                schemaField: schemaInput || schemaSelect,
+                sourceField: source
+            };
+        });
+}
+
+/* ============= ADD BUTTON ============= */
+document.getElementById("addCollectionBtn").onclick = () => {
+    createCollectionRow();
+};
+
+/* ============= SAVE COLLECTION SCHEMA ============= */
+document.getElementById("saveCollectionBtn").onclick = async () => {
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        collection_schema_mappings: collectionMappings
+    };
+
+    const preview = document.getElementById("collection-preview");
+    preview.innerHTML = '<span class="text-gray-500">Saving…</span>';
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await resp.json();
+
+        preview.innerHTML = resp.ok
+            ? `<span class="text-green-600 font-semibold">Saved!</span>`
+            : `<span class="text-red-500 font-semibold">Error: ${result.error}</span>`;
+
+    } catch (err) {
+        preview.innerHTML = '<span class="text-red-500 font-semibold">Network Error</span>';
+    }
+};
+
+/* ============= PREPOPULATE COLLECTION MAPPINGS ============= */
+const savedCollectionMappings = {{ config_entry.get("collection_schema_mappings", []) | tojson }};
+if (savedCollectionMappings.length > 0) {
+    savedCollectionMappings.forEach(m => createCollectionRow(m.schemaField, m.sourceField));
+} else {
+    createCollectionRow();
+}
+</script>
+
 <script>
 /* ============= GLOBAL STATE ============= */
 let mappings = []; 
