@@ -2056,8 +2056,45 @@ def verify_and_create_collection_metafields():
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    collection_schema_mappings = data.get("co
+    collection_schema_mappings = data.get("collection_schema_mappings", [])
 
+    # Ensure metaobject definition exists (same as products)
+    metaobject_def_id = ensure_metaobject_definition(shop, access_token)
+
+    # Ensure config entry exists and merge collection schema
+    config_entry_id = ensure_config_entry(shop, access_token, collection_schema_mappings)
+    update_config_entry(shop, access_token, config_entry_id, {"collection_schema_mappings": collection_schema_mappings})
+
+    logging.info("Collection metaobject definition: {}".format(metaobject_def_id))
+    logging.info("Collection config entry: {}".format(config_entry_id))
+
+    def process_collections():
+        try:
+            collections = fetch_all_collections(shop, access_token)
+            logging.info("Fetched {} collections".format(len(collections)))
+
+            for i in range(0, len(collections), BATCH_SIZE):
+                batch = collections[i:i + BATCH_SIZE]
+                for col in batch:
+                    col_gid = col["id"]
+                    col_id = col_gid.split("/")[-1]
+
+                    try:
+                        existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
+                        schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
+                        schema_json = wrap_flattened_json_in_schema(schema_json)
+                        upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
+                        time.sleep(1)
+                    except Exception as e:
+                        logging.error("Collection error {}: {}".format(col_gid, e), exc_info=True)
+
+            logging.info("Completed collection background processing for {}".format(shop))
+
+        except Exception as e:
+            logging.error("Collection background failed: {}".format(e), exc_info=True)
+
+    threading.Thread(target=process_collections, daemon=True).start()
+    return jsonify({"message": "Started background processing of collection schema mappings."})
 
 
 
