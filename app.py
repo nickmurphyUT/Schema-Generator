@@ -1995,26 +1995,32 @@ def update_config_entry(shop, access_token, entry_id, updates):
 
 
 
-
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    logging.info("INPUT: {}".format(data))
+    logging.info("INPUT (products): {}".format(data))
 
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    # frontend payload: dynamic schema rows
     product_schema_mappings = data.get("product_schema_mappings", [])
 
-    # ensure metaobject definition & config entry
+    # Ensure metaobject definition & get config entry
     metaobject_def_id = ensure_metaobject_definition(shop, access_token)
-    config_entry_id = ensure_config_entry(shop, access_token, product_schema_mappings)
+    config_entry_id = ensure_config_entry(shop, access_token)
+
+    # Merge product mappings into shared config
+    update_config_entry(
+        shop,
+        access_token,
+        config_entry_id,
+        {"product_schema_mappings": product_schema_mappings}
+    )
 
     logging.info("Metaobject definition: {}".format(metaobject_def_id))
-    logging.info("Config entry: {}".format(config_entry_id))
+    logging.info("Config entry (merged): {}".format(config_entry_id))
 
     def process_products():
         try:
@@ -2028,36 +2034,21 @@ def verify_and_create_metafields():
                     product_id = product_gid.split("/")[-1]
 
                     try:
-                        # Fetch existing metafields
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        logging.info("Fetched metafields for {}: {}".format(product_gid, existing_mfs))
-                        logging.info("Fetched PROD DATA for {}".format(product))
-
-                        # Build schema JSON
                         schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
-                        logging.info("Built schema JSON for {}: {}".format(product_gid, schema_json))
-
                         schema_json = wrap_flattened_json_in_schema(schema_json)
-
-                        # Upsert metafield
-                        resp = upsert_app_metafield(shop, access_token, product_gid, schema_json)
-                        logging.info("Upserted app_schema.prod_schema for {}".format(product_gid))
-                        logging.debug("Upsert response: {}".format(resp))
-
-                        # delay to prevent Shopify rate limits
+                        upsert_app_metafield(shop, access_token, product_gid, schema_json)
                         time.sleep(1)
-
                     except Exception as e:
                         logging.error("Failed processing product {}: {}".format(product_gid, e), exc_info=True)
 
-            logging.info("Completed background processing for shop {}".format(shop))
-
+            logging.info("Completed product background processing for shop {}".format(shop))
         except Exception as e:
-            logging.error("Background process failed for shop {}: {}".format(shop, e), exc_info=True)
+            logging.error("Product background failed: {}".format(e), exc_info=True)
 
     threading.Thread(target=process_products, daemon=True).start()
+    return jsonify({"message": "Started background processing of product schema mappings."})
 
-    return jsonify({"message": "Started background processing of app-owned metafields. Check logs for progress."})
 
 @app.route("/verify_and_create_collection_metafields", methods=["POST"])
 def verify_and_create_collection_metafields():
@@ -2071,18 +2062,20 @@ def verify_and_create_collection_metafields():
 
     collection_schema_mappings = data.get("collection_schema_mappings", [])
 
-    # same metaobject definition as products
+    # Ensure metaobject definition & get config entry
     metaobject_def_id = ensure_metaobject_definition(shop, access_token)
+    config_entry_id = ensure_config_entry(shop, access_token)
 
-    # ❗ FIXED: remove invalid argument
-    config_entry_id = ensure_config_entry(
+    # Merge collection mappings into shared config
+    update_config_entry(
         shop,
         access_token,
-        collection_schema_mappings
+        config_entry_id,
+        {"collection_schema_mappings": collection_schema_mappings}
     )
 
-    logging.info("Collection metaobject definition: {}".format(metaobject_def_id))
-    logging.info("Collection config entry: {}".format(config_entry_id))
+    logging.info("Metaobject definition: {}".format(metaobject_def_id))
+    logging.info("Config entry (merged): {}".format(config_entry_id))
 
     def process_collections():
         try:
@@ -2091,42 +2084,26 @@ def verify_and_create_collection_metafields():
 
             for i in range(0, len(collections), BATCH_SIZE):
                 batch = collections[i:i+BATCH_SIZE]
-
                 for col in batch:
                     col_gid = col["id"]
                     col_id = col_gid.split("/")[-1]
 
                     try:
                         existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
-
-                        schema_json = build_schema_from_mappings(
-                            col,
-                            existing_mfs,
-                            collection_schema_mappings
-                        )
-
+                        schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
                         schema_json = wrap_flattened_json_in_schema(schema_json)
-
-                        upsert_collection_app_metafield(
-                            shop,
-                            access_token,
-                            col_gid,
-                            schema_json
-                        )
-
+                        upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
                         time.sleep(1)
-
                     except Exception as e:
-                        logging.error("Collection error {}: {}".format(col_gid, e), exc_info=True)
+                        logging.error("Failed processing collection {}: {}".format(col_gid, e), exc_info=True)
 
-            logging.info("Completed collection background processing for {}".format(shop))
-
+            logging.info("Completed collection background processing for shop {}".format(shop))
         except Exception as e:
             logging.error("Collection background failed: {}".format(e), exc_info=True)
 
     threading.Thread(target=process_collections, daemon=True).start()
-
     return jsonify({"message": "Started background processing of collection schema mappings."})
+
 
 
 
