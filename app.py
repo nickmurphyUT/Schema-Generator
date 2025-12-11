@@ -1949,35 +1949,27 @@ def create_config_entry(shop, access_token, mappings_json):
     )
     return query_shopify_graphql(shop, access_token, mutation)
 
-def update_config_entry(shop, access_token, entry_id, mappings_json, key_name="product_schema_mappings"):
+def update_config_entry(shop, access_token, entry_id, mappings_json, field_key):
     """
-    Update a config metaobject field with properly serialized JSON.
-    `key_name` should be "product_schema_mappings" or "collection_schema_mappings".
+    field_key: 'product_schema_mappings' or 'collection_schema_mappings'
     """
-    # 1️⃣ Convert JSON to string, then double-quote it for Shopify GraphQL
     mappings_str = json.dumps(mappings_json)
     quoted_mappings = json.dumps(mappings_str)
     quoted_id = json.dumps(entry_id)[1:-1]  # remove extra quotes for GID
 
-    # 2️⃣ Build mutation
     mutation = (
-        "mutation {"
+        f'mutation {{'
         f'  metaobjectUpdate(id: "{quoted_id}", metaobject: {{'
-        "    fields: ["
-        "      {"
-        f'        key: "{key_name}"'
-        f"        value: {quoted_mappings}"
-        "      }"
-        "    ]"
-        "  }) {"
-        "    metaobject { id }"
-        "    userErrors { field message }"
-        "  }"
-        "}"
+        f'    fields: [{{ key: "{field_key}", value: {quoted_mappings} }}]'
+        f'  }}) {{'
+        f'    metaobject {{ id }}'
+        f'    userErrors {{ field message }}'
+        f'  }}'
+        f'}}'
     )
 
-    # 3️⃣ Run the query
     return query_shopify_graphql(shop, access_token, mutation)
+
 
 
 
