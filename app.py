@@ -382,10 +382,14 @@ def home():
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
             # Fetch the config metaobject to pre-populate frontend
-            config_entry = fetch_config_entry(shop, access_token)
+            fetched_config = fetch_config_entry(shop, access_token)
+            config_entry = fetched_config if fetched_config else {}
 
         except Exception as e:
             print("Error fetching metafield definitions or config entry:", str(e))
+            product_metafields = []
+            collection_metafields = []
+            config_entry = {}
 
     # ✅ Fetch cached organization fields
     org_fields = fetch_organization_schema_properties()  # will use cache if valid
@@ -407,8 +411,9 @@ def home():
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
         org_schema_fields=org_fields,   # cached org schema
-        config_entry=config_entry       # <-- pass existing config to template
+        config_entry=config_entry       # <-- always a dict now
     )
+
 
     
 #access token gen
