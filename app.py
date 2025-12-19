@@ -2213,7 +2213,7 @@ def fetch_metaobject_fields(shop, access_token, config_id):
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    logging.info("INPUT (products & collections): {}".format(data))
+    logging.info("INPUT (products & collections): %s", data)
 
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
@@ -2224,34 +2224,35 @@ def verify_and_create_metafields():
     collection_schema_mappings = data.get("collection_schema_mappings", [])
 
     # --- Ensure metaobject definitions exist ---
-    ensure_metaobject_definition(shop, access_token)  # app_schema definition
-    app_config_id = ensure_app_config_definition(shop, access_token)  # app_config definition
+    ensure_metaobject_definition(shop, access_token)  # app_schema definition exists
 
-    # --- Fetch current fields of the single app_config entry ---
-    current_fields = fetch_metaobject_fields(shop, access_token, app_config_id)
+    # --- Ensure single instance of app_config exists ---
+    app_config_instance_id = ensure_config_entry(shop, access_token)  # <-- instance ID, not definition ID
 
-    # --- Merge / replace product & collection fields ---
+    # --- Fetch current fields of the single entry ---
+    current_fields = fetch_metaobject_fields(shop, access_token, app_config_instance_id) or {}
+
+    # --- Replace/merge product & collection fields ---
     if product_schema_mappings:
         current_fields["product_schema_mappings"] = product_schema_mappings
     if collection_schema_mappings:
         current_fields["collection_schema_mappings"] = collection_schema_mappings
 
     # --- Update the single app_config entry ---
-    update_metaobject_entry(shop, access_token, app_config_id, current_fields)
-    logging.info("Single app_config entry updated: {}".format(app_config_id))
+    update_metaobject_entry(shop, access_token, app_config_instance_id, current_fields)
 
-    # --- Background processing for products ---
+    logging.info("Single app_config entry updated: %s", app_config_instance_id)
+
+    # --- Background processing remains unchanged ---
     def process_products():
         try:
             products = fetch_all_products(shop, access_token)
-            logging.info("Fetched {} products".format(len(products)))
-
+            logging.info("Fetched %d products", len(products))
             for i in range(0, len(products), BATCH_SIZE):
                 batch = products[i:i + BATCH_SIZE]
                 for product in batch:
                     product_gid = product["id"]
                     product_id = product_gid.split("/")[-1]
-
                     try:
                         existing_mfs = fetch_product_metafields(shop, access_token, product_id)
                         schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
@@ -2259,15 +2260,37 @@ def verify_and_create_metafields():
                         upsert_app_metafield(shop, access_token, product_gid, schema_json)
                         time.sleep(1)
                     except Exception as e:
-                        logging.error(
-                            "Failed processing product {}: {}".format(product_gid, e),
-                            exc_info=True
-                        )
-
-            logging.info("Completed product background processing for {}".format(shop))
-
+                        logging.error("Failed processing product %s: %s", product_gid, e, exc_info=True)
+            logging.info("Completed product background processing for %s", shop)
         except Exception as e:
-            logging.error("Product background failed: {}".format(e), exc_info=True)
+            logging.error("Product background failed: %s", e, exc_info=True)
+
+    def process_collections():
+        try:
+            collections = fetch_all_collections(shop, access_token)
+            logging.info("Fetched %d collections", len(collections))
+            for i in range(0, len(collections), BATCH_SIZE):
+                batch = collections[i:i + BATCH_SIZE]
+                for col in batch:
+                    col_gid = col["id"]
+                    col_id = col_gid.split("/")[-1]
+                    try:
+                        existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
+                        schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
+                        schema_json = wrap_flattened_json_in_schema(schema_json)
+                        upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
+                        time.sleep(1)
+                    except Exception as e:
+                        logging.error("Collection error %s: %s", col_gid, e, exc_info=True)
+            logging.info("Completed collection background processing for %s", shop)
+        except Exception as e:
+            logging.error("Collection background failed: %s", e, exc_info=True)
+
+    threading.Thread(target=process_products, daemon=True).start()
+    threading.Thread(target=process_collections, daemon=True).start()
+
+    return jsonify({"message": "Started background processing of product & collection schema mappings."})
+
 
     # --- Background processing for collections ---
     def process_collections():
