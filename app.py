@@ -2254,6 +2254,7 @@ def verify_and_create_metafields():
 
     # --- Update the single app_config entry ---
     try:
+        logging.info("shop name: %s", shop)
         update_metaobject_entry(shop, access_token, app_config_instance_id, current_fields)
         logging.info("Single app_config entry updated: %s", app_config_instance_id)
     except Exception as e:
