@@ -313,61 +313,28 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
 
 
 
-def get_schema_config_entry(shop: str, access_token: str, schema_type: str):
-    query = """
-    query GetSchemaConfig($type: String!) {
-      metaobjects(type: "schema_config", first: 10) {
-        edges {
-          node {
-            id
-            fields {
-              key
-              value
-            }
-          }
-        }
-      }
-    }
-    """
 
-    resp = shopify_graphql(shop, access_token, query, {"type": schema_type})
+def fetch_schema_config_entry(shop, access_token, schema_type):
+    entry = get_schema_config_entry(shop, access_token, schema_type)
+    if not entry:
+        return {"mappings": []}
 
-    edges = resp["data"]["metaobjects"]["edges"]
+    fields = entry.get("fields", [])
+    field_map = {}
 
-    for edge in edges:
-        fields = edge["node"]["fields"]
-        for f in fields:
-            if f["key"] == "schema_type" and f["value"] == schema_type:
-                return edge["node"]
-
-    return None
-
-def parse_schema_metaobject(node):
-    """
-    Turns Shopify metaobject fields[] into:
-    {
-      "schema_type": "...",
-      "mappings": [...]
-    }
-    """
-    if not node:
-        return {}
-
-    result = {}
-
-    for field in node.get("fields", []):
-        key = field["key"]
-        value = field["value"]
+    for field in fields:
+        key = field.get("key")
+        value = field.get("value")
 
         if key == "mappings":
             try:
-                value = json.loads(value)
+                field_map["mappings"] = json.loads(value)
             except Exception:
-                value = []
+                field_map["mappings"] = []
+        else:
+            field_map[key] = value
 
-        result[key] = value
-
-    return result
+    return field_map
 
 
 
@@ -415,8 +382,6 @@ def home():
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
 
-    print("PRODUCT CONFIG:", product_config)
-    print("COLLECTION CONFIG:", collection_config)
     return render_template(
         "schema_dashboard.html",
         schemas=schemas,
@@ -1011,58 +976,6 @@ def organization_schema():
         return render_template("schema_list.html", schema_name="Organization", metafields=metafields, shop=shop)
     except Exception as e:
         return f"<p>Error fetching metafields: {str(e)}</p>"
-
-
-def fetch_schema_config_entry(shop, access_token, schema_type):
-    """
-    Returns a parsed config dict like:
-    {
-        "schema_type": "...",
-        "mappings": [...]
-    }
-    """
-
-    query = """
-    query {
-      metaobjects(type: "schema_config", first: 10) {
-        edges {
-          node {
-            id
-            fields {
-              key
-              value
-            }
-          }
-        }
-      }
-    }
-    """
-
-    resp = query_shopify_graphql(shop, access_token, query)
-
-    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
-
-    for edge in edges:
-        node = edge["node"]
-        fields = node.get("fields", [])
-
-        field_map = {}
-        for f in fields:
-            if f["key"] == "mappings":
-                try:
-                    field_map["mappings"] = json.loads(f["value"])
-                except Exception:
-                    field_map["mappings"] = []
-            else:
-                field_map[f["key"]] = f["value"]
-
-        # 🔑 THIS IS THE FILTER
-        if field_map.get("schema_type") == schema_type:
-            return field_map
-
-    return {}
-
-
 
 # ---------------- PRODUCT SCHEMA ----------------
 @app.route("/app/products-schema-builder")
