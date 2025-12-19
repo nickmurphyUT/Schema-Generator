@@ -2083,11 +2083,12 @@ def ensure_config_entry(shop, access_token, definition_id):
         return edges[0]["node"]["id"]
 
     # 2️⃣ No entry exists, create new one
-    input_str = f"""{{metaobjectDefinitionId: "{definition_id}", product_schema_mappings: [], collection_schema_mappings: []}}"""
+    # Build GraphQL metaobject argument manually
+    metaobject_arg = f"""{{metaobjectDefinitionId: "{definition_id}", product_schema_mappings: [], collection_schema_mappings: []}}"""
 
     mutation = f"""
     mutation {{
-        metaobjectCreate(input: {input_str}) {{
+        metaobjectCreate(metaobject: {metaobject_arg}) {{
             metaobject {{ id }}
             userErrors {{ field message }}
         }}
