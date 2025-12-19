@@ -2260,7 +2260,7 @@ def verify_and_create_metafields():
 
     # --- Ensure metaobject definitions exist ---
     definition_id = ensure_metaobject_definition(shop, access_token)   # app_schema definition exists
-
+    logging.info("definition ID: %s", definition_id)
     app_config_instance_id = ensure_config_entry(shop, access_token, definition_id)
     logging.info("App config instance ID: %s", app_config_instance_id)
 
