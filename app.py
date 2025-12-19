@@ -1062,6 +1062,33 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
 
     return {}
 
+def update_metaobject_entry(shop, access_token, config_id, fields):
+    """
+    Update the Shopify metaobject with the given fields.
+    """
+    mutation = """
+    mutation appConfigurationUpdate($id: ID!, $fields: [AppConfigurationFieldInput!]!) {
+      appConfigurationUpdate(id: $id, input: { fields: $fields }) {
+        appConfiguration {
+          id
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
+
+    variables = {
+        "id": config_id,
+        "fields": [{"key": k, "value": v} for k, v in fields.items()]
+    }
+
+    response = graphql_request(shop, access_token, mutation, variables)
+    if response.get("errors"):
+        raise Exception(f"GraphQL errors: {response['errors']}")
+    return response.get("data", {}).get("appConfigurationUpdate", {})
 
 
 # ---------------- PRODUCT SCHEMA ----------------
