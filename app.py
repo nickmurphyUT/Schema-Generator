@@ -2110,7 +2110,7 @@ def ensure_config_entry(shop, access_token):
         }}
     }}
     """
-    resp = shopify_graphql(shop, access_token, mutation)
+    resp = query_shopify_graphql(shop, access_token, mutation)
     metaobject_create = resp.get("data", {}).get("metaobjectCreate")
     if not metaobject_create or not metaobject_create.get("metaobject"):
         user_errors = metaobject_create.get("userErrors") if metaobject_create else None
