@@ -1974,6 +1974,47 @@ def ensure_metaobject_definition(shop, access_token):
 
     return node["metaobjectDefinition"]["id"]
 
+def ensure_app_config_definition(shop, access_token):
+    """
+    Ensures the 'app_config' metaobject definition exists.
+    Returns the definition ID.
+    """
+    query = """
+    query {
+      metaobjectDefinitionByType(type: "app_config") {
+        id
+      }
+    }
+    """
+    resp = query_shopify_graphql(shop, access_token, query)
+    existing = resp.get("data", {}).get("metaobjectDefinitionByType")
+    
+    if existing and existing.get("id"):
+        return existing["id"]
+
+    # Definition doesn't exist, create it
+    mutation = """
+    mutation {
+      metaobjectDefinitionCreate(definition: {
+        name: "App Config",
+        type: "app_config",
+        fieldDefinitions: [
+          { key: "product_schema_mappings", name: "Product Schema Mappings", type: "JSON_FIELD" },
+          { key: "collection_schema_mappings", name: "Collection Schema Mappings", type: "JSON_FIELD" }
+        ]
+      }) {
+        metaobjectDefinition { id }
+        userErrors { field message }
+      }
+    }
+    """
+    resp = query_shopify_graphql(shop, access_token, mutation)
+    node = resp.get("data", {}).get("metaobjectDefinitionCreate", {})
+
+    if node.get("userErrors"):
+        raise Exception(f"Metaobject definition creation errors: {node['userErrors']}")
+
+    return node["metaobjectDefinition"]["id"]
 
 
 def ensure_config_entry(shop, access_token):
