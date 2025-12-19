@@ -311,33 +311,50 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
         app.logger.error(f"Error in query_shopify_graphql_webhook: {str(e)}")
         return {"error": str(e), "details": str(e)}  # Return a more readable error
 
-
-
-
-def fetch_schema_config_entry(shop, access_token, schema_type):
+def fetch_config_entry(shop, access_token):
     """
-    Returns parsed config for a single schema_type.
+    Fetch the app_schema metaobject for this shop and return the config JSON
     """
-    entry = get_schema_config_entry(shop, access_token, schema_type)
-    if not entry:
-        return {}
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json",
+    }
 
-    result = {}
+    query = {
+        "query": """
+        query {
+          metaobjects(type: "app_schema", first: 1) {
+            edges {
+              node {
+                id
+                config: field(key: "config") {
+                  value
+                }
+              }
+            }
+          }
+        }
+        """
+    }
 
-    for field in entry.get("fields", []):
-        key = field.get("key")
-        value = field.get("value")
+    r = requests.post(
+        "https://{}/admin/api/2025-10/graphql.json".format(shop),
+        headers=headers,
+        data=json.dumps(query)
+    )
+    r.raise_for_status()
+    resp = r.json()
+    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
 
-        if key == "mappings":
-            try:
-                result["mappings"] = json.loads(value) if value else []
-            except Exception:
-                result["mappings"] = []
-        else:
-            result[key] = value
+    if not edges:
+        return {}  # no config object yet
 
-    return result
-
+    config_str = edges[0]["node"]["config"]["value"]
+    try:
+        return json.loads(config_str)
+    except Exception:
+        logging.warning("Failed to parse config JSON, returning raw string")
+        return {"raw": config_str}
 
 
 @app.route("/")
@@ -349,32 +366,29 @@ def home():
     latest_values["hmac"] = hmac
     latest_values["id_token"] = id_token
 
+    # Fetch access token from DB
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
 
     product_metafields = []
     collection_metafields = []
-    product_config = {}
-    collection_config = {}
+    config_entry = {}
 
     if access_token:
         try:
+            # Fetch product & collection metafield definitions
             meta_data = get_metafield_definitions(shop, access_token)
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
-            product_config = fetch_schema_config_entry(
-                shop, access_token, "product_schema_mappings"
-            )
-
-            collection_config = fetch_schema_config_entry(
-                shop, access_token, "collection_schema_mappings"
-            )
+            # Fetch the config metaobject to pre-populate frontend
+            config_entry = fetch_config_entry(shop, access_token)
 
         except Exception as e:
             print("Error fetching metafield definitions or config entry:", str(e))
 
-    org_fields = fetch_organization_schema_properties()
+    # ✅ Fetch cached organization fields
+    org_fields = fetch_organization_schema_properties()  # will use cache if valid
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
@@ -392,12 +406,9 @@ def home():
         id_token_value=id_token,
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
-        org_schema_fields=org_fields,
-        product_config=product_config,
-        collection_config=collection_config
+        org_schema_fields=org_fields,   # cached org schema
+        config_entry=config_entry       # <-- pass existing config to template
     )
-
-
 
     
 #access token gen
@@ -1719,134 +1730,9 @@ def wrap_flattened_json_in_schema(flattened_json):
     return schema_wrapped
 
 
-def load_schema_mappings(shop, access_token, schema_type):
-    """
-    Load mappings JSON for a given schema_type.
-    """
-    entry = get_schema_config_entry(shop, access_token, schema_type)
-    if not entry:
-        return []
-
-    raw = entry.get("mappings", {}).get("value")
-    if not raw:
-        return []
-
-    return json.loads(raw)
-
-
-def update_schema_mappings(shop, access_token, schema_type, mappings):
-    """
-    Replace the mappings for a given schema_type.
-    """
-    entry = get_schema_config_entry(shop, access_token, schema_type)
-    if not entry:
-        entry_id = ensure_schema_config_entry(shop, access_token, schema_type)
-    else:
-        entry_id = entry["id"]
-
-    mappings_json = json.dumps(mappings)
-    quoted = json.dumps(mappings_json)
-
-    mutation = """
-    mutation {{
-      metaobjectUpdate(
-        id: "{entry_id}"
-        metaobject: {{
-          fields: [
-            {{ key: "mappings", value: {quoted} }}
-          ]
-        }}
-      ) {{
-        metaobject {{ id }}
-        userErrors {{ field message }}
-      }}
-    }}
-    """.format(entry_id=entry_id, quoted=quoted)
-
-    resp = query_shopify_graphql(shop, access_token, mutation)
-    node = resp.get("data", {}).get("metaobjectUpdate", {})
-
-    if node.get("userErrors"):
-        raise Exception("Metaobject update errors: {}".format(node["userErrors"]))
-
-    return entry_id
-
-
-def ensure_schema_config_entry(shop, access_token, schema_type):
-    """
-    Ensures a metaobject entry exists for the given schema_type.
-    Returns the metaobject ID.
-    """
-    entry = get_schema_config_entry(shop, access_token, schema_type)
-    if entry:
-        return entry["id"]
-
-    # Create a new entry with empty mappings
-    empty_json = json.dumps([])
-    quoted = json.dumps(empty_json)
-
-    mutation = """
-    mutation {{
-      metaobjectCreate(metaobject: {{
-        type: "app_schema"
-        fields: [
-          {{ key: "schema_type", value: "{schema_type}" }},
-          {{ key: "mappings", value: {quoted} }}
-        ]
-      }}) {{
-        metaobject {{ id }}
-        userErrors {{ field message }}
-      }}
-    }}
-    """.format(schema_type=schema_type, quoted=quoted)
-
-    resp = query_shopify_graphql(shop, access_token, mutation)
-    node = resp.get("data", {}).get("metaobjectCreate", {})
-
-    if node.get("userErrors"):
-        raise Exception("Metaobject create errors: {}".format(node["userErrors"]))
-
-    logging.info("Created metaobject entry '{}' with ID {}".format(schema_type, node["metaobject"]["id"]))
-    return node["metaobject"]["id"]
-
-
-
-def get_schema_config_entry(shop, access_token, schema_type):
-    """
-    Fetch the metaobject entry for the given schema_type.
-    Returns None if it does not exist or the field is missing.
-    """
-    query = """
-    {
-      metaobjects(type: "app_schema", first: 10) {
-        nodes {
-          id
-          schema_type: field(key: "schema_type") { value }
-          mappings: field(key: "mappings") { value }
-        }
-      }
-    }
-    """
-    resp = query_shopify_graphql(shop, access_token, query)
-    nodes = resp.get("data", {}).get("metaobjects", {}).get("nodes", [])
-
-    for node in nodes:
-        schema_field = node.get("schema_type")
-        if schema_field is None:
-            logging.warning("Skipping metaobject {}: missing schema_type".format(node.get("id")))
-            continue
-        if schema_field.get("value") == schema_type:
-            return node
-
-    return None
-
-
-
-
+#metaobject helper functions for config file
 def ensure_metaobject_definition(shop, access_token):
-    """
-    Ensures the app_schema metaobject definition exists.
-    """
+    # First, check if the metaobject definition already exists
     query = """
     query {
       metaobjectDefinitionByType(type: "app_schema") {
@@ -1858,45 +1744,53 @@ def ensure_metaobject_definition(shop, access_token):
     resp = query_shopify_graphql(shop, access_token, query)
     existing = resp.get("data", {}).get("metaobjectDefinitionByType")
 
-    if existing and existing.get("id"):
-        logging.info(f"Metaobject definition exists: {existing['id']}")
+    if existing and "id" in existing:
+        logging.info(f"Metaobject definition already exists: {existing['id']}")
         return existing["id"]
 
-    logging.info("Creating app_schema metaobject definition")
+    logging.info("Metaobject definition not found, creating...")
 
-    mutation = """
+    create_query = """
     mutation {
       metaobjectDefinitionCreate(definition: {
-        name: "App Schema Config",
+        name: "App Schema",
         type: "app_schema",
         fieldDefinitions: [
           {
-            name: "Schema Type",
-            key: "schema_type",
-            type: "single_line_text_field",
-            required: true
-          },
-          {
-            name: "Mappings",
-            key: "mappings",
+            name: "config",
+            key: "config",
             type: "single_line_text_field",
             required: false
           }
         ]
       }) {
-        metaobjectDefinition { id }
-        userErrors { field message }
+        metaobjectDefinition {
+          id
+        }
+        userErrors {
+          message
+          field
+        }
       }
     }
     """
 
-    resp = query_shopify_graphql(shop, access_token, mutation)
-    node = resp.get("data", {}).get("metaobjectDefinitionCreate", {})
+    resp2 = query_shopify_graphql(shop, access_token, create_query)
+    logging.info(f"create response: {resp2}")
 
-    if node.get("userErrors"):
-        raise Exception(f"Metaobject definition errors: {node['userErrors']}")
+    node = resp2.get("data", {}).get("metaobjectDefinitionCreate", {})
+    errors = node.get("userErrors")
+    created = node.get("metaobjectDefinition")
 
-    return node["metaobjectDefinition"]["id"]
+    if errors:
+        logging.error(f"Shopify metaobjectDefinitionCreate userErrors: {errors}")
+        raise Exception("Failed to create metaobject definition")
+
+    if not created:
+        logging.error(f"Shopify metaobjectDefinitionCreate missing metaobjectDefinition: {resp2}")
+        raise Exception("Failed to create metaobject definition")
+
+    return created["id"]
 
 
 
@@ -1924,28 +1818,34 @@ def ensure_config_entry(shop, access_token):
 
 
 
-def merge_and_update_config(shop, access_token, schema_type, new_mappings):
+def merge_and_update_config(shop, access_token, field_key, new_mappings):
     """
-    Fetch the metaobject entry for the given schema_type (product or collection).
-    If it doesn't exist, create it. Then update its mappings field.
-    Returns the metaobject ID.
+    Merge new mappings into the single shared config entry without overwriting the other field.
+    field_key: 'product_schema_mappings' or 'collection_schema_mappings'
     """
-    # Attempt to fetch existing entry safely
-    entry = get_schema_config_entry(shop, access_token, schema_type)
+    # Fetch existing entry
+    config_entry = get_config_metaobject_entry(shop, access_token)
 
-    if entry is None:
-        # Entry does not exist → create it
-        logging.info("Metaobject entry for '{}' not found, creating...".format(schema_type))
-        entry_id = ensure_schema_config_entry(shop, access_token, schema_type)
+    if config_entry:
+        config_id = config_entry["id"]
+        # Safely extract existing fields, defaulting to empty list
+        existing_product = json.loads(config_entry.get("product_schema_mappings", {}).get("value") or "[]")
+        existing_collection = json.loads(config_entry.get("collection_schema_mappings", {}).get("value") or "[]")
+        existing = {
+            "product_schema_mappings": existing_product,
+            "collection_schema_mappings": existing_collection
+        }
     else:
-        entry_id = entry["id"]
+        # No entry exists, create new with empty arrays
+        config_id = ensure_config_entry(shop, access_token)
+        existing = {"product_schema_mappings": [], "collection_schema_mappings": []}
 
-    # Update the mappings field
-    update_schema_mappings(shop, access_token, schema_type, new_mappings)
+    # Merge new mappings for the specified field
+    existing[field_key] = new_mappings
 
-    return entry_id
-
-
+    # Update the metaobject with both fields to preserve everything
+    update_config_entry(shop, access_token, config_id, existing, field_key=None)
+    return config_id
 
 
 def get_config_metaobject_entry(shop, access_token):
