@@ -1064,31 +1064,41 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
 
 def update_metaobject_entry(shop, access_token, config_id, fields):
     """
-    Update the Shopify metaobject with the given fields.
+    Update a Shopify metaobject (app_config) with the provided fields.
+    fields: dict of { field_key: value }, values will be JSON-encoded.
     """
-    mutation = """
-    mutation appConfigurationUpdate($id: ID!, $fields: [AppConfigurationFieldInput!]!) {
-      appConfigurationUpdate(id: $id, input: { fields: $fields }) {
-        appConfiguration {
-          id
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-    """
+    # Build the fields array for GraphQL
+    gql_fields = []
+    for key, value in fields.items():
+        gql_fields.append(
+            '{{ key: "{}", value: {} }}'.format(key, json.dumps(value))
+        )
 
-    variables = {
-        "id": config_id,
-        "fields": [{"key": k, "value": v} for k, v in fields.items()]
-    }
+    fields_str = ", ".join(gql_fields)
 
-    response = graphql_request(shop, access_token, mutation, variables)
-    if response.get("errors"):
-        raise Exception(f"GraphQL errors: {response['errors']}")
-    return response.get("data", {}).get("appConfigurationUpdate", {})
+    mutation = (
+        "mutation {"
+        "  metaobjectUpdate("
+        "    id: \"{}\","
+        "    metaobject: {{ fields: [{}] }}"
+        "  ) {{"
+        "    metaobject {{ id }}"
+        "    userErrors {{ field message }}"
+        "  }}"
+        "}}"
+    ).format(config_id, fields_str)
+
+    resp = graphql_request(shop, access_token, mutation)
+
+    if "errors" in resp:
+        raise Exception("GraphQL errors updating metaobject: {}".format(resp["errors"]))
+
+    node = resp.get("data", {}).get("metaobjectUpdate", {})
+    if node.get("userErrors"):
+        raise Exception("Metaobject update userErrors: {}".format(node["userErrors"]))
+
+    return node.get("metaobject", {}).get("id")
+
 
 
 # ---------------- PRODUCT SCHEMA ----------------
@@ -2159,25 +2169,43 @@ def update_config_entry(shop, access_token, entry_id, mappings_json, field_key=N
 
 def fetch_metaobject_fields(shop, access_token, config_id):
     """
-    Fetch existing metaobject fields from Shopify for the given config entry.
-    Returns a dict or None if empty.
+    Fetch existing fields from a Shopify metaobject (app_config).
+    Returns a dict: { field_key: value } with JSON-decoded values.
     """
-    # Example GraphQL call to Shopify
     query = """
-    {
-      appConfiguration(id: "%s") {
+    query getMetaobject($id: ID!) {
+      metaobject(id: $id) {
+        id
         fields {
           key
           value
         }
       }
     }
-    """ % config_id
+    """
+    variables = {"id": config_id}
+    response = graphql_request(shop, access_token, query, variables)
 
-    response = graphql_request(shop, access_token, query)
-    if "data" in response and response["data"]["appConfiguration"]:
-        return {f["key"]: f["value"] for f in response["data"]["appConfiguration"]["fields"]}
-    return {}
+    if "errors" in response:
+        raise Exception(f"GraphQL errors fetching metaobject: {response['errors']}")
+
+    node = response.get("data", {}).get("metaobject")
+    if not node:
+        return {}
+
+    fields = {}
+    for f in node.get("fields", []):
+        key = f.get("key")
+        value = f.get("value")
+        try:
+            # decode JSON if possible
+            value = json.loads(value)
+        except Exception:
+            pass
+        fields[key] = value
+
+    return fields
+
 
 
 
@@ -2185,7 +2213,7 @@ def fetch_metaobject_fields(shop, access_token, config_id):
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    logging.info(f"INPUT (products & collections): {data}")
+    logging.info("INPUT (products & collections): {}".format(data))
 
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
@@ -2196,13 +2224,13 @@ def verify_and_create_metafields():
     collection_schema_mappings = data.get("collection_schema_mappings", [])
 
     # --- Ensure metaobject definitions exist ---
-    ensure_metaobject_definition(shop, access_token)  # app_schema
-    app_config_id = ensure_app_config_definition(shop, access_token)  # app_config
+    ensure_metaobject_definition(shop, access_token)  # app_schema definition
+    app_config_id = ensure_app_config_definition(shop, access_token)  # app_config definition
 
-    # --- Fetch current fields of the single entry ---
-    current_fields = fetch_metaobject_fields(shop, access_token, app_config_id) or {}
+    # --- Fetch current fields of the single app_config entry ---
+    current_fields = fetch_metaobject_fields(shop, access_token, app_config_id)
 
-    # --- Replace/merge product & collection fields ---
+    # --- Merge / replace product & collection fields ---
     if product_schema_mappings:
         current_fields["product_schema_mappings"] = product_schema_mappings
     if collection_schema_mappings:
@@ -2210,13 +2238,13 @@ def verify_and_create_metafields():
 
     # --- Update the single app_config entry ---
     update_metaobject_entry(shop, access_token, app_config_id, current_fields)
+    logging.info("Single app_config entry updated: {}".format(app_config_id))
 
-    logging.info(f"Single app_config entry updated: {app_config_id}")
-
+    # --- Background processing for products ---
     def process_products():
         try:
             products = fetch_all_products(shop, access_token)
-            logging.info(f"Fetched {len(products)} products")
+            logging.info("Fetched {} products".format(len(products)))
 
             for i in range(0, len(products), BATCH_SIZE):
                 batch = products[i:i + BATCH_SIZE]
@@ -2231,17 +2259,21 @@ def verify_and_create_metafields():
                         upsert_app_metafield(shop, access_token, product_gid, schema_json)
                         time.sleep(1)
                     except Exception as e:
-                        logging.error(f"Failed processing product {product_gid}: {e}", exc_info=True)
+                        logging.error(
+                            "Failed processing product {}: {}".format(product_gid, e),
+                            exc_info=True
+                        )
 
-            logging.info(f"Completed product background processing for {shop}")
+            logging.info("Completed product background processing for {}".format(shop))
 
         except Exception as e:
-            logging.error(f"Product background failed: {e}", exc_info=True)
+            logging.error("Product background failed: {}".format(e), exc_info=True)
 
+    # --- Background processing for collections ---
     def process_collections():
         try:
             collections = fetch_all_collections(shop, access_token)
-            logging.info(f"Fetched {len(collections)} collections")
+            logging.info("Fetched {} collections".format(len(collections)))
 
             for i in range(0, len(collections), BATCH_SIZE):
                 batch = collections[i:i + BATCH_SIZE]
@@ -2256,14 +2288,17 @@ def verify_and_create_metafields():
                         upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
                         time.sleep(1)
                     except Exception as e:
-                        logging.error(f"Collection error {col_gid}: {e}", exc_info=True)
+                        logging.error(
+                            "Collection error {}: {}".format(col_gid, e),
+                            exc_info=True
+                        )
 
-            logging.info(f"Completed collection background processing for {shop}")
+            logging.info("Completed collection background processing for {}".format(shop))
 
         except Exception as e:
-            logging.error(f"Collection background failed: {e}", exc_info=True)
+            logging.error("Collection background failed: {}".format(e), exc_info=True)
 
-    # Start both background threads
+    # --- Start background threads ---
     threading.Thread(target=process_products, daemon=True).start()
     threading.Thread(target=process_collections, daemon=True).start()
 
