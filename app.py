@@ -314,27 +314,36 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
 
 
 
-def fetch_schema_config_entry(shop, access_token, schema_type):
-    entry = get_schema_config_entry(shop, access_token, schema_type)
-    if not entry:
-        return {"mappings": []}
+def get_schema_config_entry(shop, access_token, schema_type):
+    query = """
+    {
+      metaobjects(type: "app_schema", first: 10) {
+        edges {
+          node {
+            id
+            fields {
+              key
+              value
+            }
+          }
+        }
+      }
+    }
+    """
 
-    fields = entry.get("fields", [])
-    field_map = {}
+    resp = query_shopify_graphql(shop, access_token, query)
+    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
 
-    for field in fields:
-        key = field.get("key")
-        value = field.get("value")
+    for edge in edges:
+        node = edge.get("node", {})
+        fields = node.get("fields", [])
 
-        if key == "mappings":
-            try:
-                field_map["mappings"] = json.loads(value)
-            except Exception:
-                field_map["mappings"] = []
-        else:
-            field_map[key] = value
+        for field in fields:
+            if field.get("key") == "schema_type" and field.get("value") == schema_type:
+                return node
 
-    return field_map
+    return None
+
 
 
 
