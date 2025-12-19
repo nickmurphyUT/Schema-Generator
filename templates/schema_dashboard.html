@@ -97,6 +97,18 @@ function createCollectionRow(defaultSchema = "", defaultSource = "") {
     const id = collectionRowId++;
     const container = document.getElementById("collection-mapping-container");
 
+    // Add saved schema to options if not already present
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
+
+    // Add saved source to options if not already present
+    const sourceOptions = [...collectionFieldOptions];
+    if (defaultSource && !collectionFieldOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
+
     const row = document.createElement("div");
     row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
     row.dataset.rowId = id;
@@ -107,8 +119,8 @@ function createCollectionRow(defaultSchema = "", defaultSource = "") {
             <label class="text-sm text-gray-600 font-medium">Schema Field</label>
             <select class="collection-schema-select p-2 border rounded bg-white">
                 <option value="">Select Schema Field</option>
-                ${commonSchemaFields.map(f => `
-                    <option value="${f}" ${defaultSchema === f ? "selected" : ""}>${f}</option>
+                ${schemaOptions.map(f => `
+                    <option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>
                 `).join("")}
             </select>
             <input type="text"
@@ -122,7 +134,7 @@ function createCollectionRow(defaultSchema = "", defaultSource = "") {
             <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
             <select class="collection-source p-2 border rounded bg-white">
                 <option value="">Select Collection Attribute</option>
-                ${collectionFieldOptions.map(o => `
+                ${sourceOptions.map(o => `
                     <option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>
                 `).join("")}
             </select>
@@ -202,40 +214,27 @@ if (savedCollectionMappings.length > 0) {
 } else {
     createCollectionRow();
 }
-</script>
 
-<script>
-/* ============= GLOBAL STATE ============= */
+/* ============= PRODUCT STATE ============= */
 let mappings = []; 
 let rowIdCounter = 0;
 
-/* ============= PRODUCT FIELD OPTIONS ============= */
-const productFieldOptions = [
-    "product.title",
-    "product.vendor",
-    "product.handle",
-    "product.product_type",
-    "product.status",
-    "product.description",
-    "product.tags[]",
-    "product.images[].src",
-    "variants[].sku",
-    "variants[].price",
-    "variants[].barcode",
-    "variants[].weight",
-    {% for mf in product_metafields %}
-        "metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",
-    {% endfor %}
-];
-
-/* ============= COMMON SCHEMA FIELDS ============= */
-// Replace hard-coded fields with cached org schema fields
-const commonSchemaFields = {{ org_schema_fields | tojson }};
-
-/* ============= CREATE ROW ============= */
+/* ============= CREATE PRODUCT ROW ============= */
 function createSchemaRow(defaultSchema = "", defaultSource = "") {
     const id = rowIdCounter++;
     const container = document.getElementById("schema-mapping-container");
+
+    // Add saved schema to options if not already present
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
+
+    // Add saved source to options if not already present
+    const sourceOptions = [...productFieldOptions];
+    if (defaultSource && !productFieldOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
 
     const row = document.createElement("div");
     row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
@@ -247,8 +246,8 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
             <label class="text-sm text-gray-600 font-medium">Schema Field</label>
             <select class="schema-select p-2 border rounded bg-white">
                 <option value="">Select Schema Field</option>
-                ${commonSchemaFields.map(f => `
-                    <option value="${f}" ${defaultSchema === f ? "selected" : ""}>${f}</option>
+                ${schemaOptions.map(f => `
+                    <option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>
                 `).join("")}
             </select>
             <input type="text"
@@ -262,7 +261,7 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
             <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
             <select class="product-source p-2 border rounded bg-white">
                 <option value="">Select Product Attribute</option>
-                ${productFieldOptions.map(o => `
+                ${sourceOptions.map(o => `
                     <option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>
                 `).join("")}
             </select>
@@ -272,13 +271,11 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
         <button class="delete-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
     `;
 
-    /* DELETE functionality */
     row.querySelector(".delete-row").onclick = () => {
         row.remove();
         updateMappings();
     };
 
-    /* UPDATE on any change */
     row.querySelector(".schema-select").onchange = updateMappings;
     row.querySelector(".schema-input").oninput = updateMappings;
     row.querySelector(".product-source").onchange = updateMappings;
@@ -287,7 +284,7 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
     updateMappings();
 }
 
-/* ============= UPDATE STATE ============= */
+/* ============= UPDATE PRODUCT STATE ============= */
 function updateMappings() {
     mappings = [...document.querySelectorAll("#schema-mapping-container > div")].map(row => {
         const schemaSelect = row.querySelector(".schema-select").value.trim();
@@ -342,7 +339,7 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
     }
 };
 
-/* ============= PREPOPULATE SAVED SCHEMA ============= */
+/* ============= PREPOPULATE SAVED PRODUCT SCHEMA ============= */
 const savedMappings = {{ config_entry.get("product_schema_mappings", []) | tojson }};
 if (savedMappings.length > 0) {
     savedMappings.forEach(m => createSchemaRow(m.schemaField, m.sourceField));
@@ -350,6 +347,7 @@ if (savedMappings.length > 0) {
     createSchemaRow();
 }
 </script>
+
 
 </body>
 </html>
