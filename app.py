@@ -2130,6 +2130,27 @@ def update_config_entry(shop, access_token, entry_id, mappings_json, field_key=N
 
 
 
+def fetch_metaobject_fields(shop, access_token, config_id):
+    """
+    Fetch existing metaobject fields from Shopify for the given config entry.
+    Returns a dict or None if empty.
+    """
+    # Example GraphQL call to Shopify
+    query = """
+    {
+      appConfiguration(id: "%s") {
+        fields {
+          key
+          value
+        }
+      }
+    }
+    """ % config_id
+
+    response = graphql_request(shop, access_token, query)
+    if "data" in response and response["data"]["appConfiguration"]:
+        return {f["key"]: f["value"] for f in response["data"]["appConfiguration"]["fields"]}
+    return {}
 
 
 
