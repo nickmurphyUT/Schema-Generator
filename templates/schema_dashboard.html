@@ -89,9 +89,7 @@ const collectionFieldOptions = [
     "collection.handle",
     "collection.sort_order",
     "collection.updated_at",
-    {% for mf in collection_metafields %}
-        "metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",
-    {% endfor %}
+    {% for mf in collection_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 
 const productFieldOptions = [
@@ -107,9 +105,7 @@ const productFieldOptions = [
     "variants[].price",
     "variants[].barcode",
     "variants[].weight",
-    {% for mf in product_metafields %}
-        "metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",
-    {% endfor %}
+    {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 
 const commonSchemaFields = {{ org_schema_fields | tojson }};
@@ -228,8 +224,10 @@ else createSchemaRow();
 if (savedCollectionMappings.length > 0) savedCollectionMappings.forEach(m => createCollectionRow(m.schemaField || "", m.sourceField || ""));
 else createCollectionRow();
 
-    // Product Save & Generate
+/* ================= SAVE HANDLERS ================= */
+// Product Save Only
 document.getElementById("sendToBackendBtn").onclick = async () => {
+    updateMappings();
     const payload = {
         shop: '{{ shop_name or "Not found" }}',
         hmac: '{{ hmac_value or "Not found" }}',
@@ -246,16 +244,15 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
             body: JSON.stringify(payload)
         });
         const result = await resp.json();
-        preview.innerHTML = resp.ok
-            ? `Saved!`
-            : `Error: ${result.error || JSON.stringify(result)}`;
+        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
     } catch {
         preview.innerHTML = 'Network Error';
     }
 };
 
-// Collection Save & Generate
+// Collection Save Only
 document.getElementById("saveCollectionBtn").onclick = async () => {
+    updateCollectionMappings();
     const payload = {
         shop: '{{ shop_name }}',
         hmac: '{{ hmac_value }}',
@@ -272,14 +269,38 @@ document.getElementById("saveCollectionBtn").onclick = async () => {
             body: JSON.stringify(payload)
         });
         const result = await resp.json();
-        preview.innerHTML = resp.ok
-            ? `Saved!`
-            : `Error: ${result.error || JSON.stringify(result)}`;
+        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
     } catch {
         preview.innerHTML = 'Network Error';
     }
 };
 
+// Optional Combined Save (if you ever add a "Save Both" button)
+document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
+    updateMappings();
+    updateCollectionMappings();
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        product_schema_mappings: mappings,
+        collection_schema_mappings: collectionMappings
+    };
+    const preview = document.getElementById("metafields-preview");
+    preview.innerHTML = 'Saving…';
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
+    } catch {
+        preview.innerHTML = 'Network Error';
+    }
+});
 </script>
 
 
