@@ -2137,7 +2137,7 @@ def update_config_entry(shop, access_token, entry_id, mappings_json, field_key=N
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    logging.info(f"INPUT (products): {data}")
+    logging.info(f"INPUT (products & collections): {data}")
 
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
@@ -2145,20 +2145,25 @@ def verify_and_create_metafields():
         return jsonify({"error": "No access token for shop"}), 400
 
     product_schema_mappings = data.get("product_schema_mappings", [])
+    collection_schema_mappings = data.get("collection_schema_mappings", [])
 
-    # --- Ensure required metaobject definitions exist ---
-    ensure_metaobject_definition(shop, access_token)          # app_schema
-    ensure_app_config_definition(shop, access_token)          # app_config
+    # --- Ensure metaobject definitions exist ---
+    ensure_metaobject_definition(shop, access_token)  # app_schema
+    app_config_id = ensure_app_config_definition(shop, access_token)  # app_config
 
-    # --- Ensure config entry exists and merge product schema ---
-    config_entry_id = merge_and_update_config(
-        shop, access_token, "product_schema_mappings", product_schema_mappings
-    )
-    update_config_entry(
-        shop, access_token, config_entry_id, product_schema_mappings, "product_schema_mappings"
-    )
+    # --- Fetch current fields of the single entry ---
+    current_fields = fetch_metaobject_fields(shop, access_token, app_config_id) or {}
 
-    logging.info(f"Metaobject definitions ensured. Config entry: {config_entry_id}")
+    # --- Replace/merge product & collection fields ---
+    if product_schema_mappings:
+        current_fields["product_schema_mappings"] = product_schema_mappings
+    if collection_schema_mappings:
+        current_fields["collection_schema_mappings"] = collection_schema_mappings
+
+    # --- Update the single app_config entry ---
+    update_metaobject_entry(shop, access_token, app_config_id, current_fields)
+
+    logging.info(f"Single app_config entry updated: {app_config_id}")
 
     def process_products():
         try:
@@ -2185,36 +2190,6 @@ def verify_and_create_metafields():
         except Exception as e:
             logging.error(f"Product background failed: {e}", exc_info=True)
 
-    threading.Thread(target=process_products, daemon=True).start()
-    return jsonify({"message": "Started background processing of product schema mappings."})
-
-
-@app.route("/verify_and_create_collection_metafields", methods=["POST"])
-def verify_and_create_collection_metafields():
-    data = request.json
-    logging.info(f"INPUT (collections): {data}")
-
-    shop = data.get("shop") or session.get("shop")
-    access_token = get_access_token_for_shop(shop)
-    if not access_token:
-        return jsonify({"error": "No access token for shop"}), 400
-
-    collection_schema_mappings = data.get("collection_schema_mappings", [])
-
-    # --- Ensure required metaobject definitions exist ---
-    ensure_metaobject_definition(shop, access_token)          # app_schema
-    ensure_app_config_definition(shop, access_token)          # app_config
-
-    # --- Ensure config entry exists and merge collection schema ---
-    config_entry_id = merge_and_update_config(
-        shop, access_token, "collection_schema_mappings", collection_schema_mappings
-    )
-    update_config_entry(
-        shop, access_token, config_entry_id, collection_schema_mappings, "collection_schema_mappings"
-    )
-
-    logging.info(f"Collection metaobject definitions ensured. Config entry: {config_entry_id}")
-
     def process_collections():
         try:
             collections = fetch_all_collections(shop, access_token)
@@ -2240,8 +2215,11 @@ def verify_and_create_collection_metafields():
         except Exception as e:
             logging.error(f"Collection background failed: {e}", exc_info=True)
 
+    # Start both background threads
+    threading.Thread(target=process_products, daemon=True).start()
     threading.Thread(target=process_collections, daemon=True).start()
-    return jsonify({"message": "Started background processing of collection schema mappings."})
+
+    return jsonify({"message": "Started background processing of product & collection schema mappings."})
 
 
 
