@@ -2216,22 +2216,15 @@ def verify_and_create_metafields():
     logging.info("INPUT (products & collections): %s", json.dumps(data, indent=2))
 
     shop = data.get("shop") or session.get("shop")
-    logging.info("Resolved shop: %s", shop)
-
     access_token = get_access_token_for_shop(shop)
     if not access_token:
-        logging.error("No access token for shop: %s", shop)
         return jsonify({"error": "No access token for shop"}), 400
-    logging.info("Access token retrieved for shop")
 
     product_schema_mappings = data.get("product_schema_mappings", [])
     collection_schema_mappings = data.get("collection_schema_mappings", [])
-    logging.info("Product schema mappings: %s", product_schema_mappings)
-    logging.info("Collection schema mappings: %s", collection_schema_mappings)
 
     # --- Ensure metaobject definitions exist ---
-    ensure_metaobject_definition(shop, access_token)
-    logging.info("Metaobject definition ensured for shop: %s", shop)
+    ensure_metaobject_definition(shop, access_token)  # app_schema definition exists
 
     # --- Ensure single instance of app_config exists ---
     app_config_instance_id = ensure_config_entry(shop, access_token)
@@ -2241,20 +2234,27 @@ def verify_and_create_metafields():
     current_fields = fetch_metaobject_fields(shop, access_token, app_config_instance_id) or {}
     logging.info("Current metaobject fields: %s", json.dumps(current_fields, indent=2))
 
-    # --- Merge product & collection fields ---
-    if product_schema_mappings:
+    # --- Flatten & merge product & collection fields ---
+    # Avoid nesting inside product_schema_mappings accidentally
+    if isinstance(product_schema_mappings, list) and product_schema_mappings:
         current_fields["product_schema_mappings"] = product_schema_mappings
         logging.info("Merged product schema mappings")
-    if collection_schema_mappings:
+
+    if isinstance(collection_schema_mappings, list) and collection_schema_mappings:
         current_fields["collection_schema_mappings"] = collection_schema_mappings
         logging.info("Merged collection schema mappings")
 
-    # --- Update the single app_config entry ---
-    logging.info("Updating metaobject entry...")
-    update_metaobject_entry(shop, access_token, app_config_instance_id, current_fields)
-    logging.info("Single app_config entry updated: %s", app_config_instance_id)
+    logging.info("Fields to update metaobject with: %s", json.dumps(current_fields, indent=2))
 
-    # --- Background processing ---
+    # --- Update the single app_config entry ---
+    try:
+        update_metaobject_entry(shop, access_token, app_config_instance_id, current_fields)
+        logging.info("Single app_config entry updated: %s", app_config_instance_id)
+    except Exception as e:
+        logging.error("Error updating metaobject entry: %s", e, exc_info=True)
+        return jsonify({"error": "Failed updating metaobject"}), 500
+
+    # --- Background processing remains unchanged ---
     def process_products():
         try:
             products = fetch_all_products(shop, access_token)
@@ -2269,7 +2269,6 @@ def verify_and_create_metafields():
                         schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
                         schema_json = wrap_flattened_json_in_schema(schema_json)
                         upsert_app_metafield(shop, access_token, product_gid, schema_json)
-                        logging.info("Updated product metafield: %s", product_gid)
                         time.sleep(1)
                     except Exception as e:
                         logging.error("Failed processing product %s: %s", product_gid, e, exc_info=True)
@@ -2291,7 +2290,6 @@ def verify_and_create_metafields():
                         schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
                         schema_json = wrap_flattened_json_in_schema(schema_json)
                         upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
-                        logging.info("Updated collection metafield: %s", col_gid)
                         time.sleep(1)
                     except Exception as e:
                         logging.error("Collection error %s: %s", col_gid, e, exc_info=True)
