@@ -2259,7 +2259,7 @@ def verify_and_create_metafields():
     collection_schema_mappings = data.get("collection_schema_mappings", [])
 
     # --- Ensure metaobject definitions exist ---
-    ensure_metaobject_definition(shop, access_token)  # app_schema definition exists
+    definition_id = ensure_metaobject_definition(shop, access_token)   # app_schema definition exists
 
     app_config_instance_id = ensure_config_entry(shop, access_token, definition_id)
     logging.info("App config instance ID: %s", app_config_instance_id)
