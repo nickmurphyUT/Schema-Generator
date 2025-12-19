@@ -376,23 +376,17 @@ def home():
 
     if access_token:
         try:
-            # Fetch product & collection metafield definitions
             meta_data = get_metafield_definitions(shop, access_token)
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
-            # Fetch the config metaobject to pre-populate frontend
             fetched_config = fetch_config_entry(shop, access_token)
             config_entry = fetched_config if fetched_config else {}
 
         except Exception as e:
             print("Error fetching metafield definitions or config entry:", str(e))
-            product_metafields = []
-            collection_metafields = []
-            config_entry = {}
 
-    # ✅ Fetch cached organization fields
-    org_fields = fetch_organization_schema_properties()  # will use cache if valid
+    org_fields = fetch_organization_schema_properties()  # cached org schema
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
@@ -410,8 +404,8 @@ def home():
         id_token_value=id_token,
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
-        org_schema_fields=org_fields,   # cached org schema
-        config_entry=config_entry       # <-- always a dict now
+        org_schema_fields=org_fields,
+        config_entry=config_entry  # always a dict
     )
 
 
