@@ -2085,7 +2085,7 @@ def ensure_config_entry(shop, access_token):
         }
     }
     """
-    resp = shopify_graphql(shop, access_token, query)
+    resp = query_shopify_graphql(shop, access_token, query)
     edges = resp.get("data", {}).get("appConfigMetaobjects", {}).get("edges", [])
 
     if edges:
