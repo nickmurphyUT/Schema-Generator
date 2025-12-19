@@ -2076,8 +2076,10 @@ def ensure_config_entry(shop, access_token):
     """
     entry = get_config_metaobject_entry(shop, access_token)
     if entry:
+        logging.info("Found existing app_config entry: %s", entry["id"])
         return entry["id"]
 
+    logging.info("No existing app_config entry, creating a new one")
     # No entry exists, create empty default with both fields
     empty_mappings = {"product_schema_mappings": [], "collection_schema_mappings": []}
     resp = create_config_entry(shop, access_token, empty_mappings)
@@ -2088,6 +2090,7 @@ def ensure_config_entry(shop, access_token):
         user_errors = metaobject_create.get("userErrors") if metaobject_create else None
         raise Exception(f"Failed to create config entry. UserErrors: {user_errors}")
 
+    logging.info("Created new app_config entry: %s", metaobject_create["metaobject"]["id"])
     return metaobject_create["metaobject"]["id"]
 
 
