@@ -1062,44 +1062,57 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
 
     return {}
 
-def update_metaobject_entry(shop, access_token, config_id, fields_dict):
-    """
-    Safely updates a Shopify metaobject entry using variables and logs the process.
-    """
-    logging.info("Updating metaobject entry %s with fields: %s", config_id, json.dumps(fields_dict, indent=2))
-
-    mutation = """
-    mutation metaobjectUpdate($id: ID!, $fields: MetaobjectUpdateInput!) {
-      metaobjectUpdate(id: $id, fields: $fields) {
-        id
-      }
-    }
-    """
-
-    variables = {
-        "id": config_id,
-        "fields": fields_dict
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": access_token
-    }
-
+def update_metaobject_entry(shop, access_token, config_id, fields):
     try:
-        response = requests.post(
-            SHOPIFY_GRAPHQL_URL.format(shop=shop),
-            headers=headers,
-            json={"query": mutation, "variables": variables}
+        logging.info(
+            "Updating metaobject entry %s with fields: %s",
+            config_id,
+            json.dumps(fields, indent=2)
         )
-        resp_json = response.json()
-        logging.info("GraphQL response: %s", json.dumps(resp_json, indent=2))
 
-        if "errors" in resp_json:
-            logging.error("GraphQL errors updating metaobject: %s", resp_json["errors"])
-            raise Exception(f"GraphQL errors updating metaobject: {resp_json['errors']}")
+        # --- Build GraphQL URL dynamically ---
+        graphql_url = f"https://{shop}/admin/api/2025-10/graphql.json"
+        logging.info("Using Shopify GraphQL URL: %s", graphql_url)
 
-        return resp_json.get("data", {}).get("metaobjectUpdate", {})
+        # --- Properly encode fields for GraphQL ---
+        fields_json = json.dumps(fields)  # safe JSON string
+        mutation = """
+        mutation {
+            metaobjectUpdate(
+                id: "%s",
+                input: %s
+            ) {
+                metaobject {
+                    id
+                }
+                userErrors {
+                    field
+                    message
+                }
+            }
+        }
+        """ % (config_id, fields_json)
+
+        logging.info("GraphQL mutation prepared: %s", mutation)
+
+        # --- Send request ---
+        response = requests.post(
+            graphql_url,
+            headers={
+                "X-Shopify-Access-Token": access_token,
+                "Content-Type": "application/json"
+            },
+            json={"query": mutation}
+        ).json()
+
+        # --- Check for errors ---
+        user_errors = response.get("data", {}).get("metaobjectUpdate", {}).get("userErrors")
+        if user_errors:
+            logging.error("User errors updating metaobject: %s", user_errors)
+            raise Exception(f"User errors updating metaobject: {user_errors}")
+
+        logging.info("Metaobject entry %s updated successfully.", config_id)
+        return response
 
     except Exception as e:
         logging.error("Failed to update metaobject entry %s: %s", config_id, e, exc_info=True)
