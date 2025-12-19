@@ -227,6 +227,59 @@ else createSchemaRow();
 
 if (savedCollectionMappings.length > 0) savedCollectionMappings.forEach(m => createCollectionRow(m.schemaField || "", m.sourceField || ""));
 else createCollectionRow();
+
+    // Product Save & Generate
+document.getElementById("sendToBackendBtn").onclick = async () => {
+    const payload = {
+        shop: '{{ shop_name or "Not found" }}',
+        hmac: '{{ hmac_value or "Not found" }}',
+        id_token: '{{ id_token_value or "Not found" }}',
+        product_schema_mappings: mappings
+    };
+    const preview = document.getElementById("metafields-preview");
+    preview.innerHTML = 'Saving…';
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok
+            ? `Saved!`
+            : `Error: ${result.error || JSON.stringify(result)}`;
+    } catch {
+        preview.innerHTML = 'Network Error';
+    }
+};
+
+// Collection Save & Generate
+document.getElementById("saveCollectionBtn").onclick = async () => {
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        collection_schema_mappings: collectionMappings
+    };
+    const preview = document.getElementById("collection-preview");
+    preview.innerHTML = 'Saving…';
+
+    try {
+        const resp = await fetch("/verify_and_create_collection_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok
+            ? `Saved!`
+            : `Error: ${result.error || JSON.stringify(result)}`;
+    } catch {
+        preview.innerHTML = 'Network Error';
+    }
+};
+
 </script>
 
 
