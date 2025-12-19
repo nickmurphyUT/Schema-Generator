@@ -2068,29 +2068,54 @@ def ensure_app_config_definition(shop, access_token):
 
     return node["metaobjectDefinition"]["id"]
 
-
 def ensure_config_entry(shop, access_token):
     """
-    Fetch existing config entry or create a new one.
-    Always returns the single app_config metaobject ID.
+    Ensure there is a single app_config metaobject entry.
+    Returns its ID.
     """
-    entry = get_config_metaobject_entry(shop, access_token)
-    if entry:
-        logging.info("Found existing app_config entry: %s", entry["id"])
-        return entry["id"]
+    # Query Shopify for existing app_config entries
+    query = """
+    {
+        appConfigMetaobjects(first: 1) {
+            edges {
+                node {
+                    id
+                }
+            }
+        }
+    }
+    """
+    resp = shopify_graphql(shop, access_token, query)
+    edges = resp.get("data", {}).get("appConfigMetaobjects", {}).get("edges", [])
 
-    logging.info("No existing app_config entry, creating a new one")
-    # No entry exists, create empty default with both fields
-    empty_mappings = {"product_schema_mappings": [], "collection_schema_mappings": []}
-    resp = create_config_entry(shop, access_token, empty_mappings)
+    if edges:
+        # Return the ID of the first (and only) entry
+        return edges[0]["node"]["id"]
 
-    # Safely parse response
+    # No entry exists, create one with empty mappings
+    empty_mappings = {
+        "product_schema_mappings": [],
+        "collection_schema_mappings": []
+    }
+    mutation = f"""
+    mutation {{
+        metaobjectCreate(input: {empty_mappings}) {{
+            metaobject {{
+                id
+            }}
+            userErrors {{
+                field
+                message
+            }}
+        }}
+    }}
+    """
+    resp = shopify_graphql(shop, access_token, mutation)
     metaobject_create = resp.get("data", {}).get("metaobjectCreate")
     if not metaobject_create or not metaobject_create.get("metaobject"):
         user_errors = metaobject_create.get("userErrors") if metaobject_create else None
         raise Exception(f"Failed to create config entry. UserErrors: {user_errors}")
 
-    logging.info("Created new app_config entry: %s", metaobject_create["metaobject"]["id"])
     return metaobject_create["metaobject"]["id"]
 
 
