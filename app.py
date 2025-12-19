@@ -315,28 +315,27 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
 
 
 def fetch_schema_config_entry(shop, access_token, schema_type):
-    """
-    Returns parsed config for a single schema_type.
-    """
     entry = get_schema_config_entry(shop, access_token, schema_type)
     if not entry:
-        return {}
+        return {"mappings": []}
 
-    result = {}
+    fields = entry.get("fields", [])
+    field_map = {}
 
-    for field in entry.get("fields", []):
+    for field in fields:
         key = field.get("key")
         value = field.get("value")
 
         if key == "mappings":
             try:
-                result["mappings"] = json.loads(value) if value else []
+                field_map["mappings"] = json.loads(value)
             except Exception:
-                result["mappings"] = []
+                field_map["mappings"] = []
         else:
-            result[key] = value
+            field_map[key] = value
 
-    return result
+    return field_map
+
 
 
 
