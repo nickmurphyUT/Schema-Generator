@@ -225,7 +225,8 @@ const savedProductMappings =
 const savedCollectionMappings =
   {{ collection_config.get("mappings", []) | tojson }};
 
-
+  console.log("🧩 Saved Product Mappings:", savedProductMappings);
+  console.log("📦 Saved Collection Mappings:", savedCollectionMappings);
 if (savedProductMappings.length > 0) savedProductMappings.forEach(m => createSchemaRow(m.schemaField || "", m.sourceField || ""));
 else createSchemaRow();
 
