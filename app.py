@@ -1064,56 +1064,41 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
 
 def update_metaobject_entry(shop, access_token, config_id, fields):
     """
-    Update a Shopify metaobject entry with the given fields.
+    Update a Shopify metaobject (app_config) with the provided fields.
+    fields: dict of { field_key: value }, values will be JSON-encoded.
     """
-    # Convert fields dict/list to GraphQL-compatible string
-    fields_list = []
+    # Build the fields array for GraphQL
+    gql_fields = []
     for key, value in fields.items():
-        # Wrap value in quotes if it's a string
-        if isinstance(value, str):
-            value_str = '"{}"'.format(value)
-        else:
-            value_str = str(value)
-        fields_list.append('{{key: "{}", value: {}}}'.format(key, value_str))
-    fields_str = "[{}]".format(", ".join(fields_list))
+        gql_fields.append(
+            '{{ key: "{}", value: {} }}'.format(key, json.dumps(value))
+        )
 
-    # GraphQL mutation with doubled braces for literal '{' and '}'
-    mutation = """
-    mutation {{
-      metaobjectUpdate(
-        id: "{0}",
-        fields: {1}
-      ) {{
-        metaobject {{
-          id
-          fields {{
-            key
-            value
-          }}
-        }}
-        userErrors {{
-          field
-          message
-        }}
-      }}
-    }}
-    """.format(config_id, fields_str)
+    fields_str = ", ".join(gql_fields)
 
-    headers = {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": access_token,
-    }
+    mutation = (
+        "mutation {"
+        "  metaobjectUpdate("
+        "    id: \"{}\","
+        "    metaobject: {{ fields: [{}] }}"
+        "  ) {{"
+        "    metaobject {{ id }}"
+        "    userErrors {{ field message }}"
+        "  }}"
+        "}}"
+    ).format(config_id, fields_str)
 
-    response = requests.post(
-        "https://{}/admin/api/2025-07/graphql.json".format(shop),
-        headers=headers,
-        json={"query": mutation}
-    ).json()
+    resp = graphql_request(shop, access_token, mutation)
 
-    if "errors" in response:
-        raise Exception("GraphQL errors updating metaobject: {}".format(response["errors"]))
+    if "errors" in resp:
+        raise Exception("GraphQL errors updating metaobject: {}".format(resp["errors"]))
 
-    return response
+    node = resp.get("data", {}).get("metaobjectUpdate", {})
+    if node.get("userErrors"):
+        raise Exception("Metaobject update userErrors: {}".format(node["userErrors"]))
+
+    return node.get("metaobject", {}).get("id")
+
 
 
 # ---------------- PRODUCT SCHEMA ----------------
