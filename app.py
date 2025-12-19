@@ -2068,57 +2068,45 @@ def ensure_app_config_definition(shop, access_token):
 
     return node["metaobjectDefinition"]["id"]
 
-def ensure_config_entry(shop, access_token):
-    """
-    Ensure there is a single app_config metaobject entry.
-    Returns its ID.
-    """
-    # Query Shopify for existing app_config entries
+def ensure_config_entry(shop, access_token, definition_id):
+    # 1️⃣ Query existing entries
     query = """
     {
         appConfigMetaobjects(first: 1) {
-            edges {
-                node {
-                    id
-                }
-            }
+            edges { node { id } }
         }
     }
     """
     resp = query_shopify_graphql(shop, access_token, query)
     edges = resp.get("data", {}).get("appConfigMetaobjects", {}).get("edges", [])
-
     if edges:
-        # Return the ID of the first (and only) entry
         return edges[0]["node"]["id"]
 
-    # No entry exists, create one with empty mappings
+    # 2️⃣ No entry exists, create new one
     empty_mappings = {
         "product_schema_mappings": [],
         "collection_schema_mappings": []
     }
+    # JSON encode the dict for GraphQL
+    input_json = json.dumps({
+        "metaobjectDefinitionId": definition_id,
+        **empty_mappings
+    })
+
     mutation = f"""
     mutation {{
-        metaobjectCreate(input: {empty_mappings}) {{
-            metaobject {{
-                id
-            }}
-            userErrors {{
-                field
-                message
-            }}
+        metaobjectCreate(input: {input_json}) {{
+            metaobject {{ id }}
+            userErrors {{ field message }}
         }}
     }}
     """
     resp = query_shopify_graphql(shop, access_token, mutation)
     metaobject_create = resp.get("data", {}).get("metaobjectCreate")
     if not metaobject_create or not metaobject_create.get("metaobject"):
-        user_errors = metaobject_create.get("userErrors") if metaobject_create else None
-        raise Exception(f"Failed to create config entry. UserErrors: {user_errors}")
-
+        raise Exception(f"Failed to create config entry. UserErrors: {metaobject_create.get('userErrors')}")
+    
     return metaobject_create["metaobject"]["id"]
-
-
 
 
 def merge_and_update_config(shop, access_token, schema_type, new_mappings):
