@@ -2069,6 +2069,10 @@ def ensure_app_config_definition(shop, access_token):
     return node["metaobjectDefinition"]["id"]
 
 def ensure_config_entry(shop, access_token, definition_id):
+    """
+    Ensures a single instance of the app_config metaobject exists.
+    If it exists, returns the ID. Otherwise, creates it.
+    """
     # 1️⃣ Query existing entries
     query = """
     {
@@ -2087,6 +2091,7 @@ def ensure_config_entry(shop, access_token, definition_id):
         "product_schema_mappings": [],
         "collection_schema_mappings": []
     }
+
     # JSON encode the dict for GraphQL
     input_json = json.dumps({
         "metaobjectDefinitionId": definition_id,
@@ -2101,12 +2106,19 @@ def ensure_config_entry(shop, access_token, definition_id):
         }}
     }}
     """
+
     resp = query_shopify_graphql(shop, access_token, mutation)
     metaobject_create = resp.get("data", {}).get("metaobjectCreate")
-    if not metaobject_create or not metaobject_create.get("metaobject"):
-        raise Exception(f"Failed to create config entry. UserErrors: {metaobject_create.get('userErrors')}")
-    
+
+    # 3️⃣ Defensive checks
+    if not metaobject_create:
+        raise Exception(f"Failed to create config entry. Full response: {resp}")
+
+    if metaobject_create.get("userErrors"):
+        raise Exception(f"Failed to create config entry. UserErrors: {metaobject_create['userErrors']}")
+
     return metaobject_create["metaobject"]["id"]
+
 
 
 def merge_and_update_config(shop, access_token, schema_type, new_mappings):
