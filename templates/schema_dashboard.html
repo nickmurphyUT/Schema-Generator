@@ -219,8 +219,8 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
 document.getElementById("addMappingBtn").onclick = () => createSchemaRow();
 
 /* ================= PREPOPULATE ================= */
-const savedProductMappings = {{ config_entry.get("product_schema_mappings", []) | tojson }} || [];
-const savedCollectionMappings = {{ config_entry.get("collection_schema_mappings", []) | tojson }} || [];
+const savedProductMappings = {{ product_config.get("product_schema_mappings", []) | tojson }} || [];
+const savedCollectionMappings = {{ collection_config.get("collection_schema_mappings", []) | tojson }} || [];
 
 if (savedProductMappings.length > 0) savedProductMappings.forEach(m => createSchemaRow(m.schemaField || "", m.sourceField || ""));
 else createSchemaRow();
