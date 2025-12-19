@@ -311,50 +311,29 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
         app.logger.error(f"Error in query_shopify_graphql_webhook: {str(e)}")
         return {"error": str(e), "details": str(e)}  # Return a more readable error
 
+
+
 def fetch_config_entry(shop, access_token):
-    """
-    Fetch the app_schema metaobject for this shop and return the config JSON
-    """
-    headers = {
-        "X-Shopify-Access-Token": access_token,
-        "Content-Type": "application/json",
-    }
+    entry = get_schema_config_entry(shop, access_token)
+    if not entry:
+        return {}
 
-    query = {
-        "query": """
-        query {
-          metaobjects(type: "app_schema", first: 1) {
-            edges {
-              node {
-                id
-                config: field(key: "config") {
-                  value
-                }
-              }
-            }
-          }
-        }
-        """
-    }
+    fields = entry.get("fields", [])
+    result = {}
 
-    r = requests.post(
-        "https://{}/admin/api/2025-10/graphql.json".format(shop),
-        headers=headers,
-        data=json.dumps(query)
-    )
-    r.raise_for_status()
-    resp = r.json()
-    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
+    for field in fields:
+        key = field.get("key")
+        value = field.get("value")
 
-    if not edges:
-        return {}  # no config object yet
+        if key in ("product_schema_mappings", "collection_schema_mappings", "mappings"):
+            try:
+                result[key] = json.loads(value) if value else []
+            except Exception:
+                result[key] = []
+        else:
+            result[key] = value
 
-    config_str = edges[0]["node"]["config"]["value"]
-    try:
-        return json.loads(config_str)
-    except Exception:
-        logging.warning("Failed to parse config JSON, returning raw string")
-        return {"raw": config_str}
+    return result
 
 
 @app.route("/")
