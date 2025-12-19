@@ -1785,13 +1785,14 @@ def update_schema_mappings(shop, access_token, schema_type, mappings):
 
 def ensure_schema_config_entry(shop, access_token, schema_type):
     """
-    Ensures one metaobject entry exists for the given schema_type.
+    Ensures a metaobject entry exists for the given schema_type.
     Returns the metaobject ID.
     """
     entry = get_schema_config_entry(shop, access_token, schema_type)
     if entry:
         return entry["id"]
 
+    # Create a new entry with empty mappings
     empty_json = json.dumps([])
     quoted = json.dumps(empty_json)
 
@@ -1816,13 +1817,15 @@ def ensure_schema_config_entry(shop, access_token, schema_type):
     if node.get("userErrors"):
         raise Exception("Metaobject create errors: {}".format(node["userErrors"]))
 
+    logging.info("Created metaobject entry '{}' with ID {}".format(schema_type, node["metaobject"]["id"]))
     return node["metaobject"]["id"]
+
 
 
 def get_schema_config_entry(shop, access_token, schema_type):
     """
-    Fetch the metaobject entry for the given schema_type (product or collection).
-    Returns the entry dict or None if it does not exist.
+    Fetch the metaobject entry for the given schema_type.
+    Returns None if it does not exist or the field is missing.
     """
     query = """
     {
@@ -1839,9 +1842,15 @@ def get_schema_config_entry(shop, access_token, schema_type):
     nodes = resp.get("data", {}).get("metaobjects", {}).get("nodes", [])
 
     for node in nodes:
-        if node.get("schema_type", {}).get("value") == schema_type:
+        schema_field = node.get("schema_type")
+        if schema_field is None:
+            logging.warning("Skipping metaobject {}: missing schema_type".format(node.get("id")))
+            continue
+        if schema_field.get("value") == schema_type:
             return node
+
     return None
+
 
 
 
@@ -1928,21 +1937,25 @@ def ensure_config_entry(shop, access_token):
 
 def merge_and_update_config(shop, access_token, schema_type, new_mappings):
     """
-    Replace the mappings for a given schema_type (either "product" or "collection").
-    Creates the entry if it does not exist.
-    Returns the metaobject entry ID.
+    Fetch the metaobject entry for the given schema_type (product or collection).
+    If it doesn't exist, create it. Then update its mappings field.
+    Returns the metaobject ID.
     """
-    # Ensure the metaobject entry exists
+    # Attempt to fetch existing entry safely
     entry = get_schema_config_entry(shop, access_token, schema_type)
-    if entry:
-        entry_id = entry["id"]
-    else:
+
+    if entry is None:
+        # Entry does not exist → create it
+        logging.info("Metaobject entry for '{}' not found, creating...".format(schema_type))
         entry_id = ensure_schema_config_entry(shop, access_token, schema_type)
+    else:
+        entry_id = entry["id"]
 
     # Update the mappings field
     update_schema_mappings(shop, access_token, schema_type, new_mappings)
 
     return entry_id
+
 
 
 
