@@ -313,27 +313,31 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
 
 
 
-def fetch_config_entry(shop, access_token):
-    entry = get_schema_config_entry(shop, access_token)
+
+def fetch_schema_config_entry(shop, access_token, schema_type):
+    """
+    Returns parsed config for a single schema_type.
+    """
+    entry = get_schema_config_entry(shop, access_token, schema_type)
     if not entry:
         return {}
 
-    fields = entry.get("fields", [])
     result = {}
 
-    for field in fields:
+    for field in entry.get("fields", []):
         key = field.get("key")
         value = field.get("value")
 
-        if key in ("product_schema_mappings", "collection_schema_mappings", "mappings"):
+        if key == "mappings":
             try:
-                result[key] = json.loads(value) if value else []
+                result["mappings"] = json.loads(value) if value else []
             except Exception:
-                result[key] = []
+                result["mappings"] = []
         else:
             result[key] = value
 
     return result
+
 
 
 @app.route("/")
@@ -345,13 +349,13 @@ def home():
     latest_values["hmac"] = hmac
     latest_values["id_token"] = id_token
 
-    # Fetch access token from DB
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
 
     product_metafields = []
     collection_metafields = []
-    config_entry = {}
+    product_config = {}
+    collection_config = {}
 
     if access_token:
         try:
@@ -359,13 +363,18 @@ def home():
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
-            fetched_config = fetch_config_entry(shop, access_token)
-            config_entry = fetched_config if fetched_config else {}
+            product_config = fetch_schema_config_entry(
+                shop, access_token, "product_schema_mappings"
+            )
+
+            collection_config = fetch_schema_config_entry(
+                shop, access_token, "collection_schema_mappings"
+            )
 
         except Exception as e:
             print("Error fetching metafield definitions or config entry:", str(e))
 
-    org_fields = fetch_organization_schema_properties()  # cached org schema
+    org_fields = fetch_organization_schema_properties()
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
@@ -384,8 +393,10 @@ def home():
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
         org_schema_fields=org_fields,
-        config_entry=config_entry  # always a dict
+        product_config=product_config,
+        collection_config=collection_config
     )
+
 
 
     
