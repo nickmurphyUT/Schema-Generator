@@ -1747,10 +1747,9 @@ def load_schema_mappings(shop, access_token, schema_type):
 
 def update_schema_mappings(shop, access_token, schema_type, mappings):
     """
-    Replace mappings for a given schema_type.
+    Replace the mappings for a given schema_type.
     """
     entry = get_schema_config_entry(shop, access_token, schema_type)
-
     if not entry:
         entry_id = ensure_schema_config_entry(shop, access_token, schema_type)
     else:
@@ -1773,10 +1772,7 @@ def update_schema_mappings(shop, access_token, schema_type, mappings):
         userErrors {{ field message }}
       }}
     }}
-    """.format(
-        entry_id=entry_id,
-        quoted=quoted
-    )
+    """.format(entry_id=entry_id, quoted=quoted)
 
     resp = query_shopify_graphql(shop, access_token, mutation)
     node = resp.get("data", {}).get("metaobjectUpdate", {})
@@ -1789,7 +1785,8 @@ def update_schema_mappings(shop, access_token, schema_type, mappings):
 
 def ensure_schema_config_entry(shop, access_token, schema_type):
     """
-    Ensures exactly one metaobject entry exists per schema_type.
+    Ensures one metaobject entry exists for the given schema_type.
+    Returns the metaobject ID.
     """
     entry = get_schema_config_entry(shop, access_token, schema_type)
     if entry:
@@ -1811,10 +1808,7 @@ def ensure_schema_config_entry(shop, access_token, schema_type):
         userErrors {{ field message }}
       }}
     }}
-    """.format(
-        schema_type=schema_type,
-        quoted=quoted
-    )
+    """.format(schema_type=schema_type, quoted=quoted)
 
     resp = query_shopify_graphql(shop, access_token, mutation)
     node = resp.get("data", {}).get("metaobjectCreate", {})
@@ -1827,7 +1821,8 @@ def ensure_schema_config_entry(shop, access_token, schema_type):
 
 def get_schema_config_entry(shop, access_token, schema_type):
     """
-    Fetch the metaobject entry for a given schema_type (product | collection)
+    Fetch the metaobject entry for the given schema_type (product or collection).
+    Returns the entry dict or None if it does not exist.
     """
     query = """
     {
@@ -1840,15 +1835,14 @@ def get_schema_config_entry(shop, access_token, schema_type):
       }
     }
     """
-
     resp = query_shopify_graphql(shop, access_token, query)
     nodes = resp.get("data", {}).get("metaobjects", {}).get("nodes", [])
 
     for node in nodes:
         if node.get("schema_type", {}).get("value") == schema_type:
             return node
-
     return None
+
 
 
 def ensure_metaobject_definition(shop, access_token):
@@ -1932,34 +1926,24 @@ def ensure_config_entry(shop, access_token):
 
 
 
-def merge_and_update_config(shop, access_token, field_key, new_mappings):
+def merge_and_update_config(shop, access_token, schema_type, new_mappings):
     """
-    Merge new mappings into the single shared config entry without overwriting the other field.
-    field_key: 'product_schema_mappings' or 'collection_schema_mappings'
+    Replace the mappings for a given schema_type (either "product" or "collection").
+    Creates the entry if it does not exist.
+    Returns the metaobject entry ID.
     """
-    # Fetch existing entry
-    config_entry = get_config_metaobject_entry(shop, access_token)
-
-    if config_entry:
-        config_id = config_entry["id"]
-        # Safely extract existing fields, defaulting to empty list
-        existing_product = json.loads(config_entry.get("product_schema_mappings", {}).get("value") or "[]")
-        existing_collection = json.loads(config_entry.get("collection_schema_mappings", {}).get("value") or "[]")
-        existing = {
-            "product_schema_mappings": existing_product,
-            "collection_schema_mappings": existing_collection
-        }
+    # Ensure the metaobject entry exists
+    entry = get_schema_config_entry(shop, access_token, schema_type)
+    if entry:
+        entry_id = entry["id"]
     else:
-        # No entry exists, create new with empty arrays
-        config_id = ensure_config_entry(shop, access_token)
-        existing = {"product_schema_mappings": [], "collection_schema_mappings": []}
+        entry_id = ensure_schema_config_entry(shop, access_token, schema_type)
 
-    # Merge new mappings for the specified field
-    existing[field_key] = new_mappings
+    # Update the mappings field
+    update_schema_mappings(shop, access_token, schema_type, new_mappings)
 
-    # Update the metaobject with both fields to preserve everything
-    update_config_entry(shop, access_token, config_id, existing, field_key=None)
-    return config_id
+    return entry_id
+
 
 
 def get_config_metaobject_entry(shop, access_token):
