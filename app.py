@@ -311,32 +311,50 @@ def query_shopify_graphql_webhookB(shop, access_token, query, variables=None):
         app.logger.error(f"Error in query_shopify_graphql_webhook: {str(e)}")
         return {"error": str(e), "details": str(e)}  # Return a more readable error
 
+def fetch_config_entry(shop, access_token):
+    """
+    Fetch the app_schema metaobject for this shop and return the config JSON
+    """
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json",
+    }
 
+    query = {
+        "query": """
+        query {
+          metaobjects(type: "app_schema", first: 1) {
+            edges {
+              node {
+                id
+                config: field(key: "config") {
+                  value
+                }
+              }
+            }
+          }
+        }
+        """
+    }
 
+    r = requests.post(
+        "https://{}/admin/api/2025-10/graphql.json".format(shop),
+        headers=headers,
+        data=json.dumps(query)
+    )
+    r.raise_for_status()
+    resp = r.json()
+    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
 
-def fetch_schema_config_entry(shop, access_token, schema_type):
-    entry = get_schema_config_entry(shop, access_token, schema_type)
-    if not entry:
-        return {"mappings": []}
+    if not edges:
+        return {}  # no config object yet
 
-    fields = entry.get("fields", [])
-    field_map = {}
-
-    for field in fields:
-        key = field.get("key")
-        value = field.get("value")
-
-        if key == "mappings":
-            try:
-                field_map["mappings"] = json.loads(value)
-            except Exception:
-                field_map["mappings"] = []
-        else:
-            field_map[key] = value
-
-    return field_map
-
-
+    config_str = edges[0]["node"]["config"]["value"]
+    try:
+        return json.loads(config_str)
+    except Exception:
+        logging.warning("Failed to parse config JSON, returning raw string")
+        return {"raw": config_str}
 
 
 @app.route("/")
@@ -348,13 +366,13 @@ def home():
     latest_values["hmac"] = hmac
     latest_values["id_token"] = id_token
 
+    # Fetch access token from DB
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
 
     product_metafields = []
     collection_metafields = []
-    product_config = {}
-    collection_config = {}
+    config_entry = {}
 
     if access_token:
         try:
@@ -362,18 +380,13 @@ def home():
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
-            product_config = fetch_schema_config_entry(
-                shop, access_token, "product_schema_mappings"
-            )
-
-            collection_config = fetch_schema_config_entry(
-                shop, access_token, "collection_schema_mappings"
-            )
+            fetched_config = fetch_config_entry(shop, access_token)
+            config_entry = fetched_config if fetched_config else {}
 
         except Exception as e:
             print("Error fetching metafield definitions or config entry:", str(e))
 
-    org_fields = fetch_organization_schema_properties()
+    org_fields = fetch_organization_schema_properties()  # cached org schema
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
@@ -392,10 +405,8 @@ def home():
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
         org_schema_fields=org_fields,
-        product_config=product_config,
-        collection_config=collection_config
+        config_entry=config_entry  # always a dict
     )
-
 
 
     
