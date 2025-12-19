@@ -1995,8 +1995,8 @@ def ensure_app_config_definition(shop, access_token):
         name: "App Config",
         type: "app_config",
         fieldDefinitions: [
-          { key: "product_schema_mappings", name: "Product Schema Mappings", type: "JSON_FIELD" },
-          { key: "collection_schema_mappings", name: "Collection Schema Mappings", type: "JSON_FIELD" }
+          { key: "product_schema_mappings", name: "Product Schema Mappings", type: "json" },
+          { key: "collection_schema_mappings", name: "Collection Schema Mappings", type: "json" }
         ]
       }) {
         metaobjectDefinition { id }
