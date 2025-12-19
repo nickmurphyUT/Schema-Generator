@@ -347,7 +347,23 @@ if (savedMappings.length > 0) {
     createSchemaRow();
 }
 </script>
+<script>
+/* ============= PREPOPULATE PRODUCT SCHEMA MAPPINGS ============= */
+const savedMappings = ({{ config_entry.get("product_schema_mappings", []) | tojson }} || []);
+if (savedMappings.length > 0) {
+    savedMappings.forEach(m => createSchemaRow(m.schemaField || "", m.sourceField || ""));
+} else {
+    createSchemaRow();
+}
 
+/* ============= PREPOPULATE COLLECTION SCHEMA MAPPINGS ============= */
+const savedCollectionMappings = ({{ config_entry.get("collection_schema_mappings", []) | tojson }} || []);
+if (savedCollectionMappings.length > 0) {
+    savedCollectionMappings.forEach(m => createCollectionRow(m.schemaField || "", m.sourceField || ""));
+} else {
+    createCollectionRow();
+}
+</script>
 
 </body>
 </html>
