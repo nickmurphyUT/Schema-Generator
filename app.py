@@ -382,6 +382,8 @@ def home():
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
 
+    print("PRODUCT CONFIG:", product_config)
+    print("COLLECTION CONFIG:", collection_config)
     return render_template(
         "schema_dashboard.html",
         schemas=schemas,
