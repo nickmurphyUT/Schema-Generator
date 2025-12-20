@@ -2306,6 +2306,56 @@ def fetch_metaobject_fields(shop, access_token, config_id):
 
     return fields
 
+def list_all_metaobjects(shop, access_token, metaobject_type):
+    """
+    Returns a list of all metaobjects of the given type.
+    Each item is a dict with at least 'id' and 'handle'.
+    """
+    query = """
+    query listMetaobjects($type: String!, $first: Int!, $after: String) {
+      metaobjects(first: $first, type: $type, after: $after) {
+        edges {
+          node {
+            id
+            handle
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+    """
+
+    result = []
+    after = None
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json"
+    }
+
+    while True:
+        variables = {"type": metaobject_type, "first": 50, "after": after}
+        resp = requests.post(
+            f"https://{shop}/admin/api/2025-10/graphql.json",
+            headers=headers,
+            json={"query": query, "variables": variables}
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        edges = data["data"]["metaobjects"]["edges"]
+        for edge in edges:
+            result.append(edge["node"])
+        page_info = data["data"]["metaobjects"]["pageInfo"]
+        if page_info["hasNextPage"]:
+            after = page_info["endCursor"]
+        else:
+            break
+
+    return result
+
+
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
