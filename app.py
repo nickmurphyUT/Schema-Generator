@@ -2088,59 +2088,82 @@ def ensure_app_config_definition(shop, access_token):
 def ensure_config_entry(shop, access_token, metaobject_type, field_mappings=None):
     HANDLE = "global"
 
-    # 1️⃣ Fetch by handle (THE KEY FIX)
+    # ------------------------------------------------------------------
+    # 1️⃣ Look up existing metaobject by HANDLE (this prevents duplicates)
+    # ------------------------------------------------------------------
     query = """
-    query ($type: String!, $handle: String!) {
-      metaobjectByHandle(type: $type, handle: $handle) {
+    {{
+      metaobjectByHandle(type: "{type}", handle: "{handle}") {{
         id
-      }
-    }
-    """
+      }}
+    }}
+    """.format(
+        type=metaobject_type,
+        handle=HANDLE
+    )
 
-    variables = {
-        "type": metaobject_type,
-        "handle": HANDLE
-    }
-
-    resp = query_shopify_graphql(shop, access_token, query, variables)
+    resp = query_shopify_graphql(shop, access_token, query)
     node = resp.get("data", {}).get("metaobjectByHandle")
 
     if node and node.get("id"):
+        logging.info("Reusing existing app_config metaobject: %s", node["id"])
         return node["id"]
 
-    # 2️⃣ Create once if missing
-    fields = []
+    logging.info("No existing app_config metaobject found — creating one")
+
+    # ------------------------------------------------------------------
+    # 2️⃣ Build fields payload (JSON-safe)
+    # ------------------------------------------------------------------
+    fields_parts = []
+
     if field_mappings:
-        for k, v in field_mappings.items():
-            fields.append({
-                "key": k,
-                "value": json.dumps(v)
-            })
+        for key, value in field_mappings.items():
+            value_json = json.dumps(value)
+            fields_parts.append(
+                '{{ key: "{key}", value: {value} }}'.format(
+                    key=key,
+                    value=json.dumps(value_json)
+                )
+            )
 
+    fields_str = ", ".join(fields_parts)
+
+    # ------------------------------------------------------------------
+    # 3️⃣ Create the SINGLE metaobject with a fixed handle
+    # ------------------------------------------------------------------
     mutation = """
-    mutation ($input: MetaobjectCreateInput!) {
-      metaobjectCreate(metaobject: $input) {
-        metaobject { id }
-        userErrors { field message }
-      }
-    }
-    """
+    mutation {{
+      metaobjectCreate(
+        metaobject: {{
+          type: "{type}"
+          handle: "{handle}"
+          fields: [{fields}]
+        }}
+      ) {{
+        metaobject {{ id }}
+        userErrors {{ field message }}
+      }}
+    }}
+    """.format(
+        type=metaobject_type,
+        handle=HANDLE,
+        fields=fields_str
+    )
 
-    variables = {
-        "input": {
-            "type": metaobject_type,
-            "handle": HANDLE,
-            "fields": fields
-        }
-    }
+    resp = query_shopify_graphql(shop, access_token, mutation)
+    result = resp.get("data", {}).get("metaobjectCreate")
 
-    resp = query_shopify_graphql(shop, access_token, mutation, variables)
-    result = resp["data"]["metaobjectCreate"]
+    if not result:
+        raise Exception("Metaobject create failed: {}".format(resp))
 
-    if result["userErrors"]:
-        raise Exception(result["userErrors"])
+    if result.get("userErrors"):
+        raise Exception("Metaobject create errors: {}".format(result["userErrors"]))
 
-    return result["metaobject"]["id"]
+    metaobject_id = result["metaobject"]["id"]
+    logging.info("Created new app_config metaobject: %s", metaobject_id)
+
+    return metaobject_id
+
 
 
 
