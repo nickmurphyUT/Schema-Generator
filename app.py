@@ -2267,23 +2267,30 @@ def verify_and_create_metafields():
     product_schema_mappings = data.get("product_schema_mappings", [])
     collection_schema_mappings = data.get("collection_schema_mappings", [])
 
-    # --- Ensure metaobject definitions exist ---
-    definition_id = ensure_metaobject_definition(shop, access_token)   # app_schema definition exists
-    logging.info("definition ID: %s", definition_id)
-    app_config_instance_id = ensure_config_entry(shop, access_token, definition_id)
+    # --- Ensure metaobject definition exists ---
+    definition_id = ensure_metaobject_definition(shop, access_token)   # just ensures the type exists
+    logging.info("Metaobject definition ID: %s", definition_id)
+
+    # --- Ensure single app_config entry exists ---
+    # Use the metaobject type string that Shopify expects (replace "app_config" if yours is different)
+    metaobject_type = "app_config"
+    initial_fields = {
+        "product_schema_mappings": product_schema_mappings,
+        "collection_schema_mappings": collection_schema_mappings
+    }
+    app_config_instance_id = ensure_config_entry(shop, access_token, metaobject_type, initial_fields)
     logging.info("App config instance ID: %s", app_config_instance_id)
 
-    # --- Fetch current fields of the single entry ---
+    # --- Fetch current fields ---
     current_fields = fetch_metaobject_fields(shop, access_token, app_config_instance_id) or {}
     logging.info("Current metaobject fields: %s", json.dumps(current_fields, indent=2))
 
-    # --- Flatten & merge product & collection fields ---
-    # Avoid nesting inside product_schema_mappings accidentally
-    if isinstance(product_schema_mappings, list) and product_schema_mappings:
+    # --- Merge incoming schema mappings ---
+    if product_schema_mappings:
         current_fields["product_schema_mappings"] = product_schema_mappings
         logging.info("Merged product schema mappings")
 
-    if isinstance(collection_schema_mappings, list) and collection_schema_mappings:
+    if collection_schema_mappings:
         current_fields["collection_schema_mappings"] = collection_schema_mappings
         logging.info("Merged collection schema mappings")
 
@@ -2291,14 +2298,13 @@ def verify_and_create_metafields():
 
     # --- Update the single app_config entry ---
     try:
-        logging.info("shop name: %s", shop)
         update_metaobject_entry(shop, access_token, app_config_instance_id, current_fields)
         logging.info("Single app_config entry updated: %s", app_config_instance_id)
     except Exception as e:
         logging.error("Error updating metaobject entry: %s", e, exc_info=True)
         return jsonify({"error": "Failed updating metaobject"}), 500
 
-    # --- Background processing remains unchanged ---
+    # --- Background processing remains the same ---
     def process_products():
         try:
             products = fetch_all_products(shop, access_token)
