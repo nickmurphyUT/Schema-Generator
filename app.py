@@ -397,11 +397,12 @@ def home():
 
             product_config = fetch_schema_config_entry(
                 shop, access_token, "product_schema_mappings"
-            )
-
+            ) or {}
+            
             collection_config = fetch_schema_config_entry(
                 shop, access_token, "collection_schema_mappings"
-            )
+            ) or {}
+
 
         except Exception as e:
             print("Error fetching metafield definitions or config entry:", str(e))
