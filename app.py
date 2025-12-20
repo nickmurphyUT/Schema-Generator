@@ -2307,6 +2307,43 @@ def fetch_metaobject_fields(shop, access_token, config_id):
     return fields
 
 
+def process_products(shop, access_token, product_schema_mappings):
+    try:
+        products = fetch_all_products(shop, access_token)
+        logging.info("Fetched %d products", len(products))
+        for product in products:
+            product_gid = product["id"]
+            product_id = product_gid.split("/")[-1]
+            try:
+                existing_mfs = fetch_product_metafields(shop, access_token, product_id)
+                schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
+                schema_json = wrap_flattened_json_in_schema(schema_json)
+                upsert_app_metafield(shop, access_token, product_gid, schema_json)
+                time.sleep(1)
+            except Exception as e:
+                logging.error("Failed processing product %s: %s", product_gid, str(e), exc_info=True)
+        logging.info("Completed product background processing for %s", shop)
+    except Exception as e:
+        logging.error("Product background failed: %s", str(e), exc_info=True)
+
+def process_collections(shop, access_token, collection_schema_mappings):
+    try:
+        collections = fetch_all_collections(shop, access_token)
+        logging.info("Fetched %d collections", len(collections))
+        for col in collections:
+            col_gid = col["id"]
+            col_id = col_gid.split("/")[-1]
+            try:
+                existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
+                schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
+                schema_json = wrap_flattened_json_in_schema(schema_json)
+                upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
+                time.sleep(1)
+            except Exception as e:
+                logging.error("Failed processing collection %s: %s", col_gid, str(e), exc_info=True)
+        logging.info("Completed collection background processing for %s", shop)
+    except Exception as e:
+        logging.error("Collection background failed: %s", str(e), exc_info=True)
 
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
