@@ -2359,7 +2359,6 @@ def delete_metaobject(shop, access_token, metaobject_id):
     query = """
     mutation metaobjectDelete($id: ID!) {
       metaobjectDelete(id: $id) {
-        deletedMetaobjectId
         userErrors {
           field
           message
@@ -2376,14 +2375,11 @@ def delete_metaobject(shop, access_token, metaobject_id):
     response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
     data = response.json()
 
-    if "data" in data and "metaobjectDelete" in data["data"]:
-        errors = data["data"]["metaobjectDelete"]["userErrors"]
-        if errors:
-            print("Shopify deletion errors:", errors)
-        return data["data"]["metaobjectDelete"].get("deletedMetaobjectId")
+    errors = data.get("data", {}).get("metaobjectDelete", {}).get("userErrors", [])
+    if errors:
+        print(f"Failed to delete metaobject {metaobject_id} errors:", errors)
     else:
-        print("Failed to delete metaobject", metaobject_id, "response:", data)
-        return None
+        print(f"Deleted metaobject: {metaobject_id}")
 
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
