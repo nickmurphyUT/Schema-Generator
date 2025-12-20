@@ -1932,32 +1932,39 @@ def update_schema_mappings(shop, access_token, schema_type, mappings):
 
 def ensure_schema_config_entry(shop, access_token, schema_type):
     """
-    Ensures a schema_config metaobject exists for the given schema_type.
+    Ensures the SINGLE schema_config metaobject exists.
     Returns the metaobject ID.
     """
-    # --- Try to fetch existing entry ---
-    entry = get_schema_config_entry(shop, access_token, schema_type)
+
+    # --- Fetch ANY existing config entry (ignore schema_type) ---
+    entry = get_schema_config_entry(shop, access_token)
     if entry:
         return entry["id"]
 
-    logging.info(f"Metaobject entry for '{schema_type}' not found, creating...")
+    logging.info("No schema_config metaobject found, creating singleton entry...")
 
-    # --- Create new entry using existing helper ---
+    # --- Create ONE global entry ---
     new_entry_data = {
-        "schema_type": schema_type,
-        "mappings": []
+        "product_schema_mappings": [],
+        "collection_schema_mappings": []
     }
 
-    # Use the REST upsert helper to create a metafield entry on a single "config" product
-    # Or use the GraphQL mutation helper if you want to create it as an app-owned metaobject
     resp = create_config_entry(shop, access_token, new_entry_data)
 
     node = resp.get("data", {}).get("metaobjectCreate")
     if not node or node.get("userErrors"):
-        raise Exception(f"Failed to create schema entry: {node.get('userErrors') if node else resp}")
+        raise Exception(
+            f"Failed to create schema config entry: "
+            f"{node.get('userErrors') if node else resp}"
+        )
 
-    logging.info(f"Created schema entry '{schema_type}' with ID {node['metaobject']['id']}")
+    logging.info(
+        "Created SINGLE schema config entry with ID %s",
+        node["metaobject"]["id"]
+    )
+
     return node["metaobject"]["id"]
+
 
 
 def get_schema_config_entry(shop, access_token, schema_type):
