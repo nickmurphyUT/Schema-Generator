@@ -395,13 +395,32 @@ def home():
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
-            product_config = fetch_schema_config_entry(
+            raw_product_config = fetch_schema_config_entry(
                 shop, access_token, "product_schema_mappings"
-            ) or {}
+            )
             
-            collection_config = fetch_schema_config_entry(
+            raw_collection_config = fetch_schema_config_entry(
                 shop, access_token, "collection_schema_mappings"
-            ) or {}
+            )
+            
+            # ---- normalize shapes for template ----
+            if isinstance(raw_product_config, list):
+                product_config = {
+                    "product_schema_mappings": raw_product_config
+                }
+            elif isinstance(raw_product_config, dict):
+                product_config = raw_product_config
+            else:
+                product_config = {}
+            
+            if isinstance(raw_collection_config, list):
+                collection_config = {
+                    "collection_schema_mappings": raw_collection_config
+                }
+            elif isinstance(raw_collection_config, dict):
+                collection_config = raw_collection_config
+            else:
+                collection_config = {}
 
 
         except Exception as e:
