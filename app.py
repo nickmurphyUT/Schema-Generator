@@ -2307,45 +2307,6 @@ def fetch_metaobject_fields(shop, access_token, config_id):
     return fields
 
 
-def process_products(shop, access_token, product_schema_mappings):
-    try:
-        products = fetch_all_products(shop, access_token)
-        logging.info("Fetched %d products", len(products))
-        for product in products:
-            product_gid = product["id"]
-            product_id = product_gid.split("/")[-1]
-            try:
-                existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
-                schema_json = wrap_flattened_json_in_schema(schema_json)
-                upsert_app_metafield(shop, access_token, product_gid, schema_json)
-                time.sleep(1)
-            except Exception as e:
-                logging.error("Failed processing product %s: %s", product_gid, str(e), exc_info=True)
-        logging.info("Completed product background processing for %s", shop)
-    except Exception as e:
-        logging.error("Product background failed: %s", str(e), exc_info=True)
-
-def process_collections(shop, access_token, collection_schema_mappings):
-    try:
-        collections = fetch_all_collections(shop, access_token)
-        logging.info("Fetched %d collections", len(collections))
-        for col in collections:
-            col_gid = col["id"]
-            col_id = col_gid.split("/")[-1]
-            try:
-                existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
-                schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
-                schema_json = wrap_flattened_json_in_schema(schema_json)
-                upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
-                time.sleep(1)
-            except Exception as e:
-                logging.error("Failed processing collection %s: %s", col_gid, str(e), exc_info=True)
-        logging.info("Completed collection background processing for %s", shop)
-    except Exception as e:
-        logging.error("Collection background failed: %s", str(e), exc_info=True)
-
-
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
@@ -2360,74 +2321,95 @@ def verify_and_create_metafields():
     collection_schema_mappings = data.get("collection_schema_mappings", [])
 
     # ------------------------------------------------------------------
-    # Ensure metaobject definition exists (type only, no instance)
+    # Ensure metaobject definition exists (type only)
     # ------------------------------------------------------------------
     definition_id = ensure_metaobject_definition(shop, access_token)
     logging.info("Metaobject definition ID: %s", definition_id)
 
-    # ------------------------------------------------------------------
-    # Delete all existing app_config entries
-    # ------------------------------------------------------------------
-    query = """
-    {
-      appConfigMetaobjects(first: 50) {
-        edges { node { id } }
-      }
-    }
-    """
-    resp = query_shopify_graphql(shop, access_token, query)
-    edges = resp.get("data", {}).get("appConfigMetaobjects", {}).get("edges", [])
-    for edge in edges:
-        node_id = edge["node"]["id"]
-        delete_mutation = (
-            "mutation {"
-            " metaobjectDelete(id: \"" + node_id + "\") {"
-            " deletedId"
-            " userErrors { field message }"
-            " }"
-            "}"
-        )
-        delete_resp = query_shopify_graphql(shop, access_token, delete_mutation)
-        logging.info("Deleted old config entry: %s", node_id)
+    metaobject_type = "app_config"
 
     # ------------------------------------------------------------------
-    # Create a single new entry
+    # Step 1: Delete all existing entries
     # ------------------------------------------------------------------
-    fields_list = []
-    initial_fields = {
+    existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
+    for entry in existing_entries:
+        try:
+            delete_metaobject(shop, access_token, entry["id"])
+            logging.info("Deleted existing config entry: %s", entry["id"])
+        except Exception as e:
+            logging.error("Failed to delete metaobject %s: %s", entry["id"], str(e), exc_info=True)
+
+    # ------------------------------------------------------------------
+    # Step 2: Create new single entry
+    # ------------------------------------------------------------------
+    new_entry_data = {
+        "schema_type": metaobject_type,
         "product_schema_mappings": product_schema_mappings,
         "collection_schema_mappings": collection_schema_mappings
     }
-    for key, value in initial_fields.items():
-        val = json.dumps(value) if isinstance(value, (dict, list)) else str(value)
-        val = val.replace('"', '\\"')
-        fields_list.append('{key: "' + key + '", value: "' + val + '"}')
-    fields_str = "[" + ",".join(fields_list) + "]" if fields_list else "[]"
 
-    create_mutation = (
-        "mutation {"
-        " metaobjectCreate(metaobject: { type: \"app_config\", fields: " + fields_str + " }) {"
-        " metaobject { id }"
-        " userErrors { field message }"
-        " }"
-        "}"
-    )
-    create_resp = query_shopify_graphql(shop, access_token, create_mutation)
-    node = create_resp.get("data", {}).get("metaobjectCreate")
+    resp = create_config_entry(shop, access_token, new_entry_data)
+    node = resp.get("data", {}).get("metaobjectCreate")
     if not node or node.get("userErrors"):
-        logging.error("Failed to create new config entry: %s", create_resp)
-        return jsonify({"error": "Failed to create config entry"}), 500
+        raise Exception("Failed to create schema entry: " + str(node.get("userErrors") if node else resp))
 
     new_entry_id = node["metaobject"]["id"]
     logging.info("Created new config entry: %s", new_entry_id)
 
     # ------------------------------------------------------------------
-    # Background processing
+    # Background processing functions
+    # ------------------------------------------------------------------
+    def process_products(shop, access_token, product_schema_mappings):
+        try:
+            products = fetch_all_products(shop, access_token)
+            logging.info("Fetched %d products", len(products))
+            for i in range(0, len(products), BATCH_SIZE):
+                batch = products[i:i + BATCH_SIZE]
+                for product in batch:
+                    product_gid = product["id"]
+                    product_id = product_gid.split("/")[-1]
+                    try:
+                        existing_mfs = fetch_product_metafields(shop, access_token, product_id)
+                        schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
+                        schema_json = wrap_flattened_json_in_schema(schema_json)
+                        upsert_app_metafield(shop, access_token, product_gid, schema_json)
+                        time.sleep(1)
+                    except Exception as e:
+                        logging.error("Failed processing product %s: %s", product_gid, str(e), exc_info=True)
+            logging.info("Completed product background processing for %s", shop)
+        except Exception as e:
+            logging.error("Product background failed: %s", str(e), exc_info=True)
+
+    def process_collections(shop, access_token, collection_schema_mappings):
+        try:
+            collections = fetch_all_collections(shop, access_token)
+            logging.info("Fetched %d collections", len(collections))
+            for i in range(0, len(collections), BATCH_SIZE):
+                batch = collections[i:i + BATCH_SIZE]
+                for col in batch:
+                    col_gid = col["id"]
+                    col_id = col_gid.split("/")[-1]
+                    try:
+                        existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
+                        schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
+                        schema_json = wrap_flattened_json_in_schema(schema_json)
+                        upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
+                        time.sleep(1)
+                    except Exception as e:
+                        logging.error("Failed processing collection %s: %s", col_gid, str(e), exc_info=True)
+            logging.info("Completed collection background processing for %s", shop)
+        except Exception as e:
+            logging.error("Collection background failed: %s", str(e), exc_info=True)
+
+    # ------------------------------------------------------------------
+    # Launch background threads
     # ------------------------------------------------------------------
     threading.Thread(target=lambda: process_products(shop, access_token, product_schema_mappings), daemon=True).start()
     threading.Thread(target=lambda: process_collections(shop, access_token, collection_schema_mappings), daemon=True).start()
 
-    return jsonify({"message": "Deleted old entries and created new config entry."})
+    return jsonify({
+        "message": "Deleted all previous entries and created a new app_config metaobject. Background processing started."
+    })
 
 
 
