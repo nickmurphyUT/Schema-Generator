@@ -2356,12 +2356,9 @@ def list_all_metaobjects(shop, access_token, metaobject_type):
     return result
 
 def delete_metaobject(shop, access_token, metaobject_id):
-    """
-    Deletes a single metaobject by ID.
-    """
-    mutation = """
+    query = """
     mutation metaobjectDelete($id: ID!) {
-      metaobjectDelete(input: {id: $id}) {
+      metaobjectDelete(id: $id) {
         deletedMetaobjectId
         userErrors {
           field
@@ -2370,25 +2367,23 @@ def delete_metaobject(shop, access_token, metaobject_id):
       }
     }
     """
-
+    variables = {"id": metaobject_id}
+    url = f"https://{shop}/admin/api/2025-10/graphql.json"
     headers = {
+        "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token,
-        "Content-Type": "application/json"
     }
+    response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
+    data = response.json()
 
-    resp = requests.post(
-        f"https://{shop}/admin/api/2025-10/graphql.json",
-        headers=headers,
-        json={"query": mutation, "variables": {"id": metaobject_id}}
-    )
-    resp.raise_for_status()
-    data = resp.json()
-
-    errors = data.get("data", {}).get("metaobjectDelete", {}).get("userErrors", [])
-    if errors:
-        raise Exception("Failed to delete metaobject: " + str(errors))
-
-    return data["data"]["metaobjectDelete"]["deletedMetaobjectId"]
+    if "data" in data and "metaobjectDelete" in data["data"]:
+        errors = data["data"]["metaobjectDelete"]["userErrors"]
+        if errors:
+            print("Shopify deletion errors:", errors)
+        return data["data"]["metaobjectDelete"].get("deletedMetaobjectId")
+    else:
+        print("Failed to delete metaobject", metaobject_id, "response:", data)
+        return None
 
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
