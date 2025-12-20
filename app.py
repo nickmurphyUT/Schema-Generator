@@ -2265,91 +2265,172 @@ def verify_and_create_metafields():
     product_schema_mappings = data.get("product_schema_mappings", [])
     collection_schema_mappings = data.get("collection_schema_mappings", [])
 
-    # --- Ensure metaobject definition exists ---
-    definition_id = ensure_metaobject_definition(shop, access_token)   # just ensures the type exists
+    # ------------------------------------------------------------------
+    # Ensure metaobject definition exists (type only, no instance)
+    # ------------------------------------------------------------------
+    definition_id = ensure_metaobject_definition(shop, access_token)
     logging.info("Metaobject definition ID: %s", definition_id)
 
-    # --- Ensure single app_config entry exists ---
-    # Use the metaobject type string that Shopify expects (replace "app_config" if yours is different)
+    # ------------------------------------------------------------------
+    # Ensure SINGLE app_config metaobject instance exists
+    # ------------------------------------------------------------------
     metaobject_type = "app_config"
+
     initial_fields = {
         "product_schema_mappings": product_schema_mappings,
         "collection_schema_mappings": collection_schema_mappings
     }
-    app_config_instance_id = ensure_config_entry(shop, access_token, metaobject_type, initial_fields)
-    logging.info("App config instance ID: %s", app_config_instance_id)
 
-    # --- Fetch current fields ---
-    current_fields = fetch_metaobject_fields(shop, access_token, app_config_instance_id) or {}
-    logging.info("Current metaobject fields: %s", json.dumps(current_fields, indent=2))
+    app_config_instance_id = ensure_config_entry(
+        shop,
+        access_token,
+        metaobject_type,
+        initial_fields
+    )
 
-    # --- Merge incoming schema mappings ---
-    if product_schema_mappings:
+    logging.info("App config instance ID (reused or created): %s", app_config_instance_id)
+
+    # ------------------------------------------------------------------
+    # Fetch current fields from the existing entry
+    # ------------------------------------------------------------------
+    current_fields = fetch_metaobject_fields(
+        shop,
+        access_token,
+        app_config_instance_id
+    ) or {}
+
+    logging.info(
+        "Current metaobject fields before merge: %s",
+        json.dumps(current_fields, indent=2)
+    )
+
+    # ------------------------------------------------------------------
+    # Merge incoming mappings (overwrite only what was sent)
+    # ------------------------------------------------------------------
+    if isinstance(product_schema_mappings, list):
         current_fields["product_schema_mappings"] = product_schema_mappings
-        logging.info("Merged product schema mappings")
+        logging.info("Updated product_schema_mappings")
 
-    if collection_schema_mappings:
+    if isinstance(collection_schema_mappings, list):
         current_fields["collection_schema_mappings"] = collection_schema_mappings
-        logging.info("Merged collection schema mappings")
+        logging.info("Updated collection_schema_mappings")
 
-    logging.info("Fields to update metaobject with: %s", json.dumps(current_fields, indent=2))
+    logging.info(
+        "Final fields to persist on metaobject: %s",
+        json.dumps(current_fields, indent=2)
+    )
 
-    # --- Update the single app_config entry ---
+    # ------------------------------------------------------------------
+    # Update the SINGLE app_config entry (no creates here)
+    # ------------------------------------------------------------------
     try:
-        update_metaobject_entry(shop, access_token, app_config_instance_id, current_fields)
-        logging.info("Single app_config entry updated: %s", app_config_instance_id)
+        update_metaobject_entry(
+            shop,
+            access_token,
+            app_config_instance_id,
+            current_fields
+        )
+        logging.info(
+            "App config metaobject updated successfully: %s",
+            app_config_instance_id
+        )
     except Exception as e:
-        logging.error("Error updating metaobject entry: %s", e, exc_info=True)
+        logging.error(
+            "Error updating metaobject entry: %s",
+            str(e),
+            exc_info=True
+        )
         return jsonify({"error": "Failed updating metaobject"}), 500
 
-    # --- Background processing remains the same ---
+    # ------------------------------------------------------------------
+    # Background processing (unchanged)
+    # ------------------------------------------------------------------
     def process_products():
         try:
             products = fetch_all_products(shop, access_token)
             logging.info("Fetched %d products", len(products))
+
             for i in range(0, len(products), BATCH_SIZE):
                 batch = products[i:i + BATCH_SIZE]
                 for product in batch:
                     product_gid = product["id"]
                     product_id = product_gid.split("/")[-1]
                     try:
-                        existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
+                        existing_mfs = fetch_product_metafields(
+                            shop, access_token, product_id
+                        )
+                        schema_json = build_schema_from_mappings(
+                            product,
+                            existing_mfs,
+                            product_schema_mappings
+                        )
                         schema_json = wrap_flattened_json_in_schema(schema_json)
-                        upsert_app_metafield(shop, access_token, product_gid, schema_json)
+                        upsert_app_metafield(
+                            shop, access_token, product_gid, schema_json
+                        )
                         time.sleep(1)
                     except Exception as e:
-                        logging.error("Failed processing product %s: %s", product_gid, e, exc_info=True)
+                        logging.error(
+                            "Failed processing product %s: %s",
+                            product_gid,
+                            str(e),
+                            exc_info=True
+                        )
+
             logging.info("Completed product background processing for %s", shop)
         except Exception as e:
-            logging.error("Product background failed: %s", e, exc_info=True)
+            logging.error(
+                "Product background failed: %s",
+                str(e),
+                exc_info=True
+            )
 
     def process_collections():
         try:
             collections = fetch_all_collections(shop, access_token)
             logging.info("Fetched %d collections", len(collections))
+
             for i in range(0, len(collections), BATCH_SIZE):
                 batch = collections[i:i + BATCH_SIZE]
                 for col in batch:
                     col_gid = col["id"]
                     col_id = col_gid.split("/")[-1]
                     try:
-                        existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
-                        schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
+                        existing_mfs = fetch_collection_metafields(
+                            shop, access_token, col_id
+                        )
+                        schema_json = build_schema_from_mappings(
+                            col,
+                            existing_mfs,
+                            collection_schema_mappings
+                        )
                         schema_json = wrap_flattened_json_in_schema(schema_json)
-                        upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
+                        upsert_collection_app_metafield(
+                            shop, access_token, col_gid, schema_json
+                        )
                         time.sleep(1)
                     except Exception as e:
-                        logging.error("Collection error %s: %s", col_gid, e, exc_info=True)
+                        logging.error(
+                            "Collection error %s: %s",
+                            col_gid,
+                            str(e),
+                            exc_info=True
+                        )
+
             logging.info("Completed collection background processing for %s", shop)
         except Exception as e:
-            logging.error("Collection background failed: %s", e, exc_info=True)
+            logging.error(
+                "Collection background failed: %s",
+                str(e),
+                exc_info=True
+            )
 
     threading.Thread(target=process_products, daemon=True).start()
     threading.Thread(target=process_collections, daemon=True).start()
 
-    return jsonify({"message": "Started background processing of product & collection schema mappings."})
-
+    return jsonify({
+        "message": "Started background processing of product & collection schema mappings."
+    })
 
 
 
