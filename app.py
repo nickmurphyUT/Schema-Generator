@@ -2068,7 +2068,10 @@ def ensure_app_config_definition(shop, access_token):
 
     return node["metaobjectDefinition"]["id"]
 
-def ensure_config_entry(shop, access_token, definition_id):
+def ensure_config_entry(shop, access_token, metaobject_type, field_mappings=None):
+    """
+    Ensure a single config metaobject exists. Create it if missing.
+    """
     # 1️⃣ Query existing entries
     query = """
     {
@@ -2082,18 +2085,25 @@ def ensure_config_entry(shop, access_token, definition_id):
     if edges:
         return edges[0]["node"]["id"]
 
-    # 2️⃣ No entry exists, create new one
-    # Build GraphQL metaobject argument manually
-    metaobject_arg = f"""{{metaobjectDefinitionId: "{definition_id}", product_schema_mappings: [], collection_schema_mappings: []}}"""
+    # 2️⃣ Build fields array
+    fields_list = []
+    if field_mappings:
+        for key, value in field_mappings.items():
+            val = json.dumps(value) if isinstance(value, (dict, list)) else str(value)
+            # Escape quotes properly for GraphQL string
+            val = val.replace('"', '\\"')
+            fields_list.append(f'{{key: "{key}", value: "{val}"}}')
+    fields_str = f"[{','.join(fields_list)}]" if fields_list else "[]"
 
-    mutation = f"""
-    mutation {{
-        metaobjectCreate(metaobject: {metaobject_arg}) {{
-            metaobject {{ id }}
-            userErrors {{ field message }}
-        }}
-    }}
-    """
+    # 3️⃣ Build mutation safely
+    mutation = (
+        "mutation {"
+        f" metaobjectCreate(metaobject: {{ type: \"{metaobject_type}\", fields: {fields_str} }}) {{"
+        " metaobject { id }"
+        " userErrors { field message }"
+        " }"
+        "}"
+    )
 
     resp = query_shopify_graphql(shop, access_token, mutation)
     metaobject_create = resp.get("data", {}).get("metaobjectCreate")
