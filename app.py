@@ -2086,52 +2086,61 @@ def ensure_app_config_definition(shop, access_token):
     return node["metaobjectDefinition"]["id"]
 
 def ensure_config_entry(shop, access_token, metaobject_type, field_mappings=None):
-    """
-    Ensure a single config metaobject exists. Create it if missing.
-    """
-    # 1️⃣ Query existing entries
+    HANDLE = "global"
+
+    # 1️⃣ Fetch by handle (THE KEY FIX)
     query = """
-    {
-        appConfigMetaobjects(first: 1) {
-            edges { node { id } }
-        }
+    query ($type: String!, $handle: String!) {
+      metaobjectByHandle(type: $type, handle: $handle) {
+        id
+      }
     }
     """
-    resp = query_shopify_graphql(shop, access_token, query)
-    edges = resp.get("data", {}).get("appConfigMetaobjects", {}).get("edges", [])
-    if edges:
-        return edges[0]["node"]["id"]
 
-    # 2️⃣ Build fields array
-    fields_list = []
+    variables = {
+        "type": metaobject_type,
+        "handle": HANDLE
+    }
+
+    resp = query_shopify_graphql(shop, access_token, query, variables)
+    node = resp.get("data", {}).get("metaobjectByHandle")
+
+    if node and node.get("id"):
+        return node["id"]
+
+    # 2️⃣ Create once if missing
+    fields = []
     if field_mappings:
-        for key, value in field_mappings.items():
-            val = json.dumps(value) if isinstance(value, (dict, list)) else str(value)
-            # Escape quotes properly for GraphQL string
-            val = val.replace('"', '\\"')
-            fields_list.append(f'{{key: "{key}", value: "{val}"}}')
-    fields_str = f"[{','.join(fields_list)}]" if fields_list else "[]"
+        for k, v in field_mappings.items():
+            fields.append({
+                "key": k,
+                "value": json.dumps(v)
+            })
 
-    # 3️⃣ Build mutation safely
-    mutation = (
-        "mutation {"
-        f" metaobjectCreate(metaobject: {{ type: \"{metaobject_type}\", fields: {fields_str} }}) {{"
-        " metaobject { id }"
-        " userErrors { field message }"
-        " }"
-        "}"
-    )
+    mutation = """
+    mutation ($input: MetaobjectCreateInput!) {
+      metaobjectCreate(metaobject: $input) {
+        metaobject { id }
+        userErrors { field message }
+      }
+    }
+    """
 
-    resp = query_shopify_graphql(shop, access_token, mutation)
-    metaobject_create = resp.get("data", {}).get("metaobjectCreate")
+    variables = {
+        "input": {
+            "type": metaobject_type,
+            "handle": HANDLE,
+            "fields": fields
+        }
+    }
 
-    if not metaobject_create:
-        raise Exception(f"Failed to create config entry. Full response: {resp}")
+    resp = query_shopify_graphql(shop, access_token, mutation, variables)
+    result = resp["data"]["metaobjectCreate"]
 
-    if metaobject_create.get("userErrors"):
-        raise Exception(f"Failed to create config entry. UserErrors: {metaobject_create['userErrors']}")
+    if result["userErrors"]:
+        raise Exception(result["userErrors"])
 
-    return metaobject_create["metaobject"]["id"]
+    return result["metaobject"]["id"]
 
 
 
