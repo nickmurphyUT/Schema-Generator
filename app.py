@@ -1015,16 +1015,19 @@ def organization_schema():
 
 def fetch_schema_config_entry(shop, access_token, schema_type):
     """
-    Returns a parsed config dict like:
-    {
-        "schema_type": "...",
-        "mappings": [...]
-    }
+    Returns a parsed config value for the requested schema_type.
+
+    schema_type should be one of:
+      - "product_schema_mappings"
+      - "collection_schema_mappings"
+
+    Returns:
+      [] or {} if missing
     """
 
     query = """
     query {
-      metaobjects(type: "schema_config", first: 10) {
+      metaobjects(type: "app_config", first: 1) {
         edges {
           node {
             id
@@ -1041,26 +1044,20 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
     resp = query_shopify_graphql(shop, access_token, query)
 
     edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
+    if not edges:
+        return []
 
-    for edge in edges:
-        node = edge["node"]
-        fields = node.get("fields", [])
+    fields = edges[0]["node"].get("fields", [])
 
-        field_map = {}
-        for f in fields:
-            if f["key"] == "mappings":
-                try:
-                    field_map["mappings"] = json.loads(f["value"])
-                except Exception:
-                    field_map["mappings"] = []
-            else:
-                field_map[f["key"]] = f["value"]
+    for f in fields:
+        if f.get("key") == schema_type:
+            try:
+                return json.loads(f.get("value") or "[]")
+            except Exception:
+                return []
 
-        # 🔑 THIS IS THE FILTER
-        if field_map.get("schema_type") == schema_type:
-            return field_map
+    return []
 
-    return {}
 
 def update_metaobject_entry(shop, access_token, config_id, fields):
     try:
