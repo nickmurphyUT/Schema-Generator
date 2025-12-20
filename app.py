@@ -2355,6 +2355,40 @@ def list_all_metaobjects(shop, access_token, metaobject_type):
 
     return result
 
+def delete_metaobject(shop, access_token, metaobject_id):
+    """
+    Deletes a single metaobject by ID.
+    """
+    mutation = """
+    mutation metaobjectDelete($id: ID!) {
+      metaobjectDelete(input: {id: $id}) {
+        deletedMetaobjectId
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
+
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json"
+    }
+
+    resp = requests.post(
+        f"https://{shop}/admin/api/2025-10/graphql.json",
+        headers=headers,
+        json={"query": mutation, "variables": {"id": metaobject_id}}
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    errors = data.get("data", {}).get("metaobjectDelete", {}).get("userErrors", [])
+    if errors:
+        raise Exception("Failed to delete metaobject: " + str(errors))
+
+    return data["data"]["metaobjectDelete"]["deletedMetaobjectId"]
 
 
 @app.route("/verify_and_create_metafields", methods=["POST"])
