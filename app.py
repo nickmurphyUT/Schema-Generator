@@ -2402,18 +2402,15 @@ def verify_and_create_metafields():
     metaobject_type = "app_config"
 
     # ------------------------------------------------------------------
-    # STEP 1: Fetch existing config (MIMIC HOME ROUTE)
+    # STEP 1: Fetch existing schemas (FIELD-LEVEL, SAFE)
     # ------------------------------------------------------------------
-    existing_config = fetch_schema_config_entry(shop, access_token, metaobject_type) or {}
-    product_schema_mappings = existing_config.get("product_schema_mappings", [])
-    collection_schema_mappings = existing_config.get("collection_schema_mappings", [])
     product_schema_mappings = fetch_schema_config_entry(
         shop, access_token, "product_schema_mappings"
-    )
+    ) or []
     
     collection_schema_mappings = fetch_schema_config_entry(
         shop, access_token, "collection_schema_mappings"
-    )
+    ) or []
     
     logging.info(
         "Existing product schema mappings:\n%s",
@@ -2424,6 +2421,7 @@ def verify_and_create_metafields():
         "Existing collection schema mappings:\n%s",
         json.dumps(collection_schema_mappings, indent=2)
     )
+
     # ------------------------------------------------------------------
     # STEP 2: Merge incoming payload
     # ------------------------------------------------------------------
