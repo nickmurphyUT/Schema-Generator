@@ -2392,8 +2392,7 @@ def verify_and_create_metafields():
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
-    product_schema_mappings = data.get("product_schema_mappings", [])
-    collection_schema_mappings = data.get("collection_schema_mappings", [])
+    metaobject_type = "app_config"
 
     # ------------------------------------------------------------------
     # Ensure metaobject definition exists (type only)
@@ -2401,7 +2400,23 @@ def verify_and_create_metafields():
     definition_id = ensure_metaobject_definition(shop, access_token)
     logging.info("Metaobject definition ID: %s", definition_id)
 
-    metaobject_type = "app_config"
+    # ------------------------------------------------------------------
+    # Step 0: Fetch existing config ONCE (for merge)
+    # ------------------------------------------------------------------
+    existing_config = fetch_schema_config_entry(shop, access_token, metaobject_type) or {}
+
+    # ------------------------------------------------------------------
+    # Step 0.5: Merge incoming data with existing config
+    # ------------------------------------------------------------------
+    if "product_schema_mappings" in data:
+        product_schema_mappings = data.get("product_schema_mappings") or []
+    else:
+        product_schema_mappings = existing_config.get("product_schema_mappings", [])
+
+    if "collection_schema_mappings" in data:
+        collection_schema_mappings = data.get("collection_schema_mappings") or []
+    else:
+        collection_schema_mappings = existing_config.get("collection_schema_mappings", [])
 
     # ------------------------------------------------------------------
     # Step 1: Delete all existing entries
@@ -2412,10 +2427,15 @@ def verify_and_create_metafields():
             delete_metaobject(shop, access_token, entry["id"])
             logging.info("Deleted existing config entry: %s", entry["id"])
         except Exception as e:
-            logging.error("Failed to delete metaobject %s: %s", entry["id"], str(e), exc_info=True)
+            logging.error(
+                "Failed to delete metaobject %s: %s",
+                entry["id"],
+                str(e),
+                exc_info=True
+            )
 
     # ------------------------------------------------------------------
-    # Step 2: Create new single entry
+    # Step 2: Create new single entry (merged data)
     # ------------------------------------------------------------------
     new_entry_data = {
         "schema_type": metaobject_type,
@@ -2426,7 +2446,10 @@ def verify_and_create_metafields():
     resp = create_config_entry(shop, access_token, new_entry_data)
     node = resp.get("data", {}).get("metaobjectCreate")
     if not node or node.get("userErrors"):
-        raise Exception("Failed to create schema entry: " + str(node.get("userErrors") if node else resp))
+        raise Exception(
+            "Failed to create schema entry: " +
+            str(node.get("userErrors") if node else resp)
+        )
 
     new_entry_id = node["metaobject"]["id"]
     logging.info("Created new config entry: %s", new_entry_id)
@@ -2444,13 +2467,26 @@ def verify_and_create_metafields():
                     product_gid = product["id"]
                     product_id = product_gid.split("/")[-1]
                     try:
-                        existing_mfs = fetch_product_metafields(shop, access_token, product_id)
-                        schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
+                        existing_mfs = fetch_product_metafields(
+                            shop, access_token, product_id
+                        )
+                        schema_json = build_schema_from_mappings(
+                            product,
+                            existing_mfs,
+                            product_schema_mappings
+                        )
                         schema_json = wrap_flattened_json_in_schema(schema_json)
-                        upsert_app_metafield(shop, access_token, product_gid, schema_json)
+                        upsert_app_metafield(
+                            shop, access_token, product_gid, schema_json
+                        )
                         time.sleep(1)
                     except Exception as e:
-                        logging.error("Failed processing product %s: %s", product_gid, str(e), exc_info=True)
+                        logging.error(
+                            "Failed processing product %s: %s",
+                            product_gid,
+                            str(e),
+                            exc_info=True
+                        )
             logging.info("Completed product background processing for %s", shop)
         except Exception as e:
             logging.error("Product background failed: %s", str(e), exc_info=True)
@@ -2465,27 +2501,31 @@ def verify_and_create_metafields():
                     col_gid = col["id"]
                     col_id = col_gid.split("/")[-1]
                     try:
-                        existing_mfs = fetch_collection_metafields(shop, access_token, col_id)
-                        schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
+                        existing_mfs = fetch_collection_metafields(
+                            shop, access_token, col_id
+                        )
+                        schema_json = build_schema_from_mappings(
+                            col,
+                            existing_mfs,
+                            collection_schema_mappings
+                        )
                         schema_json = wrap_flattened_json_in_schema(schema_json)
-                        upsert_collection_app_metafield(shop, access_token, col_gid, schema_json)
+                        upsert_collection_app_metafield(
+                            shop, access_token, col_gid, schema_json
+                        )
                         time.sleep(1)
                     except Exception as e:
-                        logging.error("Failed processing collection %s: %s", col_gid, str(e), exc_info=True)
+                        logging.error(
+                            "Failed processing collection %s: %s",
+                            col_gid,
+                            str(e),
+                            exc_info=True
+                        )
             logging.info("Completed collection background processing for %s", shop)
         except Exception as e:
             logging.error("Collection background failed: %s", str(e), exc_info=True)
 
-    # ------------------------------------------------------------------
-    # Launch background threads
-    # ------------------------------------------------------------------
-    threading.Thread(target=lambda: process_products(shop, access_token, product_schema_mappings), daemon=True).start()
-    threading.Thread(target=lambda: process_collections(shop, access_token, collection_schema_mappings), daemon=True).start()
-
-    return jsonify({
-        "message": "Deleted all previous entries and created a new app_config metaobject. Background processing started."
-    })
-
+    return jsonify({"status": "ok", "config_entry_id": new_entry_id})
 
 
 
