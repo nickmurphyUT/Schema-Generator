@@ -2405,12 +2405,16 @@ def verify_and_create_metafields():
     # STEP 1: Fetch existing config (MIMIC HOME ROUTE)
     # ------------------------------------------------------------------
     existing_config = fetch_schema_config_entry(shop, access_token, metaobject_type) or {}
-    logging.info(
-        "Existing config pre split:\n%s",
-        json.dumps(existing_config, indent=2)
-    )
     product_schema_mappings = existing_config.get("product_schema_mappings", [])
     collection_schema_mappings = existing_config.get("collection_schema_mappings", [])
+    product_schema_mappings = fetch_schema_config_entry(
+        shop, access_token, "product_schema_mappings"
+    )
+    
+    collection_schema_mappings = fetch_schema_config_entry(
+        shop, access_token, "collection_schema_mappings"
+    )
+    
     logging.info(
         "Existing product schema mappings:\n%s",
         json.dumps(product_schema_mappings, indent=2)
