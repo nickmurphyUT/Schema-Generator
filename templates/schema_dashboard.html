@@ -215,8 +215,45 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
 document.getElementById("addMappingBtn").onclick = () => createSchemaRow();
 
 /* ================= PREPOPULATE ================= */
-const savedProductMappings = {{ product_config.get("product_schema_mappings", []) | tojson }} || [];
-const savedCollectionMappings = {{ collection_config.get("collection_schema_mappings", []) | tojson }} || [];
+const rawProductConfig = {{ product_config | tojson }};
+const rawCollectionConfig = {{ collection_config | tojson }};
+
+function normalizeMappings(input, key) {
+    if (!input) return [];
+    if (Array.isArray(input)) return input;
+    if (typeof input === "object" && Array.isArray(input[key])) {
+        return input[key];
+    }
+    return [];
+}
+
+const savedProductMappings = normalizeMappings(
+    rawProductConfig?.product_schema_mappings,
+    "product_schema_mappings"
+);
+
+const savedCollectionMappings = normalizeMappings(
+    rawCollectionConfig?.collection_schema_mappings,
+    "collection_schema_mappings"
+);
+
+/* ================= PREPOPULATE UI ================= */
+
+if (savedProductMappings.length > 0) {
+    savedProductMappings.forEach(m =>
+        createSchemaRow(m.schemaField || "", m.sourceField || "")
+    );
+} else {
+    createSchemaRow();
+}
+
+if (savedCollectionMappings.length > 0) {
+    savedCollectionMappings.forEach(m =>
+        createCollectionRow(m.schemaField || "", m.sourceField || "")
+    );
+} else {
+    createCollectionRow();
+}
 
 if (savedProductMappings.length > 0) savedProductMappings.forEach(m => createSchemaRow(m.schemaField || "", m.sourceField || ""));
 else createSchemaRow();
