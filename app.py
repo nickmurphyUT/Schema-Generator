@@ -2408,7 +2408,15 @@ def verify_and_create_metafields():
 
     product_schema_mappings = existing_config.get("product_schema_mappings", [])
     collection_schema_mappings = existing_config.get("collection_schema_mappings", [])
-
+    logging.info(
+        "Existing product schema mappings:\n%s",
+        json.dumps(product_schema_mappings, indent=2)
+    )
+    
+    logging.info(
+        "Existing collection schema mappings:\n%s",
+        json.dumps(collection_schema_mappings, indent=2)
+    )
     # ------------------------------------------------------------------
     # STEP 2: Merge incoming payload
     # ------------------------------------------------------------------
