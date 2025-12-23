@@ -2413,6 +2413,25 @@ def delete_metaobject(shop, access_token, metaobject_id):
         print(f"Deleted metaobject: {metaobject_id}")
 
 
+def dedupe_mappings(mappings):
+    seen = set()
+    deduped = []
+
+    for m in mappings:
+        if not isinstance(m, dict):
+            continue
+
+        key = (m.get("schemaField"), m.get("sourceField"))
+        if key in seen:
+            continue
+
+        seen.add(key)
+        deduped.append(m)
+
+    return deduped
+
+
+
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
@@ -2512,6 +2531,9 @@ def verify_and_create_metafields():
     # ------------------------------------------------------------------
     # STEP 4: Create single clean entry (FIXED)
     # ------------------------------------------------------------------
+    product_schema_mappings = dedupe_mappings(product_schema_mappings)
+    collection_schema_mappings = dedupe_mappings(collection_schema_mappings)
+    
     resp = create_config_entry(
         shop,
         access_token,
@@ -2521,6 +2543,7 @@ def verify_and_create_metafields():
             "collection_schema_mappings": collection_schema_mappings
         }
     )
+
 
     node = resp.get("data", {}).get("metaobjectCreate")
     if not node or node.get("userErrors"):
