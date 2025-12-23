@@ -385,58 +385,60 @@ def home():
 
     product_metafields = []
     collection_metafields = []
-
-    # Canonical, template-safe shapes
-    product_config = { "product_schema_mappings": [] }
-    collection_config = { "collection_schema_mappings": [] }
-
-    def unwrap_mappings(obj, key):
-        """
-        Recursively unwraps nested app_config wrappers
-        until the real list is found.
-        """
-        seen = set()
-        while isinstance(obj, dict) and key in obj:
-            if id(obj) in seen:
-                break
-            seen.add(id(obj))
-            obj = obj[key]
-        return obj if isinstance(obj, list) else []
+    product_config = {}
+    collection_config = {}
 
     if access_token:
         try:
-            # -----------------------------------------
-            # Fetch metafield definitions
-            # -----------------------------------------
+            # --------------------------------------------------
+            # Metafield definitions (UNCHANGED)
+            # --------------------------------------------------
             meta_data = get_metafield_definitions(shop, access_token)
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
-            # -----------------------------------------
-            # Fetch raw config (may be corrupted)
-            # -----------------------------------------
-            raw_product_config = fetch_schema_config_entry(
-                shop, access_token, "product_schema_mappings"
-            )
+            # --------------------------------------------------
+            # Fetch FULL config ONCE (FIX)
+            # --------------------------------------------------
+            raw_config = fetch_schema_config_entry(
+                shop, access_token, "app_config"
+            ) or {}
 
-            raw_collection_config = fetch_schema_config_entry(
-                shop, access_token, "collection_schema_mappings"
-            )
+            # --------------------------------------------------
+            # Normalization helper (UNCHANGED logic, safer)
+            # --------------------------------------------------
+            def extract_mappings(config, key):
+                """
+                Walk down legacy nesting until we find the deepest list for `key`
+                """
+                while isinstance(config, dict) and key in config:
+                    next_val = config.get(key)
+                    if isinstance(next_val, list):
+                        return next_val
+                    config = next_val
+                return []
 
-            # -----------------------------------------
-            # Normalize → canonical arrays
-            # -----------------------------------------
-            product_config["product_schema_mappings"] = unwrap_mappings(
-                raw_product_config, "product_schema_mappings"
-            )
+            # --------------------------------------------------
+            # Normalize configs from SAME ROOT (FIX)
+            # --------------------------------------------------
+            product_config = {
+                "product_schema_mappings": extract_mappings(
+                    raw_config, "product_schema_mappings"
+                )
+            }
 
-            collection_config["collection_schema_mappings"] = unwrap_mappings(
-                raw_collection_config, "collection_schema_mappings"
-            )
+            collection_config = {
+                "collection_schema_mappings": extract_mappings(
+                    raw_config, "collection_schema_mappings"
+                )
+            }
 
         except Exception as e:
-            logging.exception("Error building dashboard context")
+            print("Error fetching metafield definitions or config entry:", str(e))
 
+    # --------------------------------------------------
+    # Organization schema fields (UNCHANGED)
+    # --------------------------------------------------
     org_fields = fetch_organization_schema_properties()
 
     schemas = [
@@ -446,8 +448,8 @@ def home():
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
 
-    logging.info("PRODUCT CONFIG (normalized): %s", product_config)
-    logging.info("COLLECTION CONFIG (normalized): %s", collection_config)
+    print("PRODUCT CONFIG (normalized):", product_config)
+    print("COLLECTION CONFIG (normalized):", collection_config)
 
     return render_template(
         "schema_dashboard.html",
@@ -460,7 +462,7 @@ def home():
         collection_metafields=collection_metafields,
         org_schema_fields=org_fields,
         product_config=product_config,
-        collection_config=collection_config,
+        collection_config=collection_config
     )
 
 
