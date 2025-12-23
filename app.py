@@ -407,7 +407,8 @@ def home():
             raw_collection = fetch_schema_config_entry(
                 shop, access_token, "collection_schema_mappings"
             )
-
+            print("PRODUCT CONFIG (raw):", raw_product)
+            print("COLLECTION CONFIG (raw):", raw_collection)
             # --------------------------------------------------
             # NORMALIZATION (FIELD-SAFE, LEGACY-SAFE)
             # --------------------------------------------------
