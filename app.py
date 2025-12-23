@@ -398,7 +398,7 @@ def home():
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
             # --------------------------------------------------
-            # FETCH CONFIG FIELDS (THIS IS THE CRITICAL PART)
+            # FETCH CONFIG FIELDS (UNCHANGED)
             # --------------------------------------------------
             raw_product = fetch_schema_config_entry(
                 shop, access_token, "product_schema_mappings"
@@ -407,8 +407,10 @@ def home():
             raw_collection = fetch_schema_config_entry(
                 shop, access_token, "collection_schema_mappings"
             )
+
             print("PRODUCT CONFIG (raw):", raw_product)
             print("COLLECTION CONFIG (raw):", raw_collection)
+
             # --------------------------------------------------
             # NORMALIZATION (FIELD-SAFE, LEGACY-SAFE)
             # --------------------------------------------------
@@ -428,15 +430,22 @@ def home():
 
                 return []
 
+            # --------------------------------------------------
+            # PRODUCT CONFIG (UNCHANGED)
+            # --------------------------------------------------
             product_config = {
                 "product_schema_mappings": normalize(
                     raw_product, "product_schema_mappings"
                 )
             }
 
+            # --------------------------------------------------
+            # COLLECTION CONFIG (FIXED — fallback to product blob)
+            # --------------------------------------------------
             collection_config = {
-                "collection_schema_mappings": normalize(
-                    raw_collection, "collection_schema_mappings"
+                "collection_schema_mappings": (
+                    normalize(raw_collection, "collection_schema_mappings")
+                    or normalize(raw_product, "collection_schema_mappings")
                 )
             }
 
