@@ -2397,109 +2397,113 @@ def delete_metaobject(shop, access_token, metaobject_id):
         print(f"Deleted metaobject: {metaobject_id}")
 
 
-@app.route("/")
-def home():
-    shop = session.get("shop") or request.args.get("shop")
-    hmac = session.get("hmac") or request.args.get("hmac")
-    id_token = session.get("id_token") or request.args.get("id_token")
+@app.route("/verify_and_create_metafields", methods=["POST"])
+def verify_and_create_metafields():
+    data = request.json
+    logging.info("INPUT (products & collections): %s", json.dumps(data, indent=2))
 
-    latest_values["hmac"] = hmac
-    latest_values["id_token"] = id_token
+    shop = data.get("shop") or session.get("shop")
+    access_token = get_access_token_for_shop(shop)
+    if not access_token:
+        return jsonify({"error": "No access token for shop"}), 400
 
-    store = StoreToken.query.filter_by(shop=shop).first()
-    access_token = store.access_token if store else None
+    incoming_product = data.get("product_schema_mappings")
+    incoming_collection = data.get("collection_schema_mappings")
 
-    product_metafields = []
-    collection_metafields = []
-    product_config = {}
-    collection_config = {}
+    # ------------------------------------------------------------------
+    # Ensure metaobject definition exists
+    # ------------------------------------------------------------------
+    ensure_metaobject_definition(shop, access_token)
+    metaobject_type = "app_config"
 
-    if access_token:
-        try:
-            # --------------------------------------------------
-            # Metafield definitions (UNCHANGED)
-            # --------------------------------------------------
-            meta_data = get_metafield_definitions(shop, access_token)
-            product_metafields = meta_data["data"]["productDefinitions"]["edges"]
-            collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
-
-            # --------------------------------------------------
-            # Fetch full config (UNCHANGED)
-            # --------------------------------------------------
-            raw_config = fetch_schema_config_entry(
-                shop, access_token, "app_config"
-            ) or {}
-
-            # --------------------------------------------------
-            # ✅ FIXED normalization helper
-            # --------------------------------------------------
-            def extract_mappings(config, key):
-                """
-                Safely extract mappings from:
-                - root-level lists
-                - nested legacy objects
-                """
-                if not isinstance(config, dict):
-                    return []
-
-                # ✅ FIRST: root-level list
-                if isinstance(config.get(key), list):
-                    return config[key]
-
-                # 🔁 THEN: walk legacy nesting
-                while isinstance(config, dict) and key in config:
-                    config = config.get(key)
-                    if isinstance(config, list):
-                        return config
-
-                return []
-
-            # --------------------------------------------------
-            # Normalize configs (UNCHANGED usage)
-            # --------------------------------------------------
-            product_config = {
-                "product_schema_mappings": extract_mappings(
-                    raw_config, "product_schema_mappings"
-                )
-            }
-
-            collection_config = {
-                "collection_schema_mappings": extract_mappings(
-                    raw_config, "collection_schema_mappings"
-                )
-            }
-
-        except Exception as e:
-            print("Error fetching metafield definitions or config entry:", str(e))
-
-    # --------------------------------------------------
-    # Organization schema fields (UNCHANGED)
-    # --------------------------------------------------
-    org_fields = fetch_organization_schema_properties()
-
-    schemas = [
-        {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
-        {"title": "Product Schema", "url": "/app/products-schema-builder"},
-        {"title": "Collection Schema", "url": "/app/collections-schema-builder"},
-        {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
-    ]
-
-    print("PRODUCT CONFIG (normalized):", product_config)
-    print("COLLECTION CONFIG (normalized):", collection_config)
-
-    return render_template(
-        "schema_dashboard.html",
-        schemas=schemas,
-        title="Schema App Dashboard",
-        shop_name=shop,
-        hmac_value=hmac,
-        id_token_value=id_token,
-        product_metafields=product_metafields,
-        collection_metafields=collection_metafields,
-        org_schema_fields=org_fields,
-        product_config=product_config,
-        collection_config=collection_config
+    # ------------------------------------------------------------------
+    # STEP 1: Fetch existing schemas (FIELD-LEVEL, SAFE)
+    # ------------------------------------------------------------------
+    product_schema_mappings = fetch_schema_config_entry(
+        shop, access_token, "product_schema_mappings"
+    ) or []
+    
+    collection_schema_mappings = fetch_schema_config_entry(
+        shop, access_token, "collection_schema_mappings"
+    ) or []
+    
+    logging.info(
+        "Existing product schema mappings:\n%s",
+        json.dumps(product_schema_mappings, indent=2)
     )
+    
+    logging.info(
+        "Existing collection schema mappings:\n%s",
+        json.dumps(collection_schema_mappings, indent=2)
+    )
+
+    # ------------------------------------------------------------------
+    # STEP 2: Merge incoming payload
+    # ------------------------------------------------------------------
+    if incoming_product is not None:
+        product_schema_mappings = incoming_product
+
+    if incoming_collection is not None:
+        collection_schema_mappings = incoming_collection
+
+    logging.info(
+        "Merged schema state: %s",
+        json.dumps({
+            "product_schema_mappings": product_schema_mappings,
+            "collection_schema_mappings": collection_schema_mappings
+        }, indent=2)
+    )
+
+    # ------------------------------------------------------------------
+    # STEP 3: Delete all existing entries
+    # ------------------------------------------------------------------
+    existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
+    for entry in existing_entries:
+        delete_metaobject(shop, access_token, entry["id"])
+        logging.info("Deleted config entry: %s", entry["id"])
+
+    # ------------------------------------------------------------------
+    # STEP 4: Create single fresh entry
+    # ------------------------------------------------------------------
+    resp = create_config_entry(
+        shop,
+        access_token,
+        {
+            "schema_type": metaobject_type,
+            "product_schema_mappings": product_schema_mappings,
+            "collection_schema_mappings": collection_schema_mappings
+        }
+    )
+
+    node = resp.get("data", {}).get("metaobjectCreate")
+    if not node or node.get("userErrors"):
+        raise Exception("Failed to create config entry")
+
+    logging.info("Created new config entry: %s", node["metaobject"]["id"])
+
+    # ------------------------------------------------------------------
+    # STEP 5: Background jobs (UNCHANGED)
+    # ------------------------------------------------------------------
+    def process_products():
+        products = fetch_all_products(shop, access_token)
+        for product in products:
+            existing_mfs = fetch_product_metafields(shop, access_token, product["id"].split("/")[-1])
+            schema_json = build_schema_from_mappings(product, existing_mfs, product_schema_mappings)
+            schema_json = wrap_flattened_json_in_schema(schema_json)
+            upsert_app_metafield(shop, access_token, product["id"], schema_json)
+
+    def process_collections():
+        collections = fetch_all_collections(shop, access_token)
+        for col in collections:
+            existing_mfs = fetch_collection_metafields(shop, access_token, col["id"].split("/")[-1])
+            schema_json = build_schema_from_mappings(col, existing_mfs, collection_schema_mappings)
+            schema_json = wrap_flattened_json_in_schema(schema_json)
+            upsert_collection_app_metafield(shop, access_token, col["id"], schema_json)
+
+    threading.Thread(target=process_products, daemon=True).start()
+    threading.Thread(target=process_collections, daemon=True).start()
+
+    return jsonify({"message": "Schema saved and site-wide metafields updating"})
 
 
 
