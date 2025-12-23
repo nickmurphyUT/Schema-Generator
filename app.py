@@ -404,23 +404,23 @@ def home():
             )
             
             # ---- normalize shapes for template ----
-            if isinstance(raw_product_config, list):
-                product_config = {
-                    "product_schema_mappings": raw_product_config
-                }
-            elif isinstance(raw_product_config, dict):
-                product_config = raw_product_config
-            else:
-                product_config = {}
+            def extract_mappings(config, key):
+                while isinstance(config, dict) and key in config:
+                    config = config[key]
+                return config if isinstance(config, list) else []
             
-            if isinstance(raw_collection_config, list):
-                collection_config = {
-                    "collection_schema_mappings": raw_collection_config
-                }
-            elif isinstance(raw_collection_config, dict):
-                collection_config = raw_collection_config
-            else:
-                collection_config = {}
+            product_config = {
+                "product_schema_mappings": extract_mappings(
+                    raw_product_config, "product_schema_mappings"
+                )
+            }
+            
+            collection_config = {
+                "collection_schema_mappings": extract_mappings(
+                    raw_collection_config, "collection_schema_mappings"
+                )
+            }
+
 
 
         except Exception as e:
