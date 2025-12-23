@@ -398,28 +398,38 @@ def home():
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
             # --------------------------------------------------
-            # Fetch FULL config ONCE (FIX)
+            # Fetch full config (UNCHANGED)
             # --------------------------------------------------
             raw_config = fetch_schema_config_entry(
                 shop, access_token, "app_config"
             ) or {}
 
             # --------------------------------------------------
-            # Normalization helper (UNCHANGED logic, safer)
+            # ✅ FIXED normalization helper
             # --------------------------------------------------
             def extract_mappings(config, key):
                 """
-                Walk down legacy nesting until we find the deepest list for `key`
+                Safely extract mappings from:
+                - root-level lists
+                - nested legacy objects
                 """
+                if not isinstance(config, dict):
+                    return []
+
+                # ✅ FIRST: root-level list
+                if isinstance(config.get(key), list):
+                    return config[key]
+
+                # 🔁 THEN: walk legacy nesting
                 while isinstance(config, dict) and key in config:
-                    next_val = config.get(key)
-                    if isinstance(next_val, list):
-                        return next_val
-                    config = next_val
+                    config = config.get(key)
+                    if isinstance(config, list):
+                        return config
+
                 return []
 
             # --------------------------------------------------
-            # Normalize configs from SAME ROOT (FIX)
+            # Normalize configs (UNCHANGED usage)
             # --------------------------------------------------
             product_config = {
                 "product_schema_mappings": extract_mappings(
