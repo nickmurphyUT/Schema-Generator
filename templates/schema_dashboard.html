@@ -255,11 +255,6 @@ if (savedCollectionMappings.length > 0) {
     createCollectionRow();
 }
 
-if (savedProductMappings.length > 0) savedProductMappings.forEach(m => createSchemaRow(m.schemaField || "", m.sourceField || ""));
-else createSchemaRow();
-
-if (savedCollectionMappings.length > 0) savedCollectionMappings.forEach(m => createCollectionRow(m.schemaField || "", m.sourceField || ""));
-else createCollectionRow();
 
 /* ================= SAVE HANDLERS ================= */
 // Product Save Only
