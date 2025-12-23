@@ -398,48 +398,44 @@ def home():
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
 
             # --------------------------------------------------
-            # Fetch full config (UNCHANGED)
+            # FETCH CONFIG FIELDS (THIS IS THE CRITICAL PART)
             # --------------------------------------------------
-            raw_config = fetch_schema_config_entry(
-                shop, access_token, "app_config"
-            ) or {}
+            raw_product = fetch_schema_config_entry(
+                shop, access_token, "product_schema_mappings"
+            )
+
+            raw_collection = fetch_schema_config_entry(
+                shop, access_token, "collection_schema_mappings"
+            )
 
             # --------------------------------------------------
-            # ✅ FIXED normalization helper
+            # NORMALIZATION (FIELD-SAFE, LEGACY-SAFE)
             # --------------------------------------------------
-            def extract_mappings(config, key):
-                """
-                Safely extract mappings from:
-                - root-level lists
-                - nested legacy objects
-                """
-                if not isinstance(config, dict):
+            def normalize(value, key):
+                if not isinstance(value, dict):
                     return []
 
-                # ✅ FIRST: root-level list
-                if isinstance(config.get(key), list):
-                    return config[key]
+                # direct list
+                if isinstance(value.get(key), list):
+                    return value[key]
 
-                # 🔁 THEN: walk legacy nesting
-                while isinstance(config, dict) and key in config:
-                    config = config.get(key)
-                    if isinstance(config, list):
-                        return config
+                # legacy nested object
+                while isinstance(value, dict) and key in value:
+                    value = value.get(key)
+                    if isinstance(value, list):
+                        return value
 
                 return []
 
-            # --------------------------------------------------
-            # Normalize configs (UNCHANGED usage)
-            # --------------------------------------------------
             product_config = {
-                "product_schema_mappings": extract_mappings(
-                    raw_config, "product_schema_mappings"
+                "product_schema_mappings": normalize(
+                    raw_product, "product_schema_mappings"
                 )
             }
 
             collection_config = {
-                "collection_schema_mappings": extract_mappings(
-                    raw_config, "collection_schema_mappings"
+                "collection_schema_mappings": normalize(
+                    raw_collection, "collection_schema_mappings"
                 )
             }
 
