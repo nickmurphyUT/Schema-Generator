@@ -2507,9 +2507,12 @@ def verify_and_create_metafields():
 
     incoming_product = data.get("product_schema_mappings")
     incoming_collection = data.get("collection_schema_mappings")
+    incoming_page = data.get("page_schema_mappings")
+    incoming_blog = data.get("blog_schema_mappings")
     existing_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
     existing_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
-
+    existing_product = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
+    existing_collection = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
     # ------------------------------------------------------------------
     # Ensure metaobject definition exists
     # ------------------------------------------------------------------
@@ -2594,12 +2597,22 @@ def verify_and_create_metafields():
         collection_schema_mappings = extract_list(
             incoming_collection, "collection_schema_mappings"
         )
+    if incoming_page is not None:
+        page_schema_mappings = extract_list(
+            incoming_page, "page_schema_mappings"
+        )
 
+    if incoming_blog is not None:
+        blog_schema_mappings = extract_list(
+            incoming_blog, "blog_schema_mappings"
+        )
     logging.info(
         "Merged schema state (FLAT): %s",
         json.dumps({
             "product_schema_mappings": product_schema_mappings,
-            "collection_schema_mappings": collection_schema_mappings
+            "collection_schema_mappings": collection_schema_mappings,
+            "page_schema_mappings": page_schema_mappings,
+            "blog_schema_mappings": blog_schema_mappings
         }, indent=2)
     )
 
@@ -2616,14 +2629,17 @@ def verify_and_create_metafields():
     # ------------------------------------------------------------------
     product_schema_mappings = dedupe_mappings(product_schema_mappings)
     collection_schema_mappings = dedupe_mappings(collection_schema_mappings)
-    
+    product_schema_mappings = dedupe_mappings(page_schema_mappings)
+    collection_schema_mappings = dedupe_mappings(blog_schema_mappi
     resp = create_config_entry(
         shop,
         access_token,
         {
             "schema_type": metaobject_type,
             "product_schema_mappings": product_schema_mappings,
-            "collection_schema_mappings": collection_schema_mappings
+            "collection_schema_mappings": collection_schema_mappings,
+            "page_schema_mappings": page_schema_mappings,
+            "blog_schema_mappings": blog_schema_mappings
         }
     )
 
