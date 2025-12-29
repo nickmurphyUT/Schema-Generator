@@ -496,6 +496,8 @@ def home():
 
     print("PRODUCT CONFIG (normalized):", product_config)
     print("COLLECTION CONFIG (normalized):", collection_config)
+    print("PAGE CONFIG (normalized):", page_config)
+    print("BLOG CONFIG (normalized):", blog_config)
 
     return render_template(
         "schema_dashboard.html",
