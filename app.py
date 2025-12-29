@@ -916,13 +916,12 @@ def list_all_contracts():
         app.logger.error("Error fetching subscription contracts: %s", str(e))
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
-#helper function for app GUI
 def fetch_all_blog_articles(shop, access_token):
     """Fetch all blog articles with full article objects."""
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
     headers = {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": access_token
+        "X-Shopify-Access-Token": access_token,
     }
 
     articles = []
@@ -958,21 +957,31 @@ def fetch_all_blog_articles(shop, access_token):
         resp = requests.post(
             url,
             json={"query": query, "variables": {"cursor": cursor}},
-            headers=headers
+            headers=headers,
         )
         resp.raise_for_status()
 
-        data = resp.json()["data"]["articles"]
+        payload = resp.json()
 
-        for edge in data["edges"]:
-            articles.append(edge["node"])
-
-        if not data["pageInfo"]["hasNextPage"]:
+        # 🔴 CRITICAL: guard against GraphQL errors
+        if "data" not in payload or payload["data"] is None:
+            print("[fetch_all_blog_articles] GraphQL error:", payload)
             break
 
-        cursor = data["edges"][-1]["cursor"]
+        articles_data = payload["data"].get("articles")
+        if not articles_data:
+            break
+
+        for edge in articles_data.get("edges", []):
+            articles.append(edge["node"])
+
+        if not articles_data["pageInfo"]["hasNextPage"]:
+            break
+
+        cursor = articles_data["edges"][-1]["cursor"]
 
     return articles
+
 
 def fetch_blog_metafields(shop, access_token, article_id):
     """
