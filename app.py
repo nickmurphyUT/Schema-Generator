@@ -388,6 +388,11 @@ def home():
     product_config = {}
     collection_config = {}
 
+    page_metafields = []
+    blog_metafields = []
+    page_config = {}
+    blog_config = {}
+
     if access_token:
         try:
             # --------------------------------------------------
@@ -396,6 +401,8 @@ def home():
             meta_data = get_metafield_definitions(shop, access_token)
             product_metafields = meta_data["data"]["productDefinitions"]["edges"]
             collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
+            page_metafields = meta_data["data"]["pageDefinitions"]["edges"]
+            blog_metafields = meta_data["data"]["blogDefinitions"]["edges"]
 
             # --------------------------------------------------
             # FETCH CONFIG FIELDS (UNCHANGED)
@@ -408,8 +415,26 @@ def home():
                 shop, access_token, "collection_schema_mappings"
             )
 
+
+            raw_page = fetch_schema_config_entry(
+                shop, access_token, "page_schema_mappings"
+            )
+            
+            raw_blog = fetch_schema_config_entry(
+                shop, access_token, "blog_schema_mappings"
+            )
+            
+            page_config = {
+                "page_schema_mappings": normalize(raw_page, "page_schema_mappings")
+            }
+            
+            blog_config = {
+                "blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings")
+            }
             print("PRODUCT CONFIG (raw):", raw_product)
             print("COLLECTION CONFIG (raw):", raw_collection)
+            print("PAGE CONFIG (raw):", raw_page)
+            print("BLOG CONFIG (raw):", raw_blog)
 
             # --------------------------------------------------
             # NORMALIZATION (FIELD-SAFE, LEGACY-SAFE)
@@ -474,12 +499,20 @@ def home():
         shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token,
+    
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
+        page_metafields=page_metafields,
+        blog_metafields=blog_metafields,
+    
         org_schema_fields=org_fields,
+    
         product_config=product_config,
-        collection_config=collection_config
+        collection_config=collection_config,
+        page_config=page_config,
+        blog_config=blog_config
     )
+
 
 
 
@@ -1004,13 +1037,12 @@ def get_metafield_definitions(shop, access_token):
             name
             namespace
             key
-            type {
-              name
-            }
+            type { name }
             description
           }
         }
       }
+
       collectionDefinitions: metafieldDefinitions(ownerType: COLLECTION, first: 200) {
         edges {
           node {
@@ -1018,17 +1050,41 @@ def get_metafield_definitions(shop, access_token):
             name
             namespace
             key
-            type {
-              name
-            }
+            type { name }
+            description
+          }
+        }
+      }
+
+      pageDefinitions: metafieldDefinitions(ownerType: PAGE, first: 200) {
+        edges {
+          node {
+            id
+            name
+            namespace
+            key
+            type { name }
+            description
+          }
+        }
+      }
+
+      blogDefinitions: metafieldDefinitions(ownerType: BLOG, first: 200) {
+        edges {
+          node {
+            id
+            name
+            namespace
+            key
+            type { name }
             description
           }
         }
       }
     }
     """
-
     return query_shopify_graphql(shop, access_token, query)
+
 
 
 # ---------------- ORGANIZATION SCHEMA ----------------
