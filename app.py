@@ -2636,8 +2636,8 @@ def verify_and_create_metafields():
     incoming_blog = data.get("blog_schema_mappings")
     existing_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
     existing_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
-    existing_product = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
-    existing_collection = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
+    existing_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
+    existing_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
     # ------------------------------------------------------------------
     # Ensure metaobject definition exists
     # ------------------------------------------------------------------
