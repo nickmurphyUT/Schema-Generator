@@ -153,39 +153,25 @@ let blogMappings = [];
 let pageMappings = [];
 let homepageMappings = [];
 
-let rowId = 0, colRowId = 0, blogRowId = 0, pageRowId = 0, homeRowId = 0;
-
 /* ============================================================
-   HELPERS
+   UTILITIES
 ============================================================ */
-function val(el, a, b) {
-  return el.querySelector(a).value.trim() || el.querySelector(b).value.trim();
+function normalize(input) {
+  if (Array.isArray(input)) return input;
+  return [];
 }
 
-function collect(container, schemaSel, schemaInp, sourceSel) {
-  return [...document.querySelectorAll(container + " > div")].map(r => ({
-    schemaField: val(r, schemaInp, schemaSel),
-    sourceField: r.querySelector(sourceSel).value.trim()
+function collect(container, schemaSel, schemaInput, sourceSel) {
+  return [...container.children].map(row => ({
+    schemaField:
+      row.querySelector(schemaInput).value.trim() ||
+      row.querySelector(schemaSel).value.trim(),
+    sourceField:
+      row.querySelector(sourceSel).value.trim()
   })).filter(m => m.schemaField && m.sourceField);
 }
 
-/* ============================================================
-   UPDATE FUNCTIONS
-============================================================ */
-function updateAll() {
-  productMappings = collect("#schema-mapping-container", ".schema-select", ".schema-input", ".product-source");
-  collectionMappings = collect("#collection-mapping-container", ".collection-schema-select", ".collection-schema-input", ".collection-source");
-  blogMappings = collect("#blog-mapping-container", ".blog-schema-select", ".blog-schema-input", ".blog-source");
-  pageMappings = collect("#page-mapping-container", ".page-schema-select", ".page-schema-input", ".page-source");
-  homepageMappings = collect("#homepage-mapping-container", ".homepage-schema-select", ".homepage-schema-input", ".homepage-source");
-}
-
-/* ============================================================
-   SINGLE SAVE FUNCTION (CRITICAL FIX)
-============================================================ */
-async function saveEverything(previewEl) {
-  updateAll();
-
+async function saveAll(previewEl) {
   const payload = {
     shop: '{{ shop_name }}',
     hmac: '{{ hmac_value }}',
@@ -200,43 +186,149 @@ async function saveEverything(previewEl) {
   previewEl.innerHTML = "Saving…";
 
   try {
-    const r = await fetch("/verify_and_create_metafields", {
+    const resp = await fetch("/verify_and_create_metafields", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const j = await r.json();
-    previewEl.innerHTML = r.ok ? "Saved & Regenerated ✅" : `Error: ${j.error || "Unknown"}`;
+    const result = await resp.json();
+    previewEl.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error || "Unknown error"}`;
   } catch {
     previewEl.innerHTML = "Network Error";
   }
 }
 
 /* ============================================================
-   BUTTON WIRING — ALL SAVE BUTTONS DO THE SAME THING
+   UPDATE FUNCTIONS (STATE SYNC)
 ============================================================ */
-document.getElementById("sendToBackendBtn").onclick =
-document.getElementById("saveCollectionBtn").onclick =
-document.getElementById("saveBlogBtn").onclick =
-document.getElementById("savePageBtn").onclick =
-document.getElementById("saveHomepageBtn").onclick = () =>
-  saveEverything(document.getElementById("metafields-preview"));
-
-/* ============================================================
-   PREPOPULATION (UNCHANGED — PRESERVED)
-============================================================ */
-function norm(v, k) {
-  if (!v) return [];
-  if (Array.isArray(v)) return v;
-  if (typeof v === "object" && Array.isArray(v[k])) return v[k];
-  return [];
+function updateProducts() {
+  productMappings = collect(
+    document.getElementById("schema-mapping-container"),
+    ".schema-select",
+    ".schema-input",
+    ".product-source"
+  );
 }
 
-const prodSaved = norm({{ product_config | tojson }}?.product_schema_mappings, "product_schema_mappings");
-const colSaved  = norm({{ collection_config | tojson }}?.collection_schema_mappings, "collection_schema_mappings");
+function updateCollections() {
+  collectionMappings = collect(
+    document.getElementById("collection-mapping-container"),
+    ".collection-schema-select",
+    ".collection-schema-input",
+    ".collection-source"
+  );
+}
 
-(prodSaved.length ? prodSaved : [{}]).forEach(m => createSchemaRow(m.schemaField || "", m.sourceField || ""));
-(colSaved.length ? colSaved : [{}]).forEach(m => createCollectionRow(m.schemaField || "", m.sourceField || ""));
+function updateBlogs() {
+  blogMappings = collect(
+    document.getElementById("blog-mapping-container"),
+    ".blog-schema-select",
+    ".blog-schema-input",
+    ".blog-source"
+  );
+}
+
+function updatePages() {
+  pageMappings = collect(
+    document.getElementById("page-mapping-container"),
+    ".page-schema-select",
+    ".page-schema-input",
+    ".page-source"
+  );
+}
+
+function updateHomepage() {
+  homepageMappings = collect(
+    document.getElementById("homepage-mapping-container"),
+    ".homepage-schema-select",
+    ".homepage-schema-input",
+    ".homepage-source"
+  );
+}
+
+/* ============================================================
+   PREPOPULATION (YOU WERE RIGHT — THIS MATTERS)
+============================================================ */
+const productConfig = {{ product_config | tojson }};
+const collectionConfig = {{ collection_config | tojson }};
+const blogConfig = {{ blog_config | tojson }};
+const pageConfig = {{ page_config | tojson }};
+const homepageConfig = {{ homepage_config | tojson }};
+
+normalize(productConfig?.product_schema_mappings).forEach(m =>
+  createSchemaRow(m.schemaField, m.sourceField)
+);
+
+normalize(collectionConfig?.collection_schema_mappings).forEach(m =>
+  createCollectionRow(m.schemaField, m.sourceField)
+);
+
+normalize(blogConfig?.blog_schema_mappings).forEach(m =>
+  createBlogRow(m.schemaField, m.sourceField)
+);
+
+normalize(pageConfig?.page_schema_mappings).forEach(m =>
+  createPageRow(m.schemaField, m.sourceField)
+);
+
+normalize(homepageConfig?.homepage_schema_mappings).forEach(m =>
+  createHomepageRow(m.schemaField, m.sourceField)
+);
+
+/* Ensure at least one row exists */
+if (!document.getElementById("schema-mapping-container").children.length) createSchemaRow();
+if (!document.getElementById("collection-mapping-container").children.length) createCollectionRow();
+if (!document.getElementById("blog-mapping-container").children.length) createBlogRow();
+if (!document.getElementById("page-mapping-container").children.length) createPageRow();
+if (!document.getElementById("homepage-mapping-container").children.length) createHomepageRow();
+
+/* ============================================================
+   BUTTON BINDINGS — ALL SAVE THE SAME WAY
+============================================================ */
+document.getElementById("sendToBackendBtn").onclick = () => {
+  updateProducts();
+  updateCollections();
+  updateBlogs();
+  updatePages();
+  updateHomepage();
+  saveAll(document.getElementById("metafields-preview"));
+};
+
+document.getElementById("saveCollectionBtn").onclick = () => {
+  updateProducts();
+  updateCollections();
+  updateBlogs();
+  updatePages();
+  updateHomepage();
+  saveAll(document.getElementById("collection-preview"));
+};
+
+document.getElementById("saveBlogBtn").onclick = () => {
+  updateProducts();
+  updateCollections();
+  updateBlogs();
+  updatePages();
+  updateHomepage();
+  saveAll(document.getElementById("blog-preview"));
+};
+
+document.getElementById("savePageBtn").onclick = () => {
+  updateProducts();
+  updateCollections();
+  updateBlogs();
+  updatePages();
+  updateHomepage();
+  saveAll(document.getElementById("page-preview"));
+};
+
+document.getElementById("saveHomepageBtn").onclick = () => {
+  updateProducts();
+  updateCollections();
+  updateBlogs();
+  updatePages();
+  updateHomepage();
+  saveAll(document.getElementById("homepage-preview"));
+};
 </script>
 
 
