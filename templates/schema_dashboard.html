@@ -98,6 +98,28 @@
   <div id="blog-preview" class="mt-4 text-sm text-gray-500"></div>
 </div>
 
+
+
+        <!-- PAGE SCHEMA MAPPING UI -->
+<div class="bg-white rounded-xl p-6 shadow-lg border mb-8">
+  <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
+    PAGE Schema Generator
+  </h3>
+
+  <div id="page-mapping-container" class="space-y-4 mb-6"></div>
+
+  <button id="addPageBtn"
+    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
+    + Add Schema Mapping
+  </button>
+
+  <button id="savePageBtn"
+    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
+    Save & Generate Page Schema Metafields
+  </button>
+
+  <div id="page-preview" class="mt-4 text-sm text-gray-500"></div>
+</div>
 <script>
 /* ================= GLOBAL STATE ================= */
 let collectionMappings = [];
@@ -227,6 +249,65 @@ const commonSchemaFields = {{ org_schema_fields | tojson }};
 }
 
 
+
+        function createPageRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !schemaOptions.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
+
+    const sourceOptions = [...pageFieldOptions];
+    if (defaultSource && !sourceOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
+
+    const id = pageRowId++;
+    const container = document.getElementById("page-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="page-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f =>
+                    `<option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>`
+                ).join("")}
+            </select>
+            <input type="text"
+                class="page-schema-input p-2 border rounded"
+                placeholder="Or write your own…"
+                value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Page Source</label>
+            <select class="page-source p-2 border rounded bg-white">
+                <option value="">Select Page Attribute</option>
+                ${sourceOptions.map(o =>
+                    `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`
+                ).join("")}
+            </select>
+        </div>
+
+        <button class="delete-page-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+    `;
+
+    row.querySelector(".delete-page-row").onclick = () => {
+        row.remove();
+        updatePageMappings();
+    };
+
+    row.querySelector(".page-schema-select").onchange = updateBlogMappings;
+    row.querySelector(".page-schema-input").oninput = updateBlogMappings;
+    row.querySelector(".page-source").onchange = updateBlogMappings;
+
+    container.appendChild(row);
+    updatePageMappings();
+}
     function updateBlogMappings() {
     blogMappings = [...document.querySelectorAll("#blog-mapping-container > div")].map(row => ({
         schemaField:
@@ -237,7 +318,15 @@ const commonSchemaFields = {{ org_schema_fields | tojson }};
     }));
 }
 
-
+    function updatePageMappings() {
+    blogMappings = [...document.querySelectorAll("#blog-mapping-container > div")].map(row => ({
+        schemaField:
+            row.querySelector(".page-schema-input").value.trim() ||
+            row.querySelector(".page-schema-select").value.trim(),
+        sourceField:
+            row.querySelector(".page-source").value.trim()
+    }));
+}
     function createPageRow(defaultSchema = "", defaultSource = "") {
     const schemaOptions = [...commonSchemaFields];
     if (defaultSchema && !schemaOptions.includes(defaultSchema)) {
@@ -609,6 +698,32 @@ document.getElementById("addHomepageBtn").onclick = () => createHomepageRow();
     }
 };
 
+
+        document.getElementById("savePageBtn").onclick = async () => {
+    updateBlogMappings();
+
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        page_schema_mappings: blogMappings
+    };
+
+    const preview = document.getElementById("blog-preview");
+    preview.innerHTML = "Saving…";
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error}`;
+    } catch {
+        preview.innerHTML = "Network Error";
+    }
+};
 </script>
 
 
