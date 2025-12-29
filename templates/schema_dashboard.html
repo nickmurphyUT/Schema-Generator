@@ -259,14 +259,14 @@ if (savedCollectionMappings.length > 0) {
 /* ================= SAVE HANDLERS ================= */
 // Product Save Only
 document.getElementById("sendToBackendBtn").onclick = async () => {
-    updateMappings();
+    updateCollectionMappings();
     const payload = {
-        shop: '{{ shop_name or "Not found" }}',
-        hmac: '{{ hmac_value or "Not found" }}',
-        id_token: '{{ id_token_value or "Not found" }}',
-        product_schema_mappings: mappings
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        collection_schema_mappings: collectionMappings
     };
-    const preview = document.getElementById("metafields-preview");
+    const preview = document.getElementById("collection-preview");
     preview.innerHTML = 'Saving…';
 
     try {
@@ -284,14 +284,14 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
 
 // Collection Save Only
 document.getElementById("saveCollectionBtn").onclick = async () => {
-    updateMappings();
+    updateCollectionMappings();
     const payload = {
-        shop: '{{ shop_name or "Not found" }}',
-        hmac: '{{ hmac_value or "Not found" }}',
-        id_token: '{{ id_token_value or "Not found" }}',
-        product_schema_mappings: mappings
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        collection_schema_mappings: collectionMappings
     };
-    const preview = document.getElementById("metafields-preview");
+    const preview = document.getElementById("collection-preview");
     preview.innerHTML = 'Saving…';
 
     try {
