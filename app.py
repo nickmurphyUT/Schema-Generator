@@ -2629,8 +2629,8 @@ def verify_and_create_metafields():
     # ------------------------------------------------------------------
     product_schema_mappings = dedupe_mappings(product_schema_mappings)
     collection_schema_mappings = dedupe_mappings(collection_schema_mappings)
-    product_schema_mappings = dedupe_mappings(page_schema_mappings)
-    collection_schema_mappings = dedupe_mappings(blog_schema_mappi
+    page_schema_mappings = dedupe_mappings(page_schema_mappings)
+    blog_schema_mappings = dedupe_mappings(blog_schema_mappings)
     resp = create_config_entry(
         shop,
         access_token,
