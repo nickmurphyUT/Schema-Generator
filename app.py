@@ -370,7 +370,6 @@ def parse_schema_metaobject(node):
     return result
 
 
-
 @app.route("/")
 def home():
     shop = session.get("shop") or request.args.get("shop")
@@ -385,93 +384,53 @@ def home():
 
     product_metafields = []
     collection_metafields = []
-    product_config = {}
-    collection_config = {}
-
     page_metafields = []
     blog_metafields = []
+
+    product_config = {}
+    collection_config = {}
     page_config = {}
     blog_config = {}
 
     if access_token:
         try:
             # --------------------------------------------------
-            # Metafield definitions (UNCHANGED)
+            # Metafield definitions (SAFE)
             # --------------------------------------------------
             meta_data = get_metafield_definitions(shop, access_token)
-            product_metafields = meta_data["data"]["productDefinitions"]["edges"]
-            collection_metafields = meta_data["data"]["collectionDefinitions"]["edges"]
-            page_metafields = meta_data["data"]["pageDefinitions"]["edges"]
-            blog_metafields = meta_data["data"]["blogDefinitions"]["edges"]
+            data = meta_data.get("data", {})
+
+            product_metafields = data.get("productDefinitions", {}).get("edges", [])
+            collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
+            page_metafields = data.get("pageDefinitions", {}).get("edges", [])
+            blog_metafields = data.get("blogDefinitions", {}).get("edges", [])
 
             # --------------------------------------------------
-            # FETCH CONFIG FIELDS (UNCHANGED)
+            # FETCH CONFIG BLOBS
             # --------------------------------------------------
-            raw_product = fetch_schema_config_entry(
-                shop, access_token, "product_schema_mappings"
-            )
-
-            raw_collection = fetch_schema_config_entry(
-                shop, access_token, "collection_schema_mappings"
-            )
-
-
-            raw_page = fetch_schema_config_entry(
-                shop, access_token, "page_schema_mappings"
-            )
-            
-            raw_blog = fetch_schema_config_entry(
-                shop, access_token, "blog_schema_mappings"
-            )
-            print("PRODUCT CONFIG (raw):", raw_product)
-            print("COLLECTION CONFIG (raw):", raw_collection)
-            print("PAGE CONFIG (raw):", raw_page)
-            print("BLOG CONFIG (raw):", raw_blog)
+            raw_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
+            raw_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
+            raw_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
+            raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
 
             # --------------------------------------------------
-            # NORMALIZATION (FIELD-SAFE, LEGACY-SAFE)
+            # NORMALIZATION (BULLETPROOF)
             # --------------------------------------------------
             def normalize(value, key):
                 if not isinstance(value, dict):
                     return []
-
-                # direct list
                 if isinstance(value.get(key), list):
                     return value[key]
-
-                # legacy nested object
                 while isinstance(value, dict) and key in value:
                     value = value.get(key)
                     if isinstance(value, list):
                         return value
-
                 return []
 
-
-            # --------------------------------------------------
-            # PAGE CONFIG (UNCHANGED)
-            # --------------------------------------------------
-            page_config = {
-                "page_schema_mappings": normalize(raw_page, "page_schema_mappings")
-            }
-            # --------------------------------------------------
-            # BLOG CONFIG (UNCHANGED)
-            # --------------------------------------------------
-            blog_config = {
-                "blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings")
-            }
-            # --------------------------------------------------
-            # PRODUCT CONFIG (UNCHANGED)
-            # --------------------------------------------------
             product_config = {
-                "product_schema_mappings": normalize(
-                    raw_product, "product_schema_mappings"
-                )
+                "product_schema_mappings": normalize(raw_product, "product_schema_mappings")
             }
 
-            # --------------------------------------------------
-            # COLLECTION CONFIG (FIXED — fallback to product blob)
-            # --------------------------------------------------
             collection_config = {
                 "collection_schema_mappings": (
                     normalize(raw_collection, "collection_schema_mappings")
@@ -479,11 +438,19 @@ def home():
                 )
             }
 
+            page_config = {
+                "page_schema_mappings": normalize(raw_page, "page_schema_mappings")
+            }
+
+            blog_config = {
+                "blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings")
+            }
+
         except Exception as e:
-            print("Error fetching metafield definitions or config entry:", str(e))
+            logging.exception("Home route failed safely")
 
     # --------------------------------------------------
-    # Organization schema fields (UNCHANGED)
+    # Organization schema fields
     # --------------------------------------------------
     org_fields = fetch_organization_schema_properties()
 
@@ -491,13 +458,9 @@ def home():
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
         {"title": "Product Schema", "url": "/app/products-schema-builder"},
         {"title": "Collection Schema", "url": "/app/collections-schema-builder"},
+        {"title": "Page Schema", "url": "/app/pages-schema-builder"},
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
-
-    print("PRODUCT CONFIG (normalized):", product_config)
-    print("COLLECTION CONFIG (normalized):", collection_config)
-    print("PAGE CONFIG (normalized):", page_config)
-    print("BLOG CONFIG (normalized):", blog_config)
 
     return render_template(
         "schema_dashboard.html",
@@ -506,20 +469,19 @@ def home():
         shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token,
-    
+
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
         page_metafields=page_metafields,
         blog_metafields=blog_metafields,
-    
+
         org_schema_fields=org_fields,
-    
+
         product_config=product_config,
         collection_config=collection_config,
         page_config=page_config,
-        blog_config=blog_config
+        blog_config=blog_config,
     )
-
 
 
 
