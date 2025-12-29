@@ -76,12 +76,42 @@
 
     <div id="collection-preview" class="mt-4 text-sm text-gray-500"></div>
 </div>
+
+    <!-- BLOG SCHEMA MAPPING UI -->
+<div class="bg-white rounded-xl p-6 shadow-lg border mb-8">
+  <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
+    Blog Schema Generator
+  </h3>
+
+  <div id="blog-mapping-container" class="space-y-4 mb-6"></div>
+
+  <button id="addBlogBtn"
+    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
+    + Add Schema Mapping
+  </button>
+
+  <button id="saveBlogBtn"
+    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
+    Save & Generate Blog Schema Metafields
+  </button>
+
+  <div id="blog-preview" class="mt-4 text-sm text-gray-500"></div>
+</div>
+
 <script>
 /* ================= GLOBAL STATE ================= */
 let collectionMappings = [];
 let collectionRowId = 0;
 let mappings = [];
 let rowIdCounter = 0;
+let blogMappings = [];
+let blogRowId = 0;
+
+let pageMappings = [];
+let pageRowId = 0;
+
+let homepageMappings = [];
+let homepageRowId = 0;
 
 /* ================= FIELD OPTIONS ================= */
 const collectionFieldOptions = [
@@ -108,7 +138,246 @@ const productFieldOptions = [
     {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 
+
+    const blogFieldOptions = [
+    "blog.title",
+    "blog.handle",
+    "blog.updated_at",
+    "blog.comments_enabled",
+    {% for mf in blog_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+];
+
+const pageFieldOptions = [
+    "page.title",
+    "page.handle",
+    "page.published_at",
+    "page.updated_at",
+    "page.body_html",
+    {% for mf in page_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+];
+
+const homepageFieldOptions = [
+    "homepage.title",
+    "homepage.meta_title",
+    "homepage.meta_description",
+    "homepage.updated_at",
+    {% for mf in homepage_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+];
+
 const commonSchemaFields = {{ org_schema_fields | tojson }};
+
+
+    function createBlogRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !schemaOptions.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
+
+    const sourceOptions = [...blogFieldOptions];
+    if (defaultSource && !sourceOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
+
+    const id = blogRowId++;
+    const container = document.getElementById("blog-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="blog-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f =>
+                    `<option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>`
+                ).join("")}
+            </select>
+            <input type="text"
+                class="blog-schema-input p-2 border rounded"
+                placeholder="Or write your own…"
+                value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Blog Source</label>
+            <select class="blog-source p-2 border rounded bg-white">
+                <option value="">Select Blog Attribute</option>
+                ${sourceOptions.map(o =>
+                    `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`
+                ).join("")}
+            </select>
+        </div>
+
+        <button class="delete-blog-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+    `;
+
+    row.querySelector(".delete-blog-row").onclick = () => {
+        row.remove();
+        updateBlogMappings();
+    };
+
+    row.querySelector(".blog-schema-select").onchange = updateBlogMappings;
+    row.querySelector(".blog-schema-input").oninput = updateBlogMappings;
+    row.querySelector(".blog-source").onchange = updateBlogMappings;
+
+    container.appendChild(row);
+    updateBlogMappings();
+}
+
+
+    function updateBlogMappings() {
+    blogMappings = [...document.querySelectorAll("#blog-mapping-container > div")].map(row => ({
+        schemaField:
+            row.querySelector(".blog-schema-input").value.trim() ||
+            row.querySelector(".blog-schema-select").value.trim(),
+        sourceField:
+            row.querySelector(".blog-source").value.trim()
+    }));
+}
+
+
+    function createPageRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !schemaOptions.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
+
+    const sourceOptions = [...pageFieldOptions];
+    if (defaultSource && !sourceOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
+
+    const id = pageRowId++;
+    const container = document.getElementById("page-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="page-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f =>
+                    `<option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>`
+                ).join("")}
+            </select>
+            <input type="text"
+                class="page-schema-input p-2 border rounded"
+                placeholder="Or write your own…"
+                value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Page Source</label>
+            <select class="page-source p-2 border rounded bg-white">
+                <option value="">Select Page Attribute</option>
+                ${sourceOptions.map(o =>
+                    `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`
+                ).join("")}
+            </select>
+        </div>
+
+        <button class="delete-page-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+    `;
+
+    row.querySelector(".delete-page-row").onclick = () => {
+        row.remove();
+        updatePageMappings();
+    };
+
+    row.querySelector(".page-schema-select").onchange = updatePageMappings;
+    row.querySelector(".page-schema-input").oninput = updatePageMappings;
+    row.querySelector(".page-source").onchange = updatePageMappings;
+
+    container.appendChild(row);
+    updatePageMappings();
+}
+
+
+    function updatePageMappings() {
+    pageMappings = [...document.querySelectorAll("#page-mapping-container > div")].map(row => ({
+        schemaField:
+            row.querySelector(".page-schema-input").value.trim() ||
+            row.querySelector(".page-schema-select").value.trim(),
+        sourceField:
+            row.querySelector(".page-source").value.trim()
+    }));
+}
+
+
+    function createHomepageRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !schemaOptions.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
+
+    const sourceOptions = [...homepageFieldOptions];
+    if (defaultSource && !sourceOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
+
+    const id = homepageRowId++;
+    const container = document.getElementById("homepage-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="homepage-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f =>
+                    `<option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>`
+                ).join("")}
+            </select>
+            <input type="text"
+                class="homepage-schema-input p-2 border rounded"
+                placeholder="Or write your own…"
+                value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Homepage Source</label>
+            <select class="homepage-source p-2 border rounded bg-white">
+                <option value="">Select Homepage Attribute</option>
+                ${sourceOptions.map(o =>
+                    `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`
+                ).join("")}
+            </select>
+        </div>
+
+        <button class="delete-homepage-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+    `;
+
+    row.querySelector(".delete-homepage-row").onclick = () => {
+        row.remove();
+        updateHomepageMappings();
+    };
+
+    row.querySelector(".homepage-schema-select").onchange = updateHomepageMappings;
+    row.querySelector(".homepage-schema-input").oninput = updateHomepageMappings;
+    row.querySelector(".homepage-source").onchange = updateHomepageMappings;
+
+    container.appendChild(row);
+    updateHomepageMappings();
+}
+
+
+    function updateHomepageMappings() {
+    homepageMappings = [...document.querySelectorAll("#homepage-mapping-container > div")].map(row => ({
+        schemaField:
+            row.querySelector(".homepage-schema-input").value.trim() ||
+            row.querySelector(".homepage-schema-select").value.trim(),
+        sourceField:
+            row.querySelector(".homepage-source").value.trim()
+    }));
+}
 
 /* ================= CREATE ROW FUNCTIONS ================= */
 function createCollectionRow(defaultSchema = "", defaultSource = "") {
@@ -307,19 +576,25 @@ document.getElementById("saveCollectionBtn").onclick = async () => {
     }
 };
 
-// Optional Combined Save (if you ever add a "Save Both" button)
-document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
-    updateMappings();
-    updateCollectionMappings();
+
+document.getElementById("addBlogBtn").onclick = () => createBlogRow();
+document.getElementById("addPageBtn").onclick = () => createPageRow();
+document.getElementById("addHomepageBtn").onclick = () => createHomepageRow();
+
+
+
+    document.getElementById("saveBlogBtn").onclick = async () => {
+    updateBlogMappings();
+
     const payload = {
         shop: '{{ shop_name }}',
         hmac: '{{ hmac_value }}',
         id_token: '{{ id_token_value }}',
-        product_schema_mappings: mappings,
-        collection_schema_mappings: collectionMappings
+        blog_schema_mappings: blogMappings
     };
-    const preview = document.getElementById("metafields-preview");
-    preview.innerHTML = 'Saving…';
+
+    const preview = document.getElementById("blog-preview");
+    preview.innerHTML = "Saving…";
 
     try {
         const resp = await fetch("/verify_and_create_metafields", {
@@ -328,11 +603,12 @@ document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
             body: JSON.stringify(payload)
         });
         const result = await resp.json();
-        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
+        preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error}`;
     } catch {
-        preview.innerHTML = 'Network Error';
+        preview.innerHTML = "Network Error";
     }
-});
+};
+
 </script>
 
 
