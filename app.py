@@ -2623,116 +2623,90 @@ def dedupe_mappings(mappings):
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    logging.info("INPUT (products & collections): %s", json.dumps(data, indent=2))
+    logging.info("INPUT (schema save): %s", json.dumps(data, indent=2))
 
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
     if not access_token:
         return jsonify({"error": "No access token for shop"}), 400
 
+    # ---------------------------------------------------------
+    # Incoming payloads (FROM FRONTEND)
+    # These are ARRAYS or None — NOT wrapped
+    # ---------------------------------------------------------
     incoming_product = data.get("product_schema_mappings")
     incoming_collection = data.get("collection_schema_mappings")
     incoming_page = data.get("page_schema_mappings")
     incoming_blog = data.get("blog_schema_mappings")
-    existing_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
-    existing_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
-    existing_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
-    existing_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
-    # ------------------------------------------------------------------
+
+    # ---------------------------------------------------------
     # Ensure metaobject definition exists
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------
     ensure_metaobject_definition(shop, access_token)
     metaobject_type = "app_config"
 
-    # ------------------------------------------------------------------
-    # NORMALIZATION HELPER (CRITICAL FIX)
-    # ------------------------------------------------------------------
-    def extract_list(value, key):
-        """
-        Safely extracts a list from legacy / nested / recursive blobs.
-        Always returns a list.
-        """
+    # ---------------------------------------------------------
+    # Helper: normalize ANY value into a list
+    # ---------------------------------------------------------
+    def normalize_list(value):
         if isinstance(value, list):
             return value
-
-        if not isinstance(value, dict):
-            return []
-
-        # direct hit
-        if isinstance(value.get(key), list):
-            return value[key]
-
-        # walk legacy nesting
-        while isinstance(value, dict) and key in value:
-            value = value.get(key)
-            if isinstance(value, list):
-                return value
-
         return []
 
-    # ------------------------------------------------------------------
-    # STEP 1: Fetch existing schemas (SAFE)
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------
+    # STEP 1: Load EXISTING config (source of truth)
+    # ---------------------------------------------------------
     existing_product = fetch_schema_config_entry(
         shop, access_token, "product_schema_mappings"
     )
-
     existing_collection = fetch_schema_config_entry(
         shop, access_token, "collection_schema_mappings"
     )
-
-    product_schema_mappings = extract_list(
-        existing_product, "product_schema_mappings"
-    )
-
-    collection_schema_mappings = extract_list(
-        existing_collection, "collection_schema_mappings"
-    )
-
     existing_page = fetch_schema_config_entry(
         shop, access_token, "page_schema_mappings"
     )
-
     existing_blog = fetch_schema_config_entry(
         shop, access_token, "blog_schema_mappings"
     )
 
-    page_schema_mappings = extract_list(
-        existing_page, "page_schema_mappings"
+    product_schema_mappings = normalize_list(
+        existing_product.get("product_schema_mappings") if isinstance(existing_product, dict) else existing_product
     )
 
-    blog_schema_mappings = extract_list(
-        existing_blog, "blog_schema_mappings"
+    collection_schema_mappings = normalize_list(
+        existing_collection.get("collection_schema_mappings") if isinstance(existing_collection, dict) else existing_collection
     )
-    logging.info("Existing PRODUCT mappings (normalized): %s", json.dumps(product_schema_mappings, indent=2))
-    logging.info("Existing COLLECTION mappings (normalized): %s", json.dumps(collection_schema_mappings, indent=2))
-    
-    logging.info("Existing BLOG mappings (normalized): %s", json.dumps(blog_schema_mappings, indent=2))
-    logging.info("Existing PAGE mappings (normalized): %s", json.dumps(page_schema_mappings, indent=2))
-    
-    # ------------------------------------------------------------------
-    # STEP 2: Merge incoming payload (NORMALIZED)
-    # ------------------------------------------------------------------
+
+    page_schema_mappings = normalize_list(
+        existing_page.get("page_schema_mappings") if isinstance(existing_page, dict) else existing_page
+    )
+
+    blog_schema_mappings = normalize_list(
+        existing_blog.get("blog_schema_mappings") if isinstance(existing_blog, dict) else existing_blog
+    )
+
+    logging.info("Existing PRODUCT mappings: %s", json.dumps(product_schema_mappings, indent=2))
+    logging.info("Existing COLLECTION mappings: %s", json.dumps(collection_schema_mappings, indent=2))
+    logging.info("Existing PAGE mappings: %s", json.dumps(page_schema_mappings, indent=2))
+    logging.info("Existing BLOG mappings: %s", json.dumps(blog_schema_mappings, indent=2))
+
+    # ---------------------------------------------------------
+    # STEP 2: Replace ONLY what frontend sent
+    # ---------------------------------------------------------
     if incoming_product is not None:
-        product_schema_mappings = extract_list(
-            incoming_product, "product_schema_mappings"
-        )
+        product_schema_mappings = normalize_list(incoming_product)
 
     if incoming_collection is not None:
-        collection_schema_mappings = extract_list(
-            incoming_collection, "collection_schema_mappings"
-        )
+        collection_schema_mappings = normalize_list(incoming_collection)
+
     if incoming_page is not None:
-        page_schema_mappings = extract_list(
-            incoming_page, "page_schema_mappings"
-        )
+        page_schema_mappings = normalize_list(incoming_page)
 
     if incoming_blog is not None:
-        blog_schema_mappings = extract_list(
-            incoming_blog, "blog_schema_mappings"
-        )
+        blog_schema_mappings = normalize_list(incoming_blog)
+
     logging.info(
-        "Merged schema state (FLAT): %s",
+        "Merged schema state (FINAL): %s",
         json.dumps({
             "product_schema_mappings": product_schema_mappings,
             "collection_schema_mappings": collection_schema_mappings,
@@ -2741,21 +2715,18 @@ def verify_and_create_metafields():
         }, indent=2)
     )
 
-    # ------------------------------------------------------------------
-    # STEP 3: Delete all existing entries (UNCHANGED)
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------
+    # STEP 3: Replace config metaobject (single source of truth)
+    # ---------------------------------------------------------
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
     for entry in existing_entries:
         delete_metaobject(shop, access_token, entry["id"])
-        logging.info("Deleted config entry: %s", entry["id"])
 
-    # ------------------------------------------------------------------
-    # STEP 4: Create single clean entry (FIXED)
-    # ------------------------------------------------------------------
     product_schema_mappings = dedupe_mappings(product_schema_mappings)
     collection_schema_mappings = dedupe_mappings(collection_schema_mappings)
     page_schema_mappings = dedupe_mappings(page_schema_mappings)
     blog_schema_mappings = dedupe_mappings(blog_schema_mappings)
+
     resp = create_config_entry(
         shop,
         access_token,
@@ -2768,68 +2739,48 @@ def verify_and_create_metafields():
         }
     )
 
-
     node = resp.get("data", {}).get("metaobjectCreate")
     if not node or node.get("userErrors"):
         raise Exception("Failed to create config entry")
 
-    logging.info("Created new config entry: %s", node["metaobject"]["id"])
+    logging.info("Created config entry: %s", node["metaobject"]["id"])
 
-    # ------------------------------------------------------------------
-    # STEP 5: Background jobs (UNCHANGED)
-    # ------------------------------------------------------------------
+    # ---------------------------------------------------------
+    # STEP 4: Background updates (UNCHANGED)
+    # ---------------------------------------------------------
     def process_pages():
         pages = fetch_all_pages(shop, access_token)
         for page in pages:
-            existing_mfs = fetch_page_metafields(
-                shop, access_token, page["id"].split("/")[-1]
-            )
-            schema_json = build_schema_from_mappings(
-                page, existing_mfs, page_schema_mappings
-            )
-            schema_json = wrap_flattened_json_in_schema(schema_json)
-            upsert_app_metafield(shop, access_token, page["id"], schema_json)
+            mfs = fetch_page_metafields(shop, access_token, page["id"].split("/")[-1])
+            schema = build_schema_from_mappings(page, mfs, page_schema_mappings)
+            upsert_app_metafield(shop, access_token, page["id"], wrap_flattened_json_in_schema(schema))
 
     def process_blogs():
         articles = fetch_all_blog_articles(shop, access_token)
         for article in articles:
-            existing_mfs = fetch_blog_metafields(
-                shop, access_token, article["id"].split("/")[-1]
-            )
-            schema_json = build_schema_from_mappings(
-                article, existing_mfs, blog_schema_mappings
-            )
-            schema_json = wrap_flattened_json_in_schema(schema_json)
-            upsert_app_metafield(shop, access_token, article["id"], schema_json)
+            mfs = fetch_blog_metafields(shop, access_token, article["id"].split("/")[-1])
+            schema = build_schema_from_mappings(article, mfs, blog_schema_mappings)
+            upsert_app_metafield(shop, access_token, article["id"], wrap_flattened_json_in_schema(schema))
 
     def process_products():
         products = fetch_all_products(shop, access_token)
         for product in products:
-            existing_mfs = fetch_product_metafields(
-                shop, access_token, product["id"].split("/")[-1]
-            )
-            schema_json = build_schema_from_mappings(
-                product, existing_mfs, product_schema_mappings
-            )
-            schema_json = wrap_flattened_json_in_schema(schema_json)
-            upsert_app_metafield(shop, access_token, product["id"], schema_json)
+            mfs = fetch_product_metafields(shop, access_token, product["id"].split("/")[-1])
+            schema = build_schema_from_mappings(product, mfs, product_schema_mappings)
+            upsert_app_metafield(shop, access_token, product["id"], wrap_flattened_json_in_schema(schema))
 
     def process_collections():
         collections = fetch_all_collections(shop, access_token)
         for col in collections:
-            existing_mfs = fetch_collection_metafields(
-                shop, access_token, col["id"].split("/")[-1]
-            )
-            schema_json = build_schema_from_mappings(
-                col, existing_mfs, collection_schema_mappings
-            )
-            schema_json = wrap_flattened_json_in_schema(schema_json)
-            upsert_collection_app_metafield(shop, access_token, col["id"], schema_json)
+            mfs = fetch_collection_metafields(shop, access_token, col["id"].split("/")[-1])
+            schema = build_schema_from_mappings(col, mfs, collection_schema_mappings)
+            upsert_collection_app_metafield(shop, access_token, col["id"], wrap_flattened_json_in_schema(schema))
 
     threading.Thread(target=process_products, daemon=True).start()
     threading.Thread(target=process_collections, daemon=True).start()
     threading.Thread(target=process_pages, daemon=True).start()
     threading.Thread(target=process_blogs, daemon=True).start()
+
     return jsonify({"message": "Schema saved and site-wide metafields updating"})
 
 
