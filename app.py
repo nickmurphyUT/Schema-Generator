@@ -2507,6 +2507,8 @@ def verify_and_create_metafields():
 
     incoming_product = data.get("product_schema_mappings")
     incoming_collection = data.get("collection_schema_mappings")
+    existing_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
+    existing_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
 
     # ------------------------------------------------------------------
     # Ensure metaobject definition exists
@@ -2559,9 +2561,27 @@ def verify_and_create_metafields():
         existing_collection, "collection_schema_mappings"
     )
 
+    existing_page = fetch_schema_config_entry(
+        shop, access_token, "page_schema_mappings"
+    )
+
+    existing_blog = fetch_schema_config_entry(
+        shop, access_token, "blog_schema_mappings"
+    )
+
+    page_schema_mappings = extract_list(
+        existing_product, "page_schema_mappings"
+    )
+
+    blog_schema_mappings = extract_list(
+        existing_collection, "blog_schema_mappings"
+    )
     logging.info("Existing PRODUCT mappings (normalized): %s", json.dumps(product_schema_mappings, indent=2))
     logging.info("Existing COLLECTION mappings (normalized): %s", json.dumps(collection_schema_mappings, indent=2))
-
+    
+    logging.info("Existing BLOG mappings (normalized): %s", json.dumps(blog_schema_mappings, indent=2))
+    logging.info("Existing PAGE mappings (normalized): %s", json.dumps(page_schema_mappings, indent=2))
+    
     # ------------------------------------------------------------------
     # STEP 2: Merge incoming payload (NORMALIZED)
     # ------------------------------------------------------------------
