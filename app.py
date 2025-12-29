@@ -2779,7 +2779,7 @@ def verify_and_create_metafields():
                 page, existing_mfs, page_schema_mappings
             )
             schema_json = wrap_flattened_json_in_schema(schema_json)
-            upsert_page_app_metafield(shop, access_token, page["id"], schema_json)
+            upsert_app_metafield(shop, access_token, page["id"], schema_json)
 
     def process_blogs():
         articles = fetch_all_blog_articles(shop, access_token)
@@ -2791,7 +2791,7 @@ def verify_and_create_metafields():
                 article, existing_mfs, blog_schema_mappings
             )
             schema_json = wrap_flattened_json_in_schema(schema_json)
-            upsert_blog_app_metafield(shop, access_token, article["id"], schema_json)
+            upsert_app_metafield(shop, access_token, article["id"], schema_json)
 
     def process_products():
         products = fetch_all_products(shop, access_token)
