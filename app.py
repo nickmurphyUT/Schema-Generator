@@ -2764,28 +2764,28 @@ def verify_and_create_metafields():
     # STEP 5: Background jobs (UNCHANGED)
     # ------------------------------------------------------------------
     def process_pages():
-    pages = fetch_all_pages(shop, access_token)
-    for page in pages:
-        existing_mfs = fetch_page_metafields(
-            shop, access_token, page["id"].split("/")[-1]
-        )
-        schema_json = build_schema_from_mappings(
-            page, existing_mfs, page_schema_mappings
-        )
-        schema_json = wrap_flattened_json_in_schema(schema_json)
-        upsert_page_app_metafield(shop, access_token, page["id"], schema_json)
+        pages = fetch_all_pages(shop, access_token)
+        for page in pages:
+            existing_mfs = fetch_page_metafields(
+                shop, access_token, page["id"].split("/")[-1]
+            )
+            schema_json = build_schema_from_mappings(
+                page, existing_mfs, page_schema_mappings
+            )
+            schema_json = wrap_flattened_json_in_schema(schema_json)
+            upsert_page_app_metafield(shop, access_token, page["id"], schema_json)
 
     def process_blogs():
-    articles = fetch_all_blog_articles(shop, access_token)
-    for article in articles:
-        existing_mfs = fetch_blog_metafields(
-            shop, access_token, article["id"].split("/")[-1]
-        )
-        schema_json = build_schema_from_mappings(
-            article, existing_mfs, blog_schema_mappings
-        )
-        schema_json = wrap_flattened_json_in_schema(schema_json)
-        upsert_blog_app_metafield(shop, access_token, article["id"], schema_json)
+        articles = fetch_all_blog_articles(shop, access_token)
+        for article in articles:
+            existing_mfs = fetch_blog_metafields(
+                shop, access_token, article["id"].split("/")[-1]
+            )
+            schema_json = build_schema_from_mappings(
+                article, existing_mfs, blog_schema_mappings
+            )
+            schema_json = wrap_flattened_json_in_schema(schema_json)
+            upsert_blog_app_metafield(shop, access_token, article["id"], schema_json)
 
     def process_products():
         products = fetch_all_products(shop, access_token)
