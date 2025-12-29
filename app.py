@@ -955,6 +955,154 @@ def list_all_contracts():
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
 #helper function for app GUI
+def fetch_all_blog_articles(shop, access_token):
+    """Fetch all blog articles with full article objects."""
+    url = f"https://{shop}/admin/api/2026-01/graphql.json"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
+
+    articles = []
+    cursor = None
+
+    while True:
+        query = """
+        query ($cursor: String) {
+          articles(first: 100, after: $cursor) {
+            pageInfo { hasNextPage }
+            edges {
+              cursor
+              node {
+                id
+                title
+                handle
+                excerpt
+                contentHtml
+                tags
+                createdAt
+                updatedAt
+                blog {
+                  id
+                  title
+                  handle
+                }
+              }
+            }
+          }
+        }
+        """
+
+        resp = requests.post(
+            url,
+            json={"query": query, "variables": {"cursor": cursor}},
+            headers=headers
+        )
+        resp.raise_for_status()
+
+        data = resp.json()["data"]["articles"]
+
+        for edge in data["edges"]:
+            articles.append(edge["node"])
+
+        if not data["pageInfo"]["hasNextPage"]:
+            break
+
+        cursor = data["edges"][-1]["cursor"]
+
+    return articles
+
+def fetch_blog_metafields(shop, access_token, article_id):
+    """
+    Fetch all metafields for a blog article.
+    Returns {namespace.key: value}
+    """
+    url = f"https://{shop}/admin/api/2026-01/articles/{article_id}/metafields.json"
+    headers = {"X-Shopify-Access-Token": access_token}
+
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+
+    metafields = resp.json().get("metafields", [])
+
+    mf_dict = {}
+    for mf in metafields:
+        key = f"{mf['namespace']}.{mf['key']}"
+        mf_dict[key] = mf.get("value")
+
+    return mf_dict
+
+def fetch_all_pages(shop, access_token):
+    """Fetch all pages with full page objects."""
+    url = f"https://{shop}/admin/api/2026-01/graphql.json"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
+
+    pages = []
+    cursor = None
+
+    while True:
+        query = """
+        query ($cursor: String) {
+          pages(first: 100, after: $cursor) {
+            pageInfo { hasNextPage }
+            edges {
+              cursor
+              node {
+                id
+                title
+                handle
+                bodyHtml
+                createdAt
+                updatedAt
+              }
+            }
+          }
+        }
+        """
+
+        resp = requests.post(
+            url,
+            json={"query": query, "variables": {"cursor": cursor}},
+            headers=headers
+        )
+        resp.raise_for_status()
+
+        data = resp.json()["data"]["pages"]
+
+        for edge in data["edges"]:
+            pages.append(edge["node"])
+
+        if not data["pageInfo"]["hasNextPage"]:
+            break
+
+        cursor = data["edges"][-1]["cursor"]
+
+    return pages
+
+def fetch_page_metafields(shop, access_token, page_id):
+    """
+    Fetch all metafields for a page.
+    Returns {namespace.key: value}
+    """
+    url = f"https://{shop}/admin/api/2026-01/pages/{page_id}/metafields.json"
+    headers = {"X-Shopify-Access-Token": access_token}
+
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+
+    metafields = resp.json().get("metafields", [])
+
+    mf_dict = {}
+    for mf in metafields:
+        key = f"{mf['namespace']}.{mf['key']}"
+        mf_dict[key] = mf.get("value")
+
+    return mf_dict
+
+
 @app.route("/<subscription_id>/subscription-info", methods=["GET"])
 def get_subscription_info(subscription_id):
     shop = request.args.get("shop")
@@ -2573,11 +2721,11 @@ def verify_and_create_metafields():
     )
 
     page_schema_mappings = extract_list(
-        existing_product, "page_schema_mappings"
+        existing_page, "page_schema_mappings"
     )
 
     blog_schema_mappings = extract_list(
-        existing_collection, "blog_schema_mappings"
+        existing_blog, "blog_schema_mappings"
     )
     logging.info("Existing PRODUCT mappings (normalized): %s", json.dumps(product_schema_mappings, indent=2))
     logging.info("Existing COLLECTION mappings (normalized): %s", json.dumps(collection_schema_mappings, indent=2))
@@ -2653,6 +2801,30 @@ def verify_and_create_metafields():
     # ------------------------------------------------------------------
     # STEP 5: Background jobs (UNCHANGED)
     # ------------------------------------------------------------------
+    def process_pages():
+    pages = fetch_all_pages(shop, access_token)
+    for page in pages:
+        existing_mfs = fetch_page_metafields(
+            shop, access_token, page["id"].split("/")[-1]
+        )
+        schema_json = build_schema_from_mappings(
+            page, existing_mfs, page_schema_mappings
+        )
+        schema_json = wrap_flattened_json_in_schema(schema_json)
+        upsert_page_app_metafield(shop, access_token, page["id"], schema_json)
+
+    def process_blogs():
+    articles = fetch_all_blog_articles(shop, access_token)
+    for article in articles:
+        existing_mfs = fetch_blog_metafields(
+            shop, access_token, article["id"].split("/")[-1]
+        )
+        schema_json = build_schema_from_mappings(
+            article, existing_mfs, blog_schema_mappings
+        )
+        schema_json = wrap_flattened_json_in_schema(schema_json)
+        upsert_blog_app_metafield(shop, access_token, article["id"], schema_json)
+
     def process_products():
         products = fetch_all_products(shop, access_token)
         for product in products:
@@ -2679,7 +2851,8 @@ def verify_and_create_metafields():
 
     threading.Thread(target=process_products, daemon=True).start()
     threading.Thread(target=process_collections, daemon=True).start()
-
+    threading.Thread(target=process_pages, daemon=True).start()
+    threading.Thread(target=process_blogs, daemon=True).start()
     return jsonify({"message": "Schema saved and site-wide metafields updating"})
 
 
