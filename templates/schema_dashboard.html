@@ -284,14 +284,16 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
 
 // Collection Save Only
 document.getElementById("saveCollectionBtn").onclick = async () => {
+    updateMappings();
     updateCollectionMappings();
     const payload = {
         shop: '{{ shop_name }}',
         hmac: '{{ hmac_value }}',
         id_token: '{{ id_token_value }}',
+        product_schema_mappings: mappings,
         collection_schema_mappings: collectionMappings
     };
-    const preview = document.getElementById("collection-preview");
+    const preview = document.getElementById("metafields-preview");
     preview.innerHTML = 'Saving…';
 
     try {
