@@ -1001,7 +1001,6 @@ def fetch_blog_metafields(shop, access_token, article_id):
     return mf_dict
 
 def fetch_all_pages(shop, access_token):
-    """Fetch all pages with full page objects."""
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
     headers = {
         "Content-Type": "application/json",
@@ -1022,7 +1021,7 @@ def fetch_all_pages(shop, access_token):
                 id
                 title
                 handle
-                bodyHtml
+                body
                 createdAt
                 updatedAt
               }
@@ -1038,7 +1037,16 @@ def fetch_all_pages(shop, access_token):
         )
         resp.raise_for_status()
 
-        data = resp.json()["data"]["pages"]
+        json_resp = resp.json()
+
+        if "errors" in json_resp:
+            app.logger.error(
+                "[fetch_all_pages] GraphQL error: %s",
+                json_resp["errors"]
+            )
+            break
+
+        data = json_resp["data"]["pages"]
 
         for edge in data["edges"]:
             pages.append(edge["node"])
@@ -1049,6 +1057,7 @@ def fetch_all_pages(shop, access_token):
         cursor = data["edges"][-1]["cursor"]
 
     return pages
+
 
 def fetch_page_metafields(shop, access_token, page_id):
     """
