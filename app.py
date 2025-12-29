@@ -917,11 +917,10 @@ def list_all_contracts():
         return jsonify({"error": "Unexpected error", "details": str(e)}), 500
 
 def fetch_all_blog_articles(shop, access_token):
-    """Fetch all blog articles with full article objects."""
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
     headers = {
         "Content-Type": "application/json",
-        "X-Shopify-Access-Token": access_token,
+        "X-Shopify-Access-Token": access_token
     }
 
     articles = []
@@ -938,8 +937,8 @@ def fetch_all_blog_articles(shop, access_token):
                 id
                 title
                 handle
-                excerpt
-                contentHtml
+                body
+                summary
                 tags
                 createdAt
                 updatedAt
@@ -957,28 +956,26 @@ def fetch_all_blog_articles(shop, access_token):
         resp = requests.post(
             url,
             json={"query": query, "variables": {"cursor": cursor}},
-            headers=headers,
+            headers=headers
         )
         resp.raise_for_status()
 
         payload = resp.json()
 
-        # 🔴 CRITICAL: guard against GraphQL errors
-        if "data" not in payload or payload["data"] is None:
-            print("[fetch_all_blog_articles] GraphQL error:", payload)
-            break
+        # 🔴 CRITICAL: handle GraphQL errors or you'll crash threads
+        if "errors" in payload:
+            app.logger.error(f"[fetch_all_blog_articles] GraphQL error: {payload}")
+            return []
 
-        articles_data = payload["data"].get("articles")
-        if not articles_data:
-            break
+        data = payload["data"]["articles"]
 
-        for edge in articles_data.get("edges", []):
+        for edge in data["edges"]:
             articles.append(edge["node"])
 
-        if not articles_data["pageInfo"]["hasNextPage"]:
+        if not data["pageInfo"]["hasNextPage"]:
             break
 
-        cursor = articles_data["edges"][-1]["cursor"]
+        cursor = data["edges"][-1]["cursor"]
 
     return articles
 
