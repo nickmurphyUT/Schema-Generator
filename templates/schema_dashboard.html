@@ -681,6 +681,74 @@ document.getElementById("savePageBtn").onclick = async () => {
     }
 };
 
+document.getElementById("saveBlogBtn").onclick = async () => {
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        blog_schema_mappings: []  // empty for now
+    };
+    const preview = document.getElementById("blog-preview");
+    preview.innerHTML = "Saving…";
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error || "Unknown error"}`;
+    } catch {
+        preview.innerHTML = "Network Error";
+    }
+};
+
+document.getElementById("savePageBtn").onclick = async () => {
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        page_schema_mappings: []
+    };
+    const preview = document.getElementById("page-preview");
+    preview.innerHTML = "Saving…";
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error || "Unknown error"}`;
+    } catch {
+        preview.innerHTML = "Network Error";
+    }
+};
+
+document.getElementById("saveHomepageBtn").onclick = async () => {
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        homepage_schema_mappings: []
+    };
+    const preview = document.getElementById("homepage-preview");
+    preview.innerHTML = "Saving…";
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error || "Unknown error"}`;
+    } catch {
+        preview.innerHTML = "Network Error";
+    }
+};
 </script>
 
 
