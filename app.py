@@ -423,14 +423,6 @@ def home():
             raw_blog = fetch_schema_config_entry(
                 shop, access_token, "blog_schema_mappings"
             )
-            
-            page_config = {
-                "page_schema_mappings": normalize(raw_page, "page_schema_mappings")
-            }
-            
-            blog_config = {
-                "blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings")
-            }
             print("PRODUCT CONFIG (raw):", raw_product)
             print("COLLECTION CONFIG (raw):", raw_collection)
             print("PAGE CONFIG (raw):", raw_page)
@@ -455,6 +447,19 @@ def home():
 
                 return []
 
+
+            # --------------------------------------------------
+            # PAGE CONFIG (UNCHANGED)
+            # --------------------------------------------------
+            page_config = {
+                "page_schema_mappings": normalize(raw_page, "page_schema_mappings")
+            }
+            # --------------------------------------------------
+            # BLOG CONFIG (UNCHANGED)
+            # --------------------------------------------------
+            blog_config = {
+                "blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings")
+            }
             # --------------------------------------------------
             # PRODUCT CONFIG (UNCHANGED)
             # --------------------------------------------------
