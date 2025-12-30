@@ -462,6 +462,27 @@ def home():
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
 
+    context = {
+        "schemas": schemas,
+        "title": "Schema App Dashboard",
+        "shop_name": shop,
+        "hmac_value": hmac,
+        "id_token_value": id_token,
+        "product_metafields": product_metafields,
+        "collection_metafields": collection_metafields,
+        "page_metafields": page_metafields,
+        "blog_metafields": blog_metafields,
+        "org_schema_fields": org_fields,
+        "product_config": product_config,
+        "collection_config": collection_config,
+        "page_config": page_config,
+        "blog_config": blog_config,
+    }
+    
+    logger.info(f"Rendering schema_dashboard with context: {context}")
+    # Or for sensitive data, log without actual values:
+    logger.info(f"Rendering schema_dashboard with keys: {list(context.keys())}")
+
     return render_template(
         "schema_dashboard.html",
         schemas=schemas,
