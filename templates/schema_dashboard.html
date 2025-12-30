@@ -301,6 +301,15 @@ const savedProductMappings = normalizeMappings(
     rawProductConfig?.product_schema_mappings,
     "product_schema_mappings"
 );
+const savedBlogMappings = normalizeMappings(
+    rawBlogConfig?.blog_schema_mappings,
+    "blog_schema_mappings"
+);
+
+    const savedPageMappings = normalizeMappings(
+    rawBlogConfig?.page_schema_mappings,
+    "page_schema_mappings"
+);
 
 const savedCollectionMappings = normalizeMappings(
     rawCollectionConfig?.collection_schema_mappings,
