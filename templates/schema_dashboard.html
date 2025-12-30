@@ -283,7 +283,7 @@ document.getElementById("addMappingBtn").onclick = () => createSchemaRow();
 /* ================= PREPOPULATE ================= */
 const rawProductConfig = {{ product_config | tojson }};
 const rawCollectionConfig = {{ collection_config | tojson }};
-
+console.log("raw collection config " + rawCollectionConfig);
 function normalizeMappings(input, key) {
     if (!input) return [];
     if (Array.isArray(input)) return input;
@@ -302,7 +302,7 @@ const savedCollectionMappings = normalizeMappings(
     rawCollectionConfig?.collection_schema_mappings,
     "collection_schema_mappings"
 );
-
+console.log("saved collection mappings " + savedCollectionMappings);
 /* ================= PREPOPULATE UI ================= */
 
 if (savedProductMappings.length > 0) {
