@@ -472,7 +472,6 @@ def home():
         "collection_metafields": collection_metafields,
         "page_metafields": page_metafields,
         "blog_metafields": blog_metafields,
-        "org_schema_fields": org_fields,
         "product_config": product_config,
         "collection_config": collection_config,
         "page_config": page_config,
