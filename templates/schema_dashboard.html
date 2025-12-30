@@ -317,6 +317,21 @@ const savedCollectionMappings = normalizeMappings(
 );
 console.log("saved collection mappings " + savedCollectionMappings);
 /* ================= PREPOPULATE UI ================= */
+if (savedBlogMappings.length > 0) {
+    savedBlogMappings.forEach(m =>
+        createSchemaRow(m.schemaField || "", m.sourceField || "")
+    );
+} else {
+    createSchemaRow();
+}
+
+    if (savedPageMappings.length > 0) {
+    savedPageMappings.forEach(m =>
+        createSchemaRow(m.schemaField || "", m.sourceField || "")
+    );
+} else {
+    createSchemaRow();
+}
 
 if (savedProductMappings.length > 0) {
     savedProductMappings.forEach(m =>
