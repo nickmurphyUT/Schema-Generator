@@ -462,7 +462,7 @@ def home():
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
 
-    context = {
+    logging.info("Rendering schema_dashboard.html: %s", json.dumps({
         "schemas": schemas,
         "title": "Schema App Dashboard",
         "shop_name": shop,
@@ -477,11 +477,7 @@ def home():
         "collection_config": collection_config,
         "page_config": page_config,
         "blog_config": blog_config,
-    }
-    
-    logger.info(f"Rendering schema_dashboard with context: {context}")
-    # Or for sensitive data, log without actual values:
-    logger.info(f"Rendering schema_dashboard with keys: {list(context.keys())}")
+    }, indent=2, default=str))
 
     return render_template(
         "schema_dashboard.html",
