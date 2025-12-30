@@ -76,257 +76,265 @@
 
     <div id="collection-preview" class="mt-4 text-sm text-gray-500"></div>
 </div>
-
-    <!-- BLOG SCHEMA MAPPING UI -->
-<div class="bg-white rounded-xl p-6 shadow-lg border mb-8">
-  <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
-    Blog Schema Generator
-  </h3>
-
-  <div id="blog-mapping-container" class="space-y-4 mb-6"></div>
-
-  <button id="addBlogBtn"
-    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
-    + Add Schema Mapping
-  </button>
-
-  <button id="saveBlogBtn"
-    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
-    Save & Generate Blog Schema Metafields
-  </button>
-
-  <div id="blog-preview" class="mt-4 text-sm text-gray-500"></div>
-</div>
-
-
-
-        <!-- PAGE SCHEMA MAPPING UI -->
-<div class="bg-white rounded-xl p-6 shadow-lg border mb-8">
-  <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
-    Page Schema Generator
-  </h3>
-
-  <div id="page-mapping-container" class="space-y-4 mb-6"></div>
-
-  <button id="addPageBtn"
-    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
-    + Add Schema Mapping
-  </button>
-
-  <button id="savePageBtn"
-    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
-    Save & Generate Page Schema Metafields
-  </button>
-
-  <div id="page-preview" class="mt-4 text-sm text-gray-500"></div>
-</div>
-
-
-    <!-- HOMEPAGE SCHEMA MAPPING UI -->
-<div class="bg-white rounded-xl p-6 shadow-lg border mb-8">
-  <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
-    Homepage Schema Generator
-  </h3>
-
-  <div id="homepage-mapping-container" class="space-y-4 mb-6"></div>
-
-  <button id="addHomepageBtn"
-    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
-    + Add Schema Mapping
-  </button>
-
-  <button id="saveHomepageBtn"
-    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
-    Save & Generate Homepage Schema Metafields
-  </button>
-
-  <div id="homepage-preview" class="mt-4 text-sm text-gray-500"></div>
-</div>
-
 <script>
-/* ============================================================
-   GLOBAL STATE
-============================================================ */
-let mappings = [];
+/* ================= GLOBAL STATE ================= */
 let collectionMappings = [];
-let blogMappings = [];
-let pageMappings = [];
-let homepageMappings = [];
+let collectionRowId = 0;
+let mappings = [];
+let rowIdCounter = 0;
 
-/* ============================================================
-   FIELD OPTIONS (SERVER)
-============================================================ */
-const productFieldOptions = [
-  "product.title",
-  "product.vendor",
-  "product.handle",
-  "product.product_type",
-  "product.status",
-  "product.description",
-  "product.tags[]",
-  {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
-];
-
+/* ================= FIELD OPTIONS ================= */
 const collectionFieldOptions = [
-  "collection.title",
-  "collection.handle",
-  {% for mf in collection_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+    "collection.title",
+    "collection.handle",
+    "collection.sort_order",
+    "collection.updated_at",
+    {% for mf in collection_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 
-const blogFieldOptions = [
-  "blog.title",
-  "blog.handle",
-  {% for mf in blog_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
-];
-
-const pageFieldOptions = [
-  "page.title",
-  "page.handle",
-  "page.body_html",
-  {% for mf in page_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
-];
-
-/* homepage metafields DO NOT EXIST SERVER SIDE — keep safe */
-const homepageFieldOptions = [
-  "homepage.title",
-  "homepage.meta_title",
-  "homepage.meta_description"
+const productFieldOptions = [
+    "product.title",
+    "product.vendor",
+    "product.handle",
+    "product.product_type",
+    "product.status",
+    "product.description",
+    "product.tags[]",
+    "product.images[].src",
+    "variants[].sku",
+    "variants[].price",
+    "variants[].barcode",
+    "variants[].weight",
+    {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 
 const commonSchemaFields = {{ org_schema_fields | tojson }};
 
-/* ============================================================
-   HELPERS
-============================================================ */
-function normalize(input, key) {
-  if (!input) return [];
-  if (Array.isArray(input)) return input;
-  if (typeof input === "object" && Array.isArray(input[key])) return input[key];
-  return [];
+/* ================= CREATE ROW FUNCTIONS ================= */
+function createCollectionRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) schemaOptions.push(defaultSchema);
+
+    const sourceOptions = [...collectionFieldOptions];
+    if (defaultSource && !collectionFieldOptions.includes(defaultSource)) sourceOptions.push(defaultSource);
+
+    const id = collectionRowId++;
+    const container = document.getElementById("collection-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="collection-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f => `<option value="${f}" ${f===defaultSchema?"selected":""}>${f}</option>`).join("")}
+            </select>
+            <input type="text" class="collection-schema-input p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema)?defaultSchema:""}">
+        </div>
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
+            <select class="collection-source p-2 border rounded bg-white">
+                <option value="">Select Collection Attribute</option>
+                ${sourceOptions.map(o => `<option value="${o}" ${o===defaultSource?"selected":""}>${o}</option>`).join("")}
+            </select>
+        </div>
+        <button class="delete-collection-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+    `;
+
+    row.querySelector(".delete-collection-row").onclick = () => { row.remove(); updateCollectionMappings(); };
+    row.querySelector(".collection-schema-select").onchange = updateCollectionMappings;
+    row.querySelector(".collection-schema-input").oninput = updateCollectionMappings;
+    row.querySelector(".collection-source").onchange = updateCollectionMappings;
+
+    container.appendChild(row);
+    updateCollectionMappings();
 }
 
-function collect(container, schemaInput, schemaSelect, sourceSelect) {
-  return [...document.querySelectorAll(container + " > div")].map(row => ({
-    schemaField:
-      row.querySelector(schemaInput).value.trim() ||
-      row.querySelector(schemaSelect).value.trim(),
-    sourceField: row.querySelector(sourceSelect).value.trim()
-  }));
+function createSchemaRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) schemaOptions.push(defaultSchema);
+
+    const sourceOptions = [...productFieldOptions];
+    if (defaultSource && !productFieldOptions.includes(defaultSource)) sourceOptions.push(defaultSource);
+
+    const id = rowIdCounter++;
+    const container = document.getElementById("schema-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f => `<option value="${f}" ${f===defaultSchema?"selected":""}>${f}</option>`).join("")}
+            </select>
+            <input type="text" class="schema-input p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema)?defaultSchema:""}">
+        </div>
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
+            <select class="product-source p-2 border rounded bg-white">
+                <option value="">Select Product Attribute</option>
+                ${sourceOptions.map(o => `<option value="${o}" ${o===defaultSource?"selected":""}>${o}</option>`).join("")}
+            </select>
+        </div>
+        <button class="delete-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+    `;
+
+    row.querySelector(".delete-row").onclick = () => { row.remove(); updateMappings(); };
+    row.querySelector(".schema-select").onchange = updateMappings;
+    row.querySelector(".schema-input").oninput = updateMappings;
+    row.querySelector(".product-source").onchange = updateMappings;
+
+    container.appendChild(row);
+    updateMappings();
 }
 
-/* ============================================================
-   ROW FACTORY
-============================================================ */
-function createRow({ containerId, schemaClass, inputClass, sourceClass, sourceOptions, a="", b="", onUpdate }) {
-  const row = document.createElement("div");
-  row.className = "flex gap-4 p-4 bg-gray-50 border rounded";
-
-  row.innerHTML = `
-    <div class="flex-1">
-      <select class="${schemaClass}">
-        <option value="">Select Schema Field</option>
-        ${commonSchemaFields.map(f => `<option ${f===a?"selected":""}>${f}</option>`).join("")}
-      </select>
-      <input class="${inputClass}" value="${a}">
-    </div>
-    <div class="flex-1">
-      <select class="${sourceClass}">
-        <option value="">Select Source</option>
-        ${sourceOptions.map(s => `<option ${s===b?"selected":""}>${s}</option>`).join("")}
-      </select>
-    </div>
-    <button class="delete-row">X</button>
-  `;
-
-  row.querySelector(".delete-row").onclick = () => { row.remove(); onUpdate(); };
-  row.querySelectorAll("select,input").forEach(el => el.onchange = onUpdate);
-
-  document.getElementById(containerId).appendChild(row);
-  onUpdate();
+/* ================= UPDATE FUNCTIONS ================= */
+function updateCollectionMappings() {
+    collectionMappings = [...document.querySelectorAll("#collection-mapping-container > div")].map(row => ({
+        schemaField: row.querySelector(".collection-schema-input").value.trim() || row.querySelector(".collection-schema-select").value.trim(),
+        sourceField: row.querySelector(".collection-source").value.trim()
+    }));
 }
 
-/* ============================================================
-   ROW CREATORS
-============================================================ */
-const createSchemaRow = (a,b)=>createRow({
-  containerId:"schema-mapping-container",
-  schemaClass:"schema-select",
-  inputClass:"schema-input",
-  sourceClass:"product-source",
-  sourceOptions:productFieldOptions,
-  a,b,onUpdate:()=>mappings=collect("#schema-mapping-container",".schema-input",".schema-select",".product-source")
-});
-
-const createCollectionRow = (a,b)=>createRow({
-  containerId:"collection-mapping-container",
-  schemaClass:"collection-schema-select",
-  inputClass:"collection-schema-input",
-  sourceClass:"collection-source",
-  sourceOptions:collectionFieldOptions,
-  a,b,onUpdate:()=>collectionMappings=collect("#collection-mapping-container",".collection-schema-input",".collection-schema-select",".collection-source")
-});
-
-const createBlogRow = (a,b)=>createRow({
-  containerId:"blog-mapping-container",
-  schemaClass:"blog-schema-select",
-  inputClass:"blog-schema-input",
-  sourceClass:"blog-source",
-  sourceOptions:blogFieldOptions,
-  a,b,onUpdate:()=>blogMappings=collect("#blog-mapping-container",".blog-schema-input",".blog-schema-select",".blog-source")
-});
-
-const createPageRow = (a,b)=>createRow({
-  containerId:"page-mapping-container",
-  schemaClass:"page-schema-select",
-  inputClass:"page-schema-input",
-  sourceClass:"page-source",
-  sourceOptions:pageFieldOptions,
-  a,b,onUpdate:()=>pageMappings=collect("#page-mapping-container",".page-schema-input",".page-schema-select",".page-source")
-});
-
-const createHomepageRow = (a,b)=>createRow({
-  containerId:"homepage-mapping-container",
-  schemaClass:"homepage-schema-select",
-  inputClass:"homepage-schema-input",
-  sourceClass:"homepage-source",
-  sourceOptions:homepageFieldOptions,
-  a,b,onUpdate:()=>homepageMappings=collect("#homepage-mapping-container",".homepage-schema-input",".homepage-schema-select",".homepage-source")
-});
-
-/* ============================================================
-   PREPOPULATION (THIS WAS MISSING)
-============================================================ */
-normalize({{ product_config|tojson }},"product_schema_mappings")
-  .forEach(m=>createSchemaRow(m.schemaField,m.sourceField));
-
-normalize({{ collection_config|tojson }},"collection_schema_mappings")
-  .forEach(m=>createCollectionRow(m.schemaField,m.sourceField));
-
-normalize({{ blog_config|tojson }},"blog_schema_mappings")
-  .forEach(m=>createBlogRow(m.schemaField,m.sourceField));
-
-normalize({{ page_config|tojson }},"page_schema_mappings")
-  .forEach(m=>createPageRow(m.schemaField,m.sourceField));
-
-/* ============================================================
-   SAVE
-============================================================ */
-async function save(payload, preview) {
-  document.getElementById(preview).innerText="Saving…";
-  const r = await fetch("/verify_and_create_metafields",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(payload)
-  });
-  document.getElementById(preview).innerText = r.ok ? "Saved!" : "Error";
+function updateMappings() {
+    mappings = [...document.querySelectorAll("#schema-mapping-container > div")].map(row => ({
+        schemaField: row.querySelector(".schema-input").value.trim() || row.querySelector(".schema-select").value.trim(),
+        sourceField: row.querySelector(".product-source").value.trim()
+    }));
 }
 
-document.getElementById("sendToBackendBtn").onclick = ()=>save({product_schema_mappings:mappings},"metafields-preview");
-document.getElementById("saveCollectionBtn").onclick = ()=>save({collection_schema_mappings:collectionMappings},"collection-preview");
-document.getElementById("saveBlogBtn").onclick = ()=>save({blog_schema_mappings:blogMappings},"blog-preview");
-document.getElementById("savePageBtn").onclick = ()=>save({page_schema_mappings:pageMappings},"page-preview");
-document.getElementById("saveHomepageBtn").onclick = ()=>save({homepage_schema_mappings:homepageMappings},"homepage-preview");
+/* ================= ADD BUTTONS ================= */
+document.getElementById("addCollectionBtn").onclick = () => createCollectionRow();
+document.getElementById("addMappingBtn").onclick = () => createSchemaRow();
+
+/* ================= PREPOPULATE ================= */
+const rawProductConfig = {{ product_config | tojson }};
+const rawCollectionConfig = {{ collection_config | tojson }};
+
+function normalizeMappings(input, key) {
+    if (!input) return [];
+    if (Array.isArray(input)) return input;
+    if (typeof input === "object" && Array.isArray(input[key])) {
+        return input[key];
+    }
+    return [];
+}
+
+const savedProductMappings = normalizeMappings(
+    rawProductConfig?.product_schema_mappings,
+    "product_schema_mappings"
+);
+
+const savedCollectionMappings = normalizeMappings(
+    rawCollectionConfig?.collection_schema_mappings,
+    "collection_schema_mappings"
+);
+
+/* ================= PREPOPULATE UI ================= */
+
+if (savedProductMappings.length > 0) {
+    savedProductMappings.forEach(m =>
+        createSchemaRow(m.schemaField || "", m.sourceField || "")
+    );
+} else {
+    createSchemaRow();
+}
+
+if (savedCollectionMappings.length > 0) {
+    savedCollectionMappings.forEach(m =>
+        createCollectionRow(m.schemaField || "", m.sourceField || "")
+    );
+} else {
+    createCollectionRow();
+}
+
+
+/* ================= SAVE HANDLERS ================= */
+// Product Save Only
+document.getElementById("sendToBackendBtn").onclick = async () => {
+    updateMappings();
+    const payload = {
+        shop: '{{ shop_name or "Not found" }}',
+        hmac: '{{ hmac_value or "Not found" }}',
+        id_token: '{{ id_token_value or "Not found" }}',
+        product_schema_mappings: mappings
+    };
+    const preview = document.getElementById("metafields-preview");
+    preview.innerHTML = 'Saving…';
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
+    } catch {
+        preview.innerHTML = 'Network Error';
+    }
+};
+
+// Collection Save Only
+document.getElementById("saveCollectionBtn").onclick = async () => {
+    updateCollectionMappings();
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        collection_schema_mappings: collectionMappings
+    };
+    const preview = document.getElementById("collection-preview");
+    preview.innerHTML = 'Saving…';
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
+    } catch {
+        preview.innerHTML = 'Network Error';
+    }
+};
+
+// Optional Combined Save (if you ever add a "Save Both" button)
+document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
+    updateMappings();
+    updateCollectionMappings();
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        product_schema_mappings: mappings,
+        collection_schema_mappings: collectionMappings
+    };
+    const preview = document.getElementById("metafields-preview");
+    preview.innerHTML = 'Saving…';
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
+    } catch {
+        preview.innerHTML = 'Network Error';
+    }
+});
 </script>
+
 
 </body>
 </html>
