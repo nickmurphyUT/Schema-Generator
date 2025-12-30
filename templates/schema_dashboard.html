@@ -283,7 +283,8 @@ document.getElementById("addMappingBtn").onclick = () => createSchemaRow();
 /* ================= PREPOPULATE ================= */
 const rawProductConfig = {{ product_config | tojson }};
 const rawCollectionConfig = {{ collection_config | tojson }};
-console.log("raw collection config " + rawCollectionConfig);
+const rawCollectionConfigPrint = {{ collection_config | tojson }};
+console.log("raw collection config:", JSON.stringify(rawCollectionConfig, null, 2));
 function normalizeMappings(input, key) {
     if (!input) return [];
     if (Array.isArray(input)) return input;
