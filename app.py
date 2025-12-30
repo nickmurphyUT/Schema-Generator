@@ -439,11 +439,17 @@ def home():
             }
 
             page_config = {
-                "page_schema_mappings": normalize(raw_page, "page_schema_mappings")
+                "collection_schema_mappings": (
+                    normalize(raw_collection, "collection_schema_mappings")
+                    or normalize(raw_product, "page_schema_mappings")
+                )
             }
 
             blog_config = {
-                "blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings")
+                "collection_schema_mappings": (
+                    normalize(raw_collection, "collection_schema_mappings")
+                    or normalize(raw_product, "blog_schema_mappings")
+                )
             }
 
         except Exception as e:
