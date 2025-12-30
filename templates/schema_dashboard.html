@@ -76,263 +76,425 @@
 
     <div id="collection-preview" class="mt-4 text-sm text-gray-500"></div>
 </div>
-<script>
-/* ================= GLOBAL STATE ================= */
-let collectionMappings = [];
-let collectionRowId = 0;
-let mappings = [];
-let rowIdCounter = 0;
 
-/* ================= FIELD OPTIONS ================= */
-const collectionFieldOptions = [
-    "collection.title",
-    "collection.handle",
-    "collection.sort_order",
-    "collection.updated_at",
-    {% for mf in collection_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+    <!-- BLOG SCHEMA MAPPING UI -->
+<div class="bg-white rounded-xl p-6 shadow-lg border mb-8">
+  <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
+    Blog Schema Generator
+  </h3>
+
+  <div id="blog-mapping-container" class="space-y-4 mb-6"></div>
+
+  <button id="addBlogBtn"
+    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
+    + Add Schema Mapping
+  </button>
+
+  <button id="saveBlogBtn"
+    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
+    Save & Generate Blog Schema Metafields
+  </button>
+
+  <div id="blog-preview" class="mt-4 text-sm text-gray-500"></div>
+</div>
+
+
+
+        <!-- PAGE SCHEMA MAPPING UI -->
+<div class="bg-white rounded-xl p-6 shadow-lg border mb-8">
+  <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
+    Page Schema Generator
+  </h3>
+
+  <div id="page-mapping-container" class="space-y-4 mb-6"></div>
+
+  <button id="addPageBtn"
+    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
+    + Add Schema Mapping
+  </button>
+
+  <button id="savePageBtn"
+    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
+    Save & Generate Page Schema Metafields
+  </button>
+
+  <div id="page-preview" class="mt-4 text-sm text-gray-500"></div>
+</div>
+
+
+    <!-- HOMEPAGE SCHEMA MAPPING UI -->
+<div class="bg-white rounded-xl p-6 shadow-lg border mb-8">
+  <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">
+    Homepage Schema Generator
+  </h3>
+
+  <div id="homepage-mapping-container" class="space-y-4 mb-6"></div>
+
+  <button id="addHomepageBtn"
+    class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">
+    + Add Schema Mapping
+  </button>
+
+  <button id="saveHomepageBtn"
+    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">
+    Save & Generate Homepage Schema Metafields
+  </button>
+
+  <div id="homepage-preview" class="mt-4 text-sm text-gray-500"></div>
+</div>
+
+<script>
+/* ============================================================
+   GLOBAL STATE
+============================================================ */
+let mappings = [];
+let collectionMappings = [];
+let blogMappings = [];
+let pageMappings = [];
+let homepageMappings = [];
+
+let rowIdCounter = 0;
+let collectionRowId = 0;
+let blogRowId = 0;
+let pageRowId = 0;
+let homepageRowId = 0;
+
+/* ============================================================
+   FIELD OPTIONS (FROM SERVER)
+============================================================ */
+const productFieldOptions = [
+  "product.title",
+  "product.vendor",
+  "product.handle",
+  "product.product_type",
+  "product.status",
+  "product.description",
+  "product.tags[]",
+  "product.images[].src",
+  "variants[].sku",
+  "variants[].price",
+  "variants[].barcode",
+  "variants[].weight",
+  {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 
-const productFieldOptions = [
-    "product.title",
-    "product.vendor",
-    "product.handle",
-    "product.product_type",
-    "product.status",
-    "product.description",
-    "product.tags[]",
-    "product.images[].src",
-    "variants[].sku",
-    "variants[].price",
-    "variants[].barcode",
-    "variants[].weight",
-    {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+const collectionFieldOptions = [
+  "collection.title",
+  "collection.handle",
+  "collection.sort_order",
+  "collection.updated_at",
+  {% for mf in collection_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+];
+
+const blogFieldOptions = [
+  "blog.title",
+  "blog.handle",
+  "blog.updated_at",
+  "blog.comments_enabled",
+  {% for mf in blog_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+];
+
+const pageFieldOptions = [
+  "page.title",
+  "page.handle",
+  "page.published_at",
+  "page.updated_at",
+  "page.body_html",
+  {% for mf in page_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
+];
+
+const homepageFieldOptions = [
+  "homepage.title",
+  "homepage.meta_title",
+  "homepage.meta_description",
+  "homepage.updated_at",
+  {% for mf in homepage_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 
 const commonSchemaFields = {{ org_schema_fields | tojson }};
 
-/* ================= CREATE ROW FUNCTIONS ================= */
-function createCollectionRow(defaultSchema = "", defaultSource = "") {
-    const schemaOptions = [...commonSchemaFields];
-    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) schemaOptions.push(defaultSchema);
-
-    const sourceOptions = [...collectionFieldOptions];
-    if (defaultSource && !collectionFieldOptions.includes(defaultSource)) sourceOptions.push(defaultSource);
-
-    const id = collectionRowId++;
-    const container = document.getElementById("collection-mapping-container");
-
-    const row = document.createElement("div");
-    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
-    row.dataset.rowId = id;
-
-    row.innerHTML = `
-        <div class="flex-1 flex flex-col gap-2">
-            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
-            <select class="collection-schema-select p-2 border rounded bg-white">
-                <option value="">Select Schema Field</option>
-                ${schemaOptions.map(f => `<option value="${f}" ${f===defaultSchema?"selected":""}>${f}</option>`).join("")}
-            </select>
-            <input type="text" class="collection-schema-input p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema)?defaultSchema:""}">
-        </div>
-        <div class="flex-1 flex flex-col gap-2">
-            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
-            <select class="collection-source p-2 border rounded bg-white">
-                <option value="">Select Collection Attribute</option>
-                ${sourceOptions.map(o => `<option value="${o}" ${o===defaultSource?"selected":""}>${o}</option>`).join("")}
-            </select>
-        </div>
-        <button class="delete-collection-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
-    `;
-
-    row.querySelector(".delete-collection-row").onclick = () => { row.remove(); updateCollectionMappings(); };
-    row.querySelector(".collection-schema-select").onchange = updateCollectionMappings;
-    row.querySelector(".collection-schema-input").oninput = updateCollectionMappings;
-    row.querySelector(".collection-source").onchange = updateCollectionMappings;
-
-    container.appendChild(row);
-    updateCollectionMappings();
+/* ============================================================
+   HELPERS
+============================================================ */
+function normalizeMappings(input, key) {
+  if (!input) return [];
+  if (Array.isArray(input)) return input;
+  if (typeof input === "object" && Array.isArray(input[key])) return input[key];
+  return [];
 }
 
-function createSchemaRow(defaultSchema = "", defaultSource = "") {
-    const schemaOptions = [...commonSchemaFields];
-    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) schemaOptions.push(defaultSchema);
-
-    const sourceOptions = [...productFieldOptions];
-    if (defaultSource && !productFieldOptions.includes(defaultSource)) sourceOptions.push(defaultSource);
-
-    const id = rowIdCounter++;
-    const container = document.getElementById("schema-mapping-container");
-
-    const row = document.createElement("div");
-    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
-    row.dataset.rowId = id;
-
-    row.innerHTML = `
-        <div class="flex-1 flex flex-col gap-2">
-            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
-            <select class="schema-select p-2 border rounded bg-white">
-                <option value="">Select Schema Field</option>
-                ${schemaOptions.map(f => `<option value="${f}" ${f===defaultSchema?"selected":""}>${f}</option>`).join("")}
-            </select>
-            <input type="text" class="schema-input p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema)?defaultSchema:""}">
-        </div>
-        <div class="flex-1 flex flex-col gap-2">
-            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
-            <select class="product-source p-2 border rounded bg-white">
-                <option value="">Select Product Attribute</option>
-                ${sourceOptions.map(o => `<option value="${o}" ${o===defaultSource?"selected":""}>${o}</option>`).join("")}
-            </select>
-        </div>
-        <button class="delete-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
-    `;
-
-    row.querySelector(".delete-row").onclick = () => { row.remove(); updateMappings(); };
-    row.querySelector(".schema-select").onchange = updateMappings;
-    row.querySelector(".schema-input").oninput = updateMappings;
-    row.querySelector(".product-source").onchange = updateMappings;
-
-    container.appendChild(row);
-    updateMappings();
+function collect(containerSelector, schemaInput, schemaSelect, sourceSelect) {
+  return [...document.querySelectorAll(`${containerSelector} > div`)].map(row => ({
+    schemaField:
+      row.querySelector(schemaInput).value.trim() ||
+      row.querySelector(schemaSelect).value.trim(),
+    sourceField:
+      row.querySelector(sourceSelect).value.trim()
+  }));
 }
 
-/* ================= UPDATE FUNCTIONS ================= */
-function updateCollectionMappings() {
-    collectionMappings = [...document.querySelectorAll("#collection-mapping-container > div")].map(row => ({
-        schemaField: row.querySelector(".collection-schema-input").value.trim() || row.querySelector(".collection-schema-select").value.trim(),
-        sourceField: row.querySelector(".collection-source").value.trim()
-    }));
-}
-
+/* ============================================================
+   UPDATE FUNCTIONS (SOURCE OF TRUTH)
+============================================================ */
 function updateMappings() {
-    mappings = [...document.querySelectorAll("#schema-mapping-container > div")].map(row => ({
-        schemaField: row.querySelector(".schema-input").value.trim() || row.querySelector(".schema-select").value.trim(),
-        sourceField: row.querySelector(".product-source").value.trim()
-    }));
+  mappings = collect(
+    "#schema-mapping-container",
+    ".schema-input",
+    ".schema-select",
+    ".product-source"
+  );
 }
 
-/* ================= ADD BUTTONS ================= */
-document.getElementById("addCollectionBtn").onclick = () => createCollectionRow();
-document.getElementById("addMappingBtn").onclick = () => createSchemaRow();
+function updateCollectionMappings() {
+  collectionMappings = collect(
+    "#collection-mapping-container",
+    ".collection-schema-input",
+    ".collection-schema-select",
+    ".collection-source"
+  );
+}
 
-/* ================= PREPOPULATE ================= */
+function updateBlogMappings() {
+  blogMappings = collect(
+    "#blog-mapping-container",
+    ".blog-schema-input",
+    ".blog-schema-select",
+    ".blog-source"
+  );
+}
+
+function updatePageMappings() {
+  pageMappings = collect(
+    "#page-mapping-container",
+    ".page-schema-input",
+    ".page-schema-select",
+    ".page-source"
+  );
+}
+
+function updateHomepageMappings() {
+  homepageMappings = collect(
+    "#homepage-mapping-container",
+    ".homepage-schema-input",
+    ".homepage-schema-select",
+    ".homepage-source"
+  );
+}
+
+/* ============================================================
+   ROW FACTORY (GENERIC)
+============================================================ */
+function createRow({
+  containerId,
+  schemaClass,
+  inputClass,
+  sourceClass,
+  sourceOptions,
+  defaultSchema = "",
+  defaultSource = "",
+  onUpdate
+}) {
+  const schemaOptions = [...commonSchemaFields];
+  if (defaultSchema && !schemaOptions.includes(defaultSchema)) schemaOptions.push(defaultSchema);
+
+  const sources = [...sourceOptions];
+  if (defaultSource && !sources.includes(defaultSource)) sources.push(defaultSource);
+
+  const row = document.createElement("div");
+  row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+
+  row.innerHTML = `
+    <div class="flex-1 flex flex-col gap-2">
+      <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+      <select class="${schemaClass} p-2 border rounded bg-white">
+        <option value="">Select Schema Field</option>
+        ${schemaOptions.map(f => `<option value="${f}" ${f===defaultSchema?"selected":""}>${f}</option>`).join("")}
+      </select>
+      <input class="${inputClass} p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema)?defaultSchema:""}">
+    </div>
+    <div class="flex-1 flex flex-col gap-2">
+      <label class="text-sm text-gray-600 font-medium">Source</label>
+      <select class="${sourceClass} p-2 border rounded bg-white">
+        <option value="">Select Source</option>
+        ${sources.map(s => `<option value="${s}" ${s===defaultSource?"selected":""}>${s}</option>`).join("")}
+      </select>
+    </div>
+    <button class="delete-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+  `;
+
+  row.querySelector(".delete-row").onclick = () => {
+    row.remove();
+    onUpdate();
+  };
+
+  row.querySelector(`.${schemaClass}`).onchange = onUpdate;
+  row.querySelector(`.${inputClass}`).oninput = onUpdate;
+  row.querySelector(`.${sourceClass}`).onchange = onUpdate;
+
+  document.getElementById(containerId).appendChild(row);
+  onUpdate();
+}
+
+/* ============================================================
+   ROW CREATORS
+============================================================ */
+function createSchemaRow(a="",b="") {
+  createRow({
+    containerId: "schema-mapping-container",
+    schemaClass: "schema-select",
+    inputClass: "schema-input",
+    sourceClass: "product-source",
+    sourceOptions: productFieldOptions,
+    defaultSchema: a,
+    defaultSource: b,
+    onUpdate: updateMappings
+  });
+}
+
+function createCollectionRow(a="",b="") {
+  createRow({
+    containerId: "collection-mapping-container",
+    schemaClass: "collection-schema-select",
+    inputClass: "collection-schema-input",
+    sourceClass: "collection-source",
+    sourceOptions: collectionFieldOptions,
+    defaultSchema: a,
+    defaultSource: b,
+    onUpdate: updateCollectionMappings
+  });
+}
+
+function createBlogRow(a="",b="") {
+  createRow({
+    containerId: "blog-mapping-container",
+    schemaClass: "blog-schema-select",
+    inputClass: "blog-schema-input",
+    sourceClass: "blog-source",
+    sourceOptions: blogFieldOptions,
+    defaultSchema: a,
+    defaultSource: b,
+    onUpdate: updateBlogMappings
+  });
+}
+
+function createPageRow(a="",b="") {
+  createRow({
+    containerId: "page-mapping-container",
+    schemaClass: "page-schema-select",
+    inputClass: "page-schema-input",
+    sourceClass: "page-source",
+    sourceOptions: pageFieldOptions,
+    defaultSchema: a,
+    defaultSource: b,
+    onUpdate: updatePageMappings
+  });
+}
+
+function createHomepageRow(a="",b="") {
+  createRow({
+    containerId: "homepage-mapping-container",
+    schemaClass: "homepage-schema-select",
+    inputClass: "homepage-schema-input",
+    sourceClass: "homepage-source",
+    sourceOptions: homepageFieldOptions,
+    defaultSchema: a,
+    defaultSource: b,
+    onUpdate: updateHomepageMappings
+  });
+}
+
+/* ============================================================
+   PREPOPULATION (UNCHANGED, FIXED)
+============================================================ */
 const rawProductConfig = {{ product_config | tojson }};
 const rawCollectionConfig = {{ collection_config | tojson }};
 
-function normalizeMappings(input, key) {
-    if (!input) return [];
-    if (Array.isArray(input)) return input;
-    if (typeof input === "object" && Array.isArray(input[key])) {
-        return input[key];
-    }
-    return [];
+normalizeMappings(rawProductConfig?.product_schema_mappings, "product_schema_mappings")
+  .forEach(m => createSchemaRow(m.schemaField, m.sourceField));
+
+normalizeMappings(rawCollectionConfig?.collection_schema_mappings, "collection_schema_mappings")
+  .forEach(m => createCollectionRow(m.schemaField, m.sourceField));
+
+if (!mappings.length) createSchemaRow();
+if (!collectionMappings.length) createCollectionRow();
+
+/* ============================================================
+   SAVE HANDLERS (NO OVERWRITES)
+============================================================ */
+async function save(payload, previewId) {
+  const el = document.getElementById(previewId);
+  el.innerHTML = "Saving…";
+  try {
+    const r = await fetch("/verify_and_create_metafields", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    el.innerHTML = r.ok ? "Saved!" : `Error: ${j.error || "Unknown error"}`;
+  } catch {
+    el.innerHTML = "Network Error";
+  }
 }
 
-const savedProductMappings = normalizeMappings(
-    rawProductConfig?.product_schema_mappings,
-    "product_schema_mappings"
-);
-
-const savedCollectionMappings = normalizeMappings(
-    rawCollectionConfig?.collection_schema_mappings,
-    "collection_schema_mappings"
-);
-
-/* ================= PREPOPULATE UI ================= */
-
-if (savedProductMappings.length > 0) {
-    savedProductMappings.forEach(m =>
-        createSchemaRow(m.schemaField || "", m.sourceField || "")
-    );
-} else {
-    createSchemaRow();
-}
-
-if (savedCollectionMappings.length > 0) {
-    savedCollectionMappings.forEach(m =>
-        createCollectionRow(m.schemaField || "", m.sourceField || "")
-    );
-} else {
-    createCollectionRow();
-}
-
-
-/* ================= SAVE HANDLERS ================= */
-// Product Save Only
-document.getElementById("sendToBackendBtn").onclick = async () => {
-    updateMappings();
-    const payload = {
-        shop: '{{ shop_name or "Not found" }}',
-        hmac: '{{ hmac_value or "Not found" }}',
-        id_token: '{{ id_token_value or "Not found" }}',
-        product_schema_mappings: mappings
-    };
-    const preview = document.getElementById("metafields-preview");
-    preview.innerHTML = 'Saving…';
-
-    try {
-        const resp = await fetch("/verify_and_create_metafields", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        const result = await resp.json();
-        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
-    } catch {
-        preview.innerHTML = 'Network Error';
-    }
+document.getElementById("sendToBackendBtn").onclick = () => {
+  updateMappings();
+  save({
+    shop:'{{ shop_name }}',
+    hmac:'{{ hmac_value }}',
+    id_token:'{{ id_token_value }}',
+    product_schema_mappings: mappings
+  }, "metafields-preview");
 };
 
-// Collection Save Only
-document.getElementById("saveCollectionBtn").onclick = async () => {
-    updateCollectionMappings();
-    const payload = {
-        shop: '{{ shop_name }}',
-        hmac: '{{ hmac_value }}',
-        id_token: '{{ id_token_value }}',
-        collection_schema_mappings: collectionMappings
-    };
-    const preview = document.getElementById("collection-preview");
-    preview.innerHTML = 'Saving…';
-
-    try {
-        const resp = await fetch("/verify_and_create_metafields", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        const result = await resp.json();
-        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
-    } catch {
-        preview.innerHTML = 'Network Error';
-    }
+document.getElementById("saveCollectionBtn").onclick = () => {
+  updateCollectionMappings();
+  save({
+    shop:'{{ shop_name }}',
+    hmac:'{{ hmac_value }}',
+    id_token:'{{ id_token_value }}',
+    collection_schema_mappings: collectionMappings
+  }, "collection-preview");
 };
 
-// Optional Combined Save (if you ever add a "Save Both" button)
-document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
-    updateMappings();
-    updateCollectionMappings();
-    const payload = {
-        shop: '{{ shop_name }}',
-        hmac: '{{ hmac_value }}',
-        id_token: '{{ id_token_value }}',
-        product_schema_mappings: mappings,
-        collection_schema_mappings: collectionMappings
-    };
-    const preview = document.getElementById("metafields-preview");
-    preview.innerHTML = 'Saving…';
+document.getElementById("saveBlogBtn").onclick = () => {
+  updateBlogMappings();
+  save({
+    shop:'{{ shop_name }}',
+    hmac:'{{ hmac_value }}',
+    id_token:'{{ id_token_value }}',
+    blog_schema_mappings: blogMappings
+  }, "blog-preview");
+};
 
-    try {
-        const resp = await fetch("/verify_and_create_metafields", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        const result = await resp.json();
-        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
-    } catch {
-        preview.innerHTML = 'Network Error';
-    }
-});
+document.getElementById("savePageBtn").onclick = () => {
+  updatePageMappings();
+  save({
+    shop:'{{ shop_name }}',
+    hmac:'{{ hmac_value }}',
+    id_token:'{{ id_token_value }}',
+    page_schema_mappings: pageMappings
+  }, "page-preview");
+};
+
+document.getElementById("saveHomepageBtn").onclick = () => {
+  updateHomepageMappings();
+  save({
+    shop:'{{ shop_name }}',
+    hmac:'{{ hmac_value }}',
+    id_token:'{{ id_token_value }}',
+    homepage_schema_mappings: homepageMappings
+  }, "homepage-preview");
+};
+
+/* ============================================================
+   ADD BUTTONS
+============================================================ */
+document.getElementById("addMappingBtn").onclick = () => createSchemaRow();
+document.getElementById("addCollectionBtn").onclick = () => createCollectionRow();
+document.getElementById("addBlogBtn").onclick = () => createBlogRow();
+document.getElementById("addPageBtn").onclick = () => createPageRow();
+document.getElementById("addHomepageBtn").onclick = () => createHomepageRow();
 </script>
 
 
