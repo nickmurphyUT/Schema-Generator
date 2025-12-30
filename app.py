@@ -408,10 +408,8 @@ def home():
             # --------------------------------------------------
             # FETCH CONFIG BLOBS
             # --------------------------------------------------
-            raw_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
-            raw_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
-            raw_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
-            raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
+            raw_config = fetch_schema_config_entry(shop, access_token, "app_config")
+
 
             # --------------------------------------------------
             # NORMALIZATION (BULLETPROOF)
@@ -426,31 +424,23 @@ def home():
                     if isinstance(value, list):
                         return value
                 return []
-
+            
             product_config = {
-                "product_schema_mappings": normalize(raw_product, "product_schema_mappings")
+                "product_schema_mappings": normalize(raw_config, "product_schema_mappings")
             }
-
+            
             collection_config = {
-                "collection_schema_mappings": (
-                    normalize(raw_collection, "collection_schema_mappings")
-                    or normalize(raw_product, "collection_schema_mappings")
-                )
+                "collection_schema_mappings": normalize(raw_config, "collection_schema_mappings")
             }
-
+            
             page_config = {
-                "collection_schema_mappings": (
-                    normalize(raw_collection, "collection_schema_mappings")
-                    or normalize(raw_product, "page_schema_mappings")
-                )
+                "page_schema_mappings": normalize(raw_config, "page_schema_mappings")
+            }
+            
+            blog_config = {
+                "blog_schema_mappings": normalize(raw_config, "blog_schema_mappings")
             }
 
-            blog_config = {
-                "collection_schema_mappings": (
-                    normalize(raw_collection, "collection_schema_mappings")
-                    or normalize(raw_product, "blog_schema_mappings")
-                )
-            }
 
         except Exception as e:
             logging.exception("Home route failed safely")
