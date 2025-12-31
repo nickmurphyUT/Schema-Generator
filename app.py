@@ -446,7 +446,7 @@ def home():
             }
 
             blog_config = {
-                "blo_schema_mappings": (
+                "blog_schema_mappings": (
                     normalize(raw_collection, "blog_schema_mappings")
                     or normalize(raw_product, "blog_schema_mappings")
                 )
