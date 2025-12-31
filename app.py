@@ -469,6 +469,12 @@ def home():
                 )
             }
 
+            homepage_config = {
+                "homapage_schema_mappings": (
+                    normalize(raw_homepage, "homapage_schema_mappings")
+                    or normalize(raw_product, "homapage_schema_mappings")
+                )
+            }
             # --------------------------------------------------
             # HOMEPAGE CONFIG (NO NORMALIZATION)
             # --------------------------------------------------
