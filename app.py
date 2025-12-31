@@ -369,7 +369,6 @@ def parse_schema_metaobject(node):
 
     return result
 
-
 @app.route("/")
 def home():
     shop = session.get("shop") or request.args.get("shop")
@@ -392,6 +391,9 @@ def home():
     page_config = {}
     blog_config = {}
 
+    # ✅ NEW
+    homepage_config = {}
+
     if access_token:
         try:
             # --------------------------------------------------
@@ -406,12 +408,25 @@ def home():
             blog_metafields = data.get("blogDefinitions", {}).get("edges", [])
 
             # --------------------------------------------------
-            # FETCH CONFIG BLOBS
+            # FETCH CONFIG BLOBS (METAOBJECT)
             # --------------------------------------------------
-            raw_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
-            raw_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
-            raw_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
-            raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
+            raw_product = fetch_schema_config_entry(
+                shop, access_token, "product_schema_mappings"
+            )
+            raw_collection = fetch_schema_config_entry(
+                shop, access_token, "collection_schema_mappings"
+            )
+            raw_page = fetch_schema_config_entry(
+                shop, access_token, "page_schema_mappings"
+            )
+            raw_blog = fetch_schema_config_entry(
+                shop, access_token, "blog_schema_mappings"
+            )
+
+            # ✅ NEW: homepage config (RAW OBJECT)
+            raw_homepage = fetch_schema_config_entry(
+                shop, access_token, "homepage_schema_config"
+            )
 
             # --------------------------------------------------
             # NORMALIZATION (BULLETPROOF)
@@ -428,7 +443,9 @@ def home():
                 return []
 
             product_config = {
-                "product_schema_mappings": normalize(raw_product, "product_schema_mappings")
+                "product_schema_mappings": normalize(
+                    raw_product, "product_schema_mappings"
+                )
             }
 
             collection_config = {
@@ -440,19 +457,27 @@ def home():
 
             page_config = {
                 "page_schema_mappings": (
-                    normalize(raw_collection, "page_schema_mappings")
+                    normalize(raw_page, "page_schema_mappings")
                     or normalize(raw_product, "page_schema_mappings")
                 )
             }
 
             blog_config = {
                 "blog_schema_mappings": (
-                    normalize(raw_collection, "blog_schema_mappings")
+                    normalize(raw_blog, "blog_schema_mappings")
                     or normalize(raw_product, "blog_schema_mappings")
                 )
             }
 
-        except Exception as e:
+            # --------------------------------------------------
+            # HOMEPAGE CONFIG (NO NORMALIZATION)
+            # --------------------------------------------------
+            if isinstance(raw_homepage, dict):
+                homepage_config = raw_homepage
+            else:
+                homepage_config = {}
+
+        except Exception:
             logging.exception("Home route failed safely")
 
     # --------------------------------------------------
@@ -462,27 +487,29 @@ def home():
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
+        {"title": "Homepage Schema", "url": "/app/homepage-schema-builder"},  # ✅ NEW
         {"title": "Product Schema", "url": "/app/products-schema-builder"},
         {"title": "Collection Schema", "url": "/app/collections-schema-builder"},
         {"title": "Page Schema", "url": "/app/pages-schema-builder"},
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
 
-    logging.info("Rendering schema_dashboard.html: %s", json.dumps({
-        "schemas": schemas,
-        "title": "Schema App Dashboard",
-        "shop_name": shop,
-        "hmac_value": hmac,
-        "id_token_value": id_token,
-        "product_metafields": product_metafields,
-        "collection_metafields": collection_metafields,
-        "page_metafields": page_metafields,
-        "blog_metafields": blog_metafields,
-        "product_config": product_config,
-        "collection_config": collection_config,
-        "page_config": page_config,
-        "blog_config": blog_config,
-    }, indent=2, default=str))
+    logging.info(
+        "Rendering schema_dashboard.html: %s",
+        json.dumps(
+            {
+                "schemas": schemas,
+                "shop_name": shop,
+                "product_config": product_config,
+                "collection_config": collection_config,
+                "page_config": page_config,
+                "blog_config": blog_config,
+                "homepage_config": homepage_config,
+            },
+            indent=2,
+            default=str,
+        ),
+    )
 
     return render_template(
         "schema_dashboard.html",
@@ -503,9 +530,10 @@ def home():
         collection_config=collection_config,
         page_config=page_config,
         blog_config=blog_config,
+
+        # ✅ NEW
+        homepage_config=homepage_config,
     )
-
-
 
 
     
@@ -2654,12 +2682,14 @@ def verify_and_create_metafields():
 
     # ---------------------------------------------------------
     # Incoming payloads (FROM FRONTEND)
-    # These are ARRAYS or None — NOT wrapped
     # ---------------------------------------------------------
     incoming_product = data.get("product_schema_mappings")
     incoming_collection = data.get("collection_schema_mappings")
     incoming_page = data.get("page_schema_mappings")
     incoming_blog = data.get("blog_schema_mappings")
+
+    # ✅ NEW: homepage schema (RAW CONFIG, NOT METAFIELDS)
+    incoming_homepage = data.get("homepage_schema_config")
 
     # ---------------------------------------------------------
     # Ensure metaobject definition exists
@@ -2668,7 +2698,7 @@ def verify_and_create_metafields():
     metaobject_type = "app_config"
 
     # ---------------------------------------------------------
-    # Helper: normalize ANY value into a list
+    # Helpers
     # ---------------------------------------------------------
     def normalize_list(value):
         if isinstance(value, list):
@@ -2676,7 +2706,7 @@ def verify_and_create_metafields():
         return []
 
     # ---------------------------------------------------------
-    # STEP 1: Load EXISTING config (source of truth)
+    # STEP 1: Load EXISTING config (SOURCE OF TRUTH)
     # ---------------------------------------------------------
     existing_product = fetch_schema_config_entry(
         shop, access_token, "product_schema_mappings"
@@ -2691,26 +2721,46 @@ def verify_and_create_metafields():
         shop, access_token, "blog_schema_mappings"
     )
 
+    # ✅ NEW: existing homepage config
+    existing_homepage = fetch_schema_config_entry(
+        shop, access_token, "homepage_schema_config"
+    )
+
     product_schema_mappings = normalize_list(
-        existing_product.get("product_schema_mappings") if isinstance(existing_product, dict) else existing_product
+        existing_product.get("product_schema_mappings")
+        if isinstance(existing_product, dict)
+        else existing_product
     )
 
     collection_schema_mappings = normalize_list(
-        existing_collection.get("collection_schema_mappings") if isinstance(existing_collection, dict) else existing_collection
+        existing_collection.get("collection_schema_mappings")
+        if isinstance(existing_collection, dict)
+        else existing_collection
     )
 
     page_schema_mappings = normalize_list(
-        existing_page.get("page_schema_mappings") if isinstance(existing_page, dict) else existing_page
+        existing_page.get("page_schema_mappings")
+        if isinstance(existing_page, dict)
+        else existing_page
     )
 
     blog_schema_mappings = normalize_list(
-        existing_blog.get("blog_schema_mappings") if isinstance(existing_blog, dict) else existing_blog
+        existing_blog.get("blog_schema_mappings")
+        if isinstance(existing_blog, dict)
+        else existing_blog
+    )
+
+    homepage_schema_config = (
+        existing_homepage
+        if isinstance(existing_homepage, dict)
+        else None
     )
 
     logging.info("Existing PRODUCT mappings: %s", json.dumps(product_schema_mappings, indent=2))
     logging.info("Existing COLLECTION mappings: %s", json.dumps(collection_schema_mappings, indent=2))
     logging.info("Existing PAGE mappings: %s", json.dumps(page_schema_mappings, indent=2))
     logging.info("Existing BLOG mappings: %s", json.dumps(blog_schema_mappings, indent=2))
+    logging.info("Existing HOMEPAGE config: %s", json.dumps(homepage_schema_config, indent=2))
 
     # ---------------------------------------------------------
     # STEP 2: Replace ONLY what frontend sent
@@ -2727,18 +2777,23 @@ def verify_and_create_metafields():
     if incoming_blog is not None:
         blog_schema_mappings = normalize_list(incoming_blog)
 
+    # ✅ NEW: homepage replace (NO NORMALIZATION)
+    if incoming_homepage is not None:
+        homepage_schema_config = incoming_homepage
+
     logging.info(
         "Merged schema state (FINAL): %s",
         json.dumps({
             "product_schema_mappings": product_schema_mappings,
             "collection_schema_mappings": collection_schema_mappings,
             "page_schema_mappings": page_schema_mappings,
-            "blog_schema_mappings": blog_schema_mappings
+            "blog_schema_mappings": blog_schema_mappings,
+            "homepage_schema_config": homepage_schema_config
         }, indent=2)
     )
 
     # ---------------------------------------------------------
-    # STEP 3: Replace config metaobject (single source of truth)
+    # STEP 3: Replace config metaobject (SINGLE SOURCE OF TRUTH)
     # ---------------------------------------------------------
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
     for entry in existing_entries:
@@ -2757,7 +2812,10 @@ def verify_and_create_metafields():
             "product_schema_mappings": product_schema_mappings,
             "collection_schema_mappings": collection_schema_mappings,
             "page_schema_mappings": page_schema_mappings,
-            "blog_schema_mappings": blog_schema_mappings
+            "blog_schema_mappings": blog_schema_mappings,
+
+            # ✅ NEW: stored but NEVER processed
+            "homepage_schema_config": homepage_schema_config
         }
     )
 
@@ -2768,44 +2826,151 @@ def verify_and_create_metafields():
     logging.info("Created config entry: %s", node["metaobject"]["id"])
 
     # ---------------------------------------------------------
-    # STEP 4: Background updates (UNCHANGED)
+    # STEP 4: Background updates (UNCHANGED — homepage excluded)
     # ---------------------------------------------------------
     def process_pages():
         pages = fetch_all_pages(shop, access_token)
         for page in pages:
             mfs = fetch_page_metafields(shop, access_token, page["id"].split("/")[-1])
             schema = build_schema_from_mappings(page, mfs, page_schema_mappings)
-            upsert_app_metafield(shop, access_token, page["id"], wrap_flattened_json_in_schema(schema))
+            upsert_app_metafield(
+                shop,
+                access_token,
+                page["id"],
+                wrap_flattened_json_in_schema(schema)
+            )
 
     def process_blogs():
         articles = fetch_all_blog_articles(shop, access_token)
         for article in articles:
             mfs = fetch_blog_metafields(shop, access_token, article["id"].split("/")[-1])
             schema = build_schema_from_mappings(article, mfs, blog_schema_mappings)
-            upsert_app_metafield(shop, access_token, article["id"], wrap_flattened_json_in_schema(schema))
+            upsert_app_metafield(
+                shop,
+                access_token,
+                article["id"],
+                wrap_flattened_json_in_schema(schema)
+            )
 
     def process_products():
         products = fetch_all_products(shop, access_token)
         for product in products:
             mfs = fetch_product_metafields(shop, access_token, product["id"].split("/")[-1])
             schema = build_schema_from_mappings(product, mfs, product_schema_mappings)
-            upsert_app_metafield(shop, access_token, product["id"], wrap_flattened_json_in_schema(schema))
+            upsert_app_metafield(
+                shop,
+                access_token,
+                product["id"],
+                wrap_flattened_json_in_schema(schema)
+            )
 
     def process_collections():
         collections = fetch_all_collections(shop, access_token)
         for col in collections:
             mfs = fetch_collection_metafields(shop, access_token, col["id"].split("/")[-1])
             schema = build_schema_from_mappings(col, mfs, collection_schema_mappings)
-            upsert_collection_app_metafield(shop, access_token, col["id"], wrap_flattened_json_in_schema(schema))
+            upsert_collection_app_metafield(
+                shop,
+                access_token,
+                col["id"],
+                wrap_flattened_json_in_schema(schema)
+            )
 
     threading.Thread(target=process_products, daemon=True).start()
     threading.Thread(target=process_collections, daemon=True).start()
     threading.Thread(target=process_pages, daemon=True).start()
     threading.Thread(target=process_blogs, daemon=True).start()
 
-    return jsonify({"message": "Schema saved and site-wide metafields updating"})
+    return jsonify({
+        "message": "Schema saved and site-wide metafields updating",
+        "homepage_updated": incoming_homepage is not None
+    })
 
 
+
+def fetch_homepage_schema_config(shop, access_token):
+    """
+    Returns homepage_schema_config from app_config metaobject
+    """
+    entry = fetch_schema_config_entry(
+        shop,
+        access_token,
+        "homepage_schema_config"
+    )
+
+    if not isinstance(entry, dict):
+        return None
+
+    return entry.get("homepage_schema_config")
+
+def validate_homepage_schema_config(config):
+    """
+    Soft validation only.
+    Returns (is_valid, normalized_config)
+    """
+    if config is None:
+        return True, None
+
+    if not isinstance(config, dict):
+        return False, None
+
+    if not config.keys():
+        return False, None
+
+    return True, config
+def get_homepage_schema(shop, access_token):
+    """
+    Returns final homepage schema JSON-LD or None
+    """
+    config = fetch_homepage_schema_config(shop, access_token)
+
+    valid, config = validate_homepage_schema_config(config)
+    if not valid:
+        return None
+
+    schema = build_homepage_schema(config)
+    return wrap_homepage_schema(schema)
+
+
+def build_homepage_schema(schema_config):
+    """
+    Returns fully composed homepage schema JSON
+    """
+    if not schema_config:
+        return None
+
+    schema = {
+        "@context": "https://schema.org"
+    }
+
+    for key, value in schema_config.items():
+        if value is None:
+            continue
+        schema[key] = value
+
+    return schema
+
+def wrap_homepage_schema(schema):
+    """
+    Wraps homepage schema for JSON-LD output
+    """
+    if not schema:
+        return None
+
+    return {
+        "@graph": [schema]
+    }
+
+def wrap_homepage_schema(schema):
+    """
+    Wraps homepage schema for JSON-LD output
+    """
+    if not schema:
+        return None
+
+    return {
+        "@graph": [schema]
+    }
 
 
 @app.route("/get_metafields", methods=["POST"])
