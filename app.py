@@ -439,14 +439,14 @@ def home():
             }
 
             page_config = {
-                "collection_schema_mappings": (
+                "page_schema_mappings": (
                     normalize(raw_collection, "page_schema_mappings")
                     or normalize(raw_product, "page_schema_mappings")
                 )
             }
 
             blog_config = {
-                "collection_schema_mappings": (
+                "blo_schema_mappings": (
                     normalize(raw_collection, "blog_schema_mappings")
                     or normalize(raw_product, "blog_schema_mappings")
                 )
