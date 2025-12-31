@@ -675,6 +675,8 @@ document.getElementById("saveBlogBtn").onclick = async () => {
 document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
     updateMappings();
     updateCollectionMappings();
+    updateBlogMappings();
+    updatePageMappings();
     const payload = {
         shop: '{{ shop_name }}',
         hmac: '{{ hmac_value }}',
