@@ -521,7 +521,7 @@ const savedCollectionMappings = normalizeMappings(
     rawCollectionConfig?.collection_schema_mappings,
     "collection_schema_mappings"
 );
-
+    console.log("saved page mappings:", JSON.stringify(savedPageMappings, null, 2));
     console.log("saved blog mappings:", JSON.stringify(savedBlogMappings, null, 2));
     console.log("saved colelction mappings:", JSON.stringify(savedCollectionMappings, null, 2));
 
