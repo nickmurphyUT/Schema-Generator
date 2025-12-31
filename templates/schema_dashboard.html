@@ -475,6 +475,13 @@ function updateCollectionMappings() {
     }));
 }
 
+    function updateBlogMappings() {
+    collectionMappings = [...document.querySelectorAll("#blog-mapping-container > div")].map(row => ({
+        schemaField: row.querySelector(".blog-schema-input").value.trim() || row.querySelector(".blog-schema-select").value.trim(),
+        sourceField: row.querySelector(".blog-source").value.trim()
+    }));
+}
+
 function updateMappings() {
     mappings = [...document.querySelectorAll("#schema-mapping-container > div")].map(row => ({
         schemaField: row.querySelector(".schema-input").value.trim() || row.querySelector(".schema-select").value.trim(),
@@ -597,6 +604,32 @@ document.getElementById("saveCollectionBtn").onclick = async () => {
         collection_schema_mappings: collectionMappings
     };
     const preview = document.getElementById("collection-preview");
+    preview.innerHTML = 'Saving…';
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
+    } catch {
+        preview.innerHTML = 'Network Error';
+    }
+};
+
+
+    // Collection Save Only
+document.getElementById("saveBlogBtn").onclick = async () => {
+    updateBlogMappings();
+    const payload = {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        blog_schema_mappings: blogMappings
+    };
+    const preview = document.getElementById("blog-preview");
     preview.innerHTML = 'Saving…';
 
     try {
