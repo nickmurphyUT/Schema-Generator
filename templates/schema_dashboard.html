@@ -219,6 +219,131 @@ function createCollectionRow(defaultSchema = "", defaultSource = "") {
     updateCollectionMappings();
 }
 
+let blogRowId = 0;
+let blogMappings = [];
+
+function createBlogRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
+
+    const blogFieldOptions = [
+        "blog.title",
+        "blog.handle",
+        "blog.url"
+    ];
+
+    const sourceOptions = [...blogFieldOptions];
+    if (defaultSource && !blogFieldOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
+
+    const id = blogRowId++;
+    const container = document.getElementById("blog-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="blog-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f =>
+                    `<option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>`
+                ).join("")}
+            </select>
+            <input
+                type="text"
+                class="blog-schema-input p-2 border rounded"
+                placeholder="Or write your own…"
+                value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}"
+            >
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
+            <select class="blog-source p-2 border rounded bg-white">
+                <option value="">Select Blog Attribute</option>
+                ${sourceOptions.map(o =>
+                    `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`
+                ).join("")}
+            </select>
+        </div>
+
+        <button class="delete-blog-row bg-red-500 text-white px-3 py-2 rounded self-center">
+            X
+        </button>
+    `;
+
+    row.querySelector(".delete-blog-row").onclick = () => {
+        row.remove();
+        updateBlogMappings();
+    };
+
+    row.querySelector(".blog-schema-select").onchange = updateBlogMappings;
+    row.querySelector(".blog-schema-input").oninput = updateBlogMappings;
+    row.querySelector(".blog-source").onchange = updateBlogMappings;
+
+    container.appendChild(row);
+    updateBlogMappings();
+}
+
+function updateBlogMappings() {
+    blogMappings = [...document.querySelectorAll("#blog-mapping-container > div")]
+        .map(row => ({
+            schemaField:
+                row.querySelector(".blog-schema-input")?.value.trim()
+                || row.querySelector(".blog-schema-select")?.value.trim(),
+            sourceField:
+                row.querySelector(".blog-source")?.value.trim()
+        }))
+        .filter(m => m.schemaField && m.sourceField);
+}
+
+    function createCollectionRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) schemaOptions.push(defaultSchema);
+
+    const sourceOptions = [...collectionFieldOptions];
+    if (defaultSource && !collectionFieldOptions.includes(defaultSource)) sourceOptions.push(defaultSource);
+
+    const id = collectionRowId++;
+    const container = document.getElementById("collection-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="collection-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f => `<option value="${f}" ${f===defaultSchema?"selected":""}>${f}</option>`).join("")}
+            </select>
+            <input type="text" class="collection-schema-input p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema)?defaultSchema:""}">
+        </div>
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
+            <select class="collection-source p-2 border rounded bg-white">
+                <option value="">Select Collection Attribute</option>
+                ${sourceOptions.map(o => `<option value="${o}" ${o===defaultSource?"selected":""}>${o}</option>`).join("")}
+            </select>
+        </div>
+        <button class="delete-collection-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
+    `;
+
+    row.querySelector(".delete-collection-row").onclick = () => { row.remove(); updateCollectionMappings(); };
+    row.querySelector(".collection-schema-select").onchange = updateCollectionMappings;
+    row.querySelector(".collection-schema-input").oninput = updateCollectionMappings;
+    row.querySelector(".collection-source").onchange = updateCollectionMappings;
+
+    container.appendChild(row);
+    updateCollectionMappings();
+}
 function createSchemaRow(defaultSchema = "", defaultSource = "") {
     const schemaOptions = [...commonSchemaFields];
     if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) schemaOptions.push(defaultSchema);
@@ -322,11 +447,12 @@ const savedCollectionMappings = normalizeMappings(
 /* ================= PREPOPULATE UI ================= */
 if (savedBlogMappings.length > 0) {
     savedBlogMappings.forEach(m =>
-        createSchemaRow(m.schemaField || "", m.sourceField || "")
+        createBlogRow(m.schemaField || "", m.sourceField || "")
     );
 } else {
-    createSchemaRow();
+    createBlogRow();
 }
+
 
     if (savedPageMappings.length > 0) {
     savedPageMappings.forEach(m =>
