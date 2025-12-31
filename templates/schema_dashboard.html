@@ -685,7 +685,9 @@ document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
         hmac: '{{ hmac_value }}',
         id_token: '{{ id_token_value }}',
         product_schema_mappings: mappings,
-        collection_schema_mappings: collectionMappings
+        collection_schema_mappings: collectionMappings,
+        page_schema_mappings: pageMappings,
+        blog_schema_mappings: blogMappings
     };
     const preview = document.getElementById("metafields-preview");
     preview.innerHTML = 'Saving…';
