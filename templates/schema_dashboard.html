@@ -148,7 +148,10 @@ let collectionMappings = [];
 let collectionRowId = 0;
 let mappings = [];
 let rowIdCounter = 0;
-
+let pageRowId = 0;
+let pageMappings = [];
+let blogRowId = 0;
+let blogMappings = [];
 /* ================= FIELD OPTIONS ================= */
 const collectionFieldOptions = [
     "collection.title",
@@ -218,9 +221,87 @@ function createCollectionRow(defaultSchema = "", defaultSource = "") {
     container.appendChild(row);
     updateCollectionMappings();
 }
+function createPageRow(defaultSchema = "", defaultSource = "") {
+    const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
 
-let blogRowId = 0;
-let blogMappings = [];
+    const pageFieldOptions = [
+        "page.title",
+        "page.handle",
+        "page.url"
+    ];
+
+    const sourceOptions = [...pageFieldOptions];
+    if (defaultSource && !pageFieldOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
+
+    const id = pageRowId++;
+    const container = document.getElementById("page-mapping-container");
+
+    const row = document.createElement("div");
+    row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
+
+    row.innerHTML = `
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <select class="page-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f =>
+                    `<option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>`
+                ).join("")}
+            </select>
+            <input
+                type="text"
+                class="page-schema-input p-2 border rounded"
+                placeholder="Or write your own…"
+                value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}"
+            >
+        </div>
+
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
+            <select class="page-source p-2 border rounded bg-white">
+                <option value="">Select Page Attribute</option>
+                ${sourceOptions.map(o =>
+                    `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`
+                ).join("")}
+            </select>
+        </div>
+
+        <button class="delete-page-row bg-red-500 text-white px-3 py-2 rounded self-center">
+            X
+        </button>
+    `;
+
+    row.querySelector(".delete-page-row").onclick = () => {
+        row.remove();
+        updatePageMappings();
+    };
+
+    row.querySelector(".page-schema-select").onchange = updatePageMappings;
+    row.querySelector(".page-schema-input").oninput = updatePageMappings;
+    row.querySelector(".page-source").onchange = updatePageMappings;
+
+    container.appendChild(row);
+    updatePageMappings();
+}
+
+function updatePageMappings() {
+    pageMappings = [...document.querySelectorAll("#page-mapping-container > div")]
+        .map(row => ({
+            schemaField:
+                row.querySelector(".page-schema-input")?.value.trim()
+                || row.querySelector(".page-schema-select")?.value.trim(),
+            sourceField:
+                row.querySelector(".page-source")?.value.trim()
+        }))
+        .filter(m => m.schemaField && m.sourceField);
+}
+
 
 function createBlogRow(defaultSchema = "", defaultSource = "") {
     const schemaOptions = [...commonSchemaFields];
@@ -432,7 +513,7 @@ const savedBlogMappings = normalizeMappings(
 );
 
     const savedPageMappings = normalizeMappings(
-    rawBlogConfig?.page_schema_mappings,
+    rawPageConfig?.page_schema_mappings,
     "page_schema_mappings"
 );
 
@@ -454,13 +535,14 @@ if (savedBlogMappings.length > 0) {
 }
 
 
-    if (savedPageMappings.length > 0) {
+if (savedPageMappings.length > 0) {
     savedPageMappings.forEach(m =>
-        createSchemaRow(m.schemaField || "", m.sourceField || "")
+        createPageRow(m.schemaField || "", m.sourceField || "")
     );
 } else {
-    createSchemaRow();
+    createPageRow();
 }
+
 
 if (savedProductMappings.length > 0) {
     savedProductMappings.forEach(m =>
