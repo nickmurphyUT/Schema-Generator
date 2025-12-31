@@ -390,14 +390,12 @@ def home():
     collection_config = {}
     page_config = {}
     blog_config = {}
-
-    # ✅ NEW
-    homepage_config = {}
+    homepage_config = {}   # ✅ FIXED
 
     if access_token:
         try:
             # --------------------------------------------------
-            # Metafield definitions (SAFE)
+            # Metafield definitions
             # --------------------------------------------------
             meta_data = get_metafield_definitions(shop, access_token)
             data = meta_data.get("data", {})
@@ -410,71 +408,48 @@ def home():
             # --------------------------------------------------
             # FETCH CONFIG BLOBS (METAOBJECT)
             # --------------------------------------------------
-            raw_product = fetch_schema_config_entry(
-                shop, access_token, "product_schema_mappings"
-            )
-            raw_collection = fetch_schema_config_entry(
-                shop, access_token, "collection_schema_mappings"
-            )
-            raw_page = fetch_schema_config_entry(
-                shop, access_token, "page_schema_mappings"
-            )
-            raw_blog = fetch_schema_config_entry(
-                shop, access_token, "blog_schema_mappings"
-            )
+            raw_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
+            raw_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
+            raw_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
+            raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
+            raw_homepage = fetch_schema_config_entry(shop, access_token, "homepage_schema_config")
 
-            # ✅ NEW: homepage config (RAW OBJECT)
-            raw_homepage = fetch_schema_config_entry(
-                shop, access_token, "homepage_schema_config"
-            )
-            
             # --------------------------------------------------
-            # NORMALIZATION (BULLETPROOF)
+            # NORMALIZATION (ARRAY-ONLY SCHEMAS)
             # --------------------------------------------------
             def normalize(value, key):
                 if not isinstance(value, dict):
                     return []
                 if isinstance(value.get(key), list):
                     return value[key]
-                while isinstance(value, dict) and key in value:
-                    value = value.get(key)
-                    if isinstance(value, list):
-                        return value
                 return []
 
             product_config = {
-                "product_schema_mappings": normalize(
-                    raw_product, "product_schema_mappings"
-                )
+                "product_schema_mappings": normalize(raw_product, "product_schema_mappings")
             }
 
             collection_config = {
-                "collection_schema_mappings": (
-                    normalize(raw_collection, "collection_schema_mappings")
-                    or normalize(raw_product, "collection_schema_mappings")
-                )
+                "collection_schema_mappings": normalize(raw_collection, "collection_schema_mappings")
             }
 
             page_config = {
-                "page_schema_mappings": (
-                    normalize(raw_page, "page_schema_mappings")
-                    or normalize(raw_product, "page_schema_mappings")
-                )
+                "page_schema_mappings": normalize(raw_page, "page_schema_mappings")
             }
 
             blog_config = {
-                "blog_schema_mappings": (
-                    normalize(raw_blog, "blog_schema_mappings")
-                    or normalize(raw_product, "blog_schema_mappings")
-                )
+                "blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings")
             }
 
-            homepage_config = {
-                "homepage_schema_mappings": (
-                    normalize(raw_homepage, "homepage_schema_mappings")
-                    or normalize(raw_product, "homepage_schema_mappings")
-                )
-            }
+            # --------------------------------------------------
+            # ✅ HOMEPAGE CONFIG (OBJECT — NO NORMALIZE)
+            # --------------------------------------------------
+            if isinstance(raw_homepage, dict):
+                homepage_config = raw_homepage
+            else:
+                homepage_config = {}
+
+        except Exception:
+            logging.exception("Home route failed safely")
 
     # --------------------------------------------------
     # Organization schema fields
@@ -483,29 +458,12 @@ def home():
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
-        {"title": "Homepage Schema", "url": "/app/homepage-schema-builder"},  # ✅ NEW
+        {"title": "Homepage Schema", "url": "/app/homepage-schema-builder"},
         {"title": "Product Schema", "url": "/app/products-schema-builder"},
         {"title": "Collection Schema", "url": "/app/collections-schema-builder"},
         {"title": "Page Schema", "url": "/app/pages-schema-builder"},
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
-
-    logging.info(
-        "Rendering schema_dashboard.html: %s",
-        json.dumps(
-            {
-                "schemas": schemas,
-                "shop_name": shop,
-                "product_config": product_config,
-                "collection_config": collection_config,
-                "page_config": page_config,
-                "blog_config": blog_config,
-                "homepage_config": homepage_config,
-            },
-            indent=2,
-            default=str,
-        ),
-    )
 
     return render_template(
         "schema_dashboard.html",
@@ -527,9 +485,10 @@ def home():
         page_config=page_config,
         blog_config=blog_config,
 
-        # ✅ NEW
+        # ✅ FIXED
         homepage_config=homepage_config
     )
+
 
 
     
