@@ -476,7 +476,7 @@ function updateCollectionMappings() {
 }
 
     function updateBlogMappings() {
-    collectionMappings = [...document.querySelectorAll("#blog-mapping-container > div")].map(row => ({
+    blogMappings = [...document.querySelectorAll("#blog-mapping-container > div")].map(row => ({
         schemaField: row.querySelector(".blog-schema-input").value.trim() || row.querySelector(".blog-schema-select").value.trim(),
         sourceField: row.querySelector(".blog-source").value.trim()
     }));
