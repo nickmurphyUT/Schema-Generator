@@ -427,7 +427,7 @@ def home():
             raw_homepage = fetch_schema_config_entry(
                 shop, access_token, "homepage_schema_config"
             )
-            logging.info("raw homme ", raw_homepage)
+            
             # --------------------------------------------------
             # NORMALIZATION (BULLETPROOF)
             # --------------------------------------------------
@@ -475,16 +475,6 @@ def home():
                     or normalize(raw_product, "homepage_schema_mappings")
                 )
             }
-            # --------------------------------------------------
-            # HOMEPAGE CONFIG (NO NORMALIZATION)
-            # --------------------------------------------------
-            if isinstance(raw_homepage, dict):
-                homepage_config = raw_homepage
-            else:
-                homepage_config = {}
-
-        except Exception:
-            logging.exception("Home route failed safely")
 
     # --------------------------------------------------
     # Organization schema fields
@@ -538,7 +528,7 @@ def home():
         blog_config=blog_config,
 
         # ✅ NEW
-        homepage_config=homepage_config,
+        homepage_config=homepage_config
     )
 
 
