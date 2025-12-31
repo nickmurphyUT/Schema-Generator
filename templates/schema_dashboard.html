@@ -576,15 +576,9 @@ if (savedCollectionMappings.length > 0) {
 /* ================= SAVE HANDLERS ================= */
 // Product Save Only
 document.getElementById("sendToBackendBtn").onclick = async () => {
-    updateMappings();
-    const payload = {
-        shop: '{{ shop_name or "Not found" }}',
-        hmac: '{{ hmac_value or "Not found" }}',
-        id_token: '{{ id_token_value or "Not found" }}',
-        product_schema_mappings: mappings
-    };
+    const payload = buildFullPayload();
     const preview = document.getElementById("metafields-preview");
-    preview.innerHTML = 'Saving…';
+    preview.innerHTML = "Saving…";
 
     try {
         const resp = await fetch("/verify_and_create_metafields", {
@@ -593,11 +587,12 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
             body: JSON.stringify(payload)
         });
         const result = await resp.json();
-        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
+        preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error || JSON.stringify(result)}`;
     } catch {
-        preview.innerHTML = 'Network Error';
+        preview.innerHTML = "Network Error";
     }
 };
+
 
 // Collection Save Only
 document.getElementById("saveCollectionBtn").onclick = async () => {
@@ -704,6 +699,25 @@ document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
         preview.innerHTML = 'Network Error';
     }
 });
+
+
+    function buildFullPayload() {
+    updateMappings();
+    updateCollectionMappings();
+    updateBlogMappings();
+    updatePageMappings();
+
+    return {
+        shop: '{{ shop_name }}',
+        hmac: '{{ hmac_value }}',
+        id_token: '{{ id_token_value }}',
+        product_schema_mappings: mappings,
+        collection_schema_mappings: collectionMappings,
+        blog_schema_mappings: blogMappings,
+        page_schema_mappings: pageMappings
+    };
+}
+
 </script>
 
 
