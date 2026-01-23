@@ -2695,7 +2695,8 @@ def verify_and_create_metafields():
     incoming_blog = data.get("blog_schema_mappings")
 
     # ✅ NEW: homepage schema (RAW CONFIG, NOT METAFIELDS)
-    incoming_homepage = data.get("homepage_schema_config")
+    incoming_homepage = data.get("homepage_schema_mappings")
+
 
     # ---------------------------------------------------------
     # Ensure metaobject definition exists
@@ -2729,7 +2730,7 @@ def verify_and_create_metafields():
 
     # ✅ NEW: existing homepage config
     existing_homepage = fetch_schema_config_entry(
-        shop, access_token, "homepage_schema_config"
+        shop, access_token, "homepage_schema_mappings"
     )
 
     product_schema_mappings = normalize_list(
@@ -2756,11 +2757,12 @@ def verify_and_create_metafields():
         else existing_blog
     )
 
-    homepage_schema_config = (
-        existing_homepage
+    homepage_schema_mappings = normalize_list(
+        existing_homepage.get("homepage_schema_mappings")
         if isinstance(existing_homepage, dict)
-        else None
+        else existing_homepage
     )
+
 
     logging.info("Existing PRODUCT mappings: %s", json.dumps(product_schema_mappings, indent=2))
     logging.info("Existing COLLECTION mappings: %s", json.dumps(collection_schema_mappings, indent=2))
@@ -2785,7 +2787,8 @@ def verify_and_create_metafields():
 
     # ✅ NEW: homepage replace (NO NORMALIZATION)
     if incoming_homepage is not None:
-        homepage_schema_config = incoming_homepage
+        homepage_schema_mappings = normalize_list(incoming_homepage)
+
 
     logging.info(
         "Merged schema state (FINAL): %s",
@@ -2794,7 +2797,7 @@ def verify_and_create_metafields():
             "collection_schema_mappings": collection_schema_mappings,
             "page_schema_mappings": page_schema_mappings,
             "blog_schema_mappings": blog_schema_mappings,
-            "homepage_schema_config": homepage_schema_config
+            "homepage_schema_config": homepage_schema_mappings
         }, indent=2)
     )
 
@@ -2809,6 +2812,7 @@ def verify_and_create_metafields():
     collection_schema_mappings = dedupe_mappings(collection_schema_mappings)
     page_schema_mappings = dedupe_mappings(page_schema_mappings)
     blog_schema_mappings = dedupe_mappings(blog_schema_mappings)
+    homepage_schema_mappings = dedupe_mappings(homepage_schema_mappings)
 
     resp = create_config_entry(
         shop,
@@ -2821,7 +2825,8 @@ def verify_and_create_metafields():
             "blog_schema_mappings": blog_schema_mappings,
 
             # ✅ NEW: stored but NEVER processed
-            "homepage_schema_config": homepage_schema_config
+            "homepage_schema_mappings": homepage_schema_mappings
+
         }
     )
 
