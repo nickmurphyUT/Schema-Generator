@@ -427,7 +427,6 @@ def home():
             raw_homepage = fetch_schema_config_entry(
                 shop, access_token, "homepage_schema_config"
             )
-            logging.info("raw homme ", raw_homepage)
             # --------------------------------------------------
             # NORMALIZATION (BULLETPROOF)
             # --------------------------------------------------
@@ -2768,7 +2767,6 @@ def verify_and_create_metafields():
     logging.info("Existing COLLECTION mappings: %s", json.dumps(collection_schema_mappings, indent=2))
     logging.info("Existing PAGE mappings: %s", json.dumps(page_schema_mappings, indent=2))
     logging.info("Existing BLOG mappings: %s", json.dumps(blog_schema_mappings, indent=2))
-    logging.info("Existing HOMEPAGE config: %s", json.dumps(homepage_schema_config, indent=2))
 
     # ---------------------------------------------------------
     # STEP 2: Replace ONLY what frontend sent
