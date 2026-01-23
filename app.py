@@ -2967,18 +2967,6 @@ def wrap_homepage_schema(schema):
         "@graph": [schema]
     }
 
-def wrap_homepage_schema(schema):
-    """
-    Wraps homepage schema for JSON-LD output
-    """
-    if not schema:
-        return None
-
-    return {
-        "@graph": [schema]
-    }
-
-
 @app.route("/get_metafields", methods=["POST"])
 def get_metafields():
     data = request.json
