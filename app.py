@@ -474,13 +474,6 @@ def home():
                     or normalize(raw_product, "homepage_schema_mappings")
                 )
             }
-            # --------------------------------------------------
-            # HOMEPAGE CONFIG (NO NORMALIZATION)
-            # --------------------------------------------------
-            if isinstance(raw_homepage, dict):
-                homepage_config = raw_homepage
-            else:
-                homepage_config = {}
 
         except Exception:
             logging.exception("Home route failed safely")
