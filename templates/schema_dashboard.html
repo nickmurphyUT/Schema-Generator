@@ -695,107 +695,90 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
 
 // Collection Save Only
 document.getElementById("saveCollectionBtn").onclick = async () => {
-    updateCollectionMappings();
-    const payload = {
-        shop: '{{ shop_name }}',
-        hmac: '{{ hmac_value }}',
-        id_token: '{{ id_token_value }}',
-        collection_schema_mappings: collectionMappings
-    };
-    const preview = document.getElementById("collection-preview");
-    preview.innerHTML = 'Saving…';
+  const payload = buildFullPayload();
+  const preview = document.getElementById("collection-preview");
+  preview.innerHTML = "Saving…";
 
-    try {
-        const resp = await fetch("/verify_and_create_metafields", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        const result = await resp.json();
-        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
-    } catch {
-        preview.innerHTML = 'Network Error';
-    }
+  try {
+    const resp = await fetch("/verify_and_create_metafields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await resp.json();
+    preview.innerHTML = resp.ok
+      ? "Saved!"
+      : `Error: ${result.error || JSON.stringify(result)}`;
+  } catch {
+    preview.innerHTML = "Network Error";
+  }
 };
+
 
 
     // Collection Save Only
 document.getElementById("saveBlogBtn").onclick = async () => {
-    updateBlogMappings();
-    const payload = {
-        shop: '{{ shop_name }}',
-        hmac: '{{ hmac_value }}',
-        id_token: '{{ id_token_value }}',
-        blog_schema_mappings: blogMappings
-    };
-    const preview = document.getElementById("blog-preview");
-    preview.innerHTML = 'Saving…';
+  const payload = buildFullPayload();
+  const preview = document.getElementById("blog-preview");
+  preview.innerHTML = "Saving…";
 
-    try {
-        const resp = await fetch("/verify_and_create_metafields", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        const result = await resp.json();
-        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
-    } catch {
-        preview.innerHTML = 'Network Error';
-    }
+  try {
+    const resp = await fetch("/verify_and_create_metafields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await resp.json();
+    preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error || JSON.stringify(result)}`;
+  } catch {
+    preview.innerHTML = "Network Error";
+  }
 };
+
 document.getElementById("saveHomepageBtn").onclick = async () => {
-    updateHomepageMappings();
+  const payload = buildFullPayload();
+  const preview = document.getElementById("homepage-preview");
+  preview.innerHTML = "Saving…";
 
-    const payload = {
-        shop: '{{ shop_name }}',
-        hmac: '{{ hmac_value }}',
-        id_token: '{{ id_token_value }}',
-        homepage_schema_mappings: homeMappings
-    };
+  try {
+    const resp = await fetch("/verify_and_create_metafields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-    const preview = document.getElementById("homepage-preview");
-    preview.innerHTML = 'Saving…';
-
-    try {
-        const resp = await fetch("/verify_and_create_metafields", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await resp.json();
-        preview.innerHTML = resp.ok
-            ? 'Saved!'
-            : `Error: ${result.error || JSON.stringify(result)}`;
-    } catch {
-        preview.innerHTML = 'Network Error';
-    }
+    const result = await resp.json();
+    preview.innerHTML = resp.ok
+      ? "Saved!"
+      : `Error: ${result.error || JSON.stringify(result)}`;
+  } catch {
+    preview.innerHTML = "Network Error";
+  }
 };
 
 
-    document.getElementById("savePageBtn").onclick = async () => {
-    updatePageMappings();
-    const payload = {
-        shop: '{{ shop_name }}',
-        hmac: '{{ hmac_value }}',
-        id_token: '{{ id_token_value }}',
-        page_schema_mappings: pageMappings
-    };
-    const preview = document.getElementById("page-preview");
-    preview.innerHTML = 'Saving…';
+ document.getElementById("savePageBtn").onclick = async () => {
+  const payload = buildFullPayload();
+  const preview = document.getElementById("page-preview");
+  preview.innerHTML = "Saving…";
 
-    try {
-        const resp = await fetch("/verify_and_create_metafields", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        const result = await resp.json();
-        preview.innerHTML = resp.ok ? `Saved!` : `Error: ${result.error || JSON.stringify(result)}`;
-    } catch {
-        preview.innerHTML = 'Network Error';
-    }
+  try {
+    const resp = await fetch("/verify_and_create_metafields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await resp.json();
+    preview.innerHTML = resp.ok
+      ? "Saved!"
+      : `Error: ${result.error || JSON.stringify(result)}`;
+  } catch {
+    preview.innerHTML = "Network Error";
+  }
 };
+
 // Optional Combined Save (if you ever add a "Save Both" button)
 document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
     updateMappings();
