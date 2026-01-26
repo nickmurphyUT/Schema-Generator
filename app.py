@@ -30,11 +30,11 @@ from math import ceil
 
 SCHEMA_CACHE = {
     "timestamp": 0,
-    "organization_fields": []
+    "fields": {}  # e.g. { "Organization": [...], "Product": [...] }
 }
 
-# Cache lifetime – 24 hours (in seconds)
-CACHE_TTL = 60 * 60 * 24
+CACHE_TTL = 60 * 60 * 24  # 24 hours (adjust as needed)
+
 
 # Load environment variables
 load_dotenv()
@@ -102,53 +102,72 @@ class StoreToken(db.Model):
 
 def fetch_organization_schema_properties():
     """
-    Fetches and parses Schema.org vocabulary to extract
-    Organization properties.
-    Uses in-memory caching for speed.
+    Fetches and caches Schema.org properties for all schema types
+    used by the app. Returns flat lists so the frontend does not
+    need to change.
     """
 
     now = time.time()
 
     # ---------------------------------
-    # 1. Return cached if still fresh
+    # 1. Return cached if fresh
     # ---------------------------------
-    if now - SCHEMA_CACHE["timestamp"] < CACHE_TTL:
-        return SCHEMA_CACHE["organization_fields"]
+    if now - SCHEMA_CACHE.get("timestamp", 0) < CACHE_TTL:
+        return SCHEMA_CACHE["fields"]
 
     # ---------------------------------
-    # 2. Fetch file from Schema.org
+    # 2. Fetch Schema.org vocabulary
     # ---------------------------------
     url = "https://schema.org/version/latest/schemaorg-current-https.jsonld"
-    resp = requests.get(url)
+    resp = requests.get(url, timeout=10)
+    resp.raise_for_status()
     data = resp.json()
 
-    graph = data["@graph"]
-
-    # Filter only properties
+    graph = data.get("@graph", [])
     properties = [p for p in graph if p.get("@type") == "rdf:Property"]
 
-    org_fields = []
+    fields = {
+        "org_schema_fields": [],
+        "product_schema_fields": [],
+        "collection_schema_fields": [],
+        "page_schema_fields": [],
+        "blog_schema_fields": [],
+        "homepage_schema_fields": [],
+    }
+
+    domain_map = {
+        "schema:Organization": "org_schema_fields",
+        "schema:Product": "product_schema_fields",
+        "schema:CollectionPage": "collection_schema_fields",
+        "schema:WebPage": "page_schema_fields",
+        "schema:BlogPosting": "blog_schema_fields",
+        "schema:WebSite": "homepage_schema_fields",
+    }
+
     for prop in properties:
         domain = prop.get("schema:domainIncludes")
         if not domain:
             continue
 
-        # Normalize
         domain_list = domain if isinstance(domain, list) else [domain]
+        prop_name = prop["@id"].split(":")[-1]
 
-        # Check if Organization is included
-        if any(d.get("@id") == "schema:Organization" for d in domain_list):
-            org_fields.append(prop["@id"].split(":")[-1])
-
-    org_fields.sort()
+        for d in domain_list:
+            key = domain_map.get(d.get("@id"))
+            if key:
+                fields[key].append(prop_name)
 
     # ---------------------------------
-    # 3. Update cache
+    # 3. Sort + cache
     # ---------------------------------
+    for v in fields.values():
+        v.sort()
+
     SCHEMA_CACHE["timestamp"] = now
-    SCHEMA_CACHE["organization_fields"] = org_fields
+    SCHEMA_CACHE["fields"] = fields
 
-    return org_fields
+    return fields
+
 
 def graphql_request(shop, token, query, variables=None):
     url = f"https://{shop}/admin/api/2025-10/graphql.json"
