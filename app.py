@@ -498,9 +498,17 @@ def home():
             logging.exception("Home route failed safely")
 
     # --------------------------------------------------
-    # Organization schema fields
+    # Schema.org fields (ALL, CACHED)
     # --------------------------------------------------
-    org_fields = fetch_organization_schema_properties()
+    schema_fields = fetch_organization_schema_properties()
+    
+    org_fields = schema_fields.get("org_schema_fields", [])
+    product_schema_fields = schema_fields.get("product_schema_fields", [])
+    collection_schema_fields = schema_fields.get("collection_schema_fields", [])
+    page_schema_fields = schema_fields.get("page_schema_fields", [])
+    blog_schema_fields = schema_fields.get("blog_schema_fields", [])
+    homepage_schema_fields = schema_fields.get("homepage_schema_fields", [])
+
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
@@ -535,20 +543,26 @@ def home():
         shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token,
-
+    
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
         page_metafields=page_metafields,
         blog_metafields=blog_metafields,
-
+    
+        # ✅ THIS FIXES PREPOPULATION
         org_schema_fields=org_fields,
-
+    
+        # ✅ AVAILABLE FOR FUTURE USE
+        product_schema_fields=product_schema_fields,
+        collection_schema_fields=collection_schema_fields,
+        page_schema_fields=page_schema_fields,
+        blog_schema_fields=blog_schema_fields,
+        homepage_schema_fields=homepage_schema_fields,
+    
         product_config=product_config,
         collection_config=collection_config,
         page_config=page_config,
         blog_config=blog_config,
-
-        # ✅ NEW
         homepage_config=homepage_config,
     )
 
