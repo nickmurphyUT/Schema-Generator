@@ -415,58 +415,58 @@ def home():
 
     if access_token:
         try:
-# --------------------------------------------------
-# Metafield definitions (SAFE + VERBOSE LOGGING)
-# --------------------------------------------------
-meta_data = get_metafield_definitions(shop, access_token)
-
-# --- RAW RESPONSE ---
-logging.info(
-    "RAW Shopify metafieldDefinitions response:\n%s",
-    json.dumps(meta_data, indent=2, default=str)
-)
-
-# --- GRAPHQL ERRORS (if any) ---
-if isinstance(meta_data, dict) and meta_data.get("errors"):
-    logging.error(
-        "Shopify GraphQL errors detected:\n%s",
-        json.dumps(meta_data["errors"], indent=2, default=str)
+    # --------------------------------------------------
+    # Metafield definitions (SAFE + VERBOSE LOGGING)
+    # --------------------------------------------------
+    meta_data = get_metafield_definitions(shop, access_token)
+    
+    # --- RAW RESPONSE ---
+    logging.info(
+        "RAW Shopify metafieldDefinitions response:\n%s",
+        json.dumps(meta_data, indent=2, default=str)
     )
-
-    # --- DATA SHAPE ---
-    data = meta_data.get("data", {}) if isinstance(meta_data, dict) else {}
     
-    logging.info("GraphQL top-level keys: %s", list(meta_data.keys()) if isinstance(meta_data, dict) else type(meta_data))
-    logging.info("GraphQL data keys: %s", list(data.keys()) if isinstance(data, dict) else type(data))
+    # --- GRAPHQL ERRORS (if any) ---
+    if isinstance(meta_data, dict) and meta_data.get("errors"):
+        logging.error(
+            "Shopify GraphQL errors detected:\n%s",
+            json.dumps(meta_data["errors"], indent=2, default=str)
+        )
     
-    # --- EXTRACT METAFIELDS (NO BEHAVIOR CHANGE) ---
-    product_metafields = data.get("productDefinitions", {}).get("edges", [])
-    collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
-    page_metafields = data.get("pageDefinitions", {}).get("edges", [])
-    blog_metafields = data.get("articleDefinitions", {}).get("edges", [])
-    
-    # --- COUNTS ---
-    logging.info("Metafield definition counts:")
-    logging.info("  PRODUCT: %d", len(product_metafields))
-    logging.info("  COLLECTION: %d", len(collection_metafields))
-    logging.info("  PAGE: %d", len(page_metafields))
-    logging.info("  ARTICLE (blog): %d", len(blog_metafields))
-    
-    # --- SAMPLE NODES (first item only, safe) ---
-    def log_sample(label, edges):
-        if edges:
-            logging.info(
-                "%s sample node:\n%s",
-                label,
-                json.dumps(edges[0], indent=2, default=str)
-            )
-        else:
-            logging.info("%s has NO metafield definitions", label)
-    
-    log_sample("PRODUCT", product_metafields)
-    log_sample("COLLECTION", collection_metafields)
-    log_sample("PAGE", page_metafields)
-    log_sample("ARTICLE (blog)", blog_metafields)
+        # --- DATA SHAPE ---
+        data = meta_data.get("data", {}) if isinstance(meta_data, dict) else {}
+        
+        logging.info("GraphQL top-level keys: %s", list(meta_data.keys()) if isinstance(meta_data, dict) else type(meta_data))
+        logging.info("GraphQL data keys: %s", list(data.keys()) if isinstance(data, dict) else type(data))
+        
+        # --- EXTRACT METAFIELDS (NO BEHAVIOR CHANGE) ---
+        product_metafields = data.get("productDefinitions", {}).get("edges", [])
+        collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
+        page_metafields = data.get("pageDefinitions", {}).get("edges", [])
+        blog_metafields = data.get("articleDefinitions", {}).get("edges", [])
+        
+        # --- COUNTS ---
+        logging.info("Metafield definition counts:")
+        logging.info("  PRODUCT: %d", len(product_metafields))
+        logging.info("  COLLECTION: %d", len(collection_metafields))
+        logging.info("  PAGE: %d", len(page_metafields))
+        logging.info("  ARTICLE (blog): %d", len(blog_metafields))
+        
+        # --- SAMPLE NODES (first item only, safe) ---
+        def log_sample(label, edges):
+            if edges:
+                logging.info(
+                    "%s sample node:\n%s",
+                    label,
+                    json.dumps(edges[0], indent=2, default=str)
+                )
+            else:
+                logging.info("%s has NO metafield definitions", label)
+        
+        log_sample("PRODUCT", product_metafields)
+        log_sample("COLLECTION", collection_metafields)
+        log_sample("PAGE", page_metafields)
+        log_sample("ARTICLE (blog)", blog_metafields)
 
 
             # --------------------------------------------------
