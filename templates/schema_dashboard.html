@@ -877,6 +877,23 @@ document.getElementById("schemaSectionSelect").addEventListener("change", e => {
 
 </script>
 
+<script>
+  // Convert Flask data to a JS object
+  const subscriptionInfo = {{ subscription_info | tojson | safe }};
+  console.log("Subscription info:", subscriptionInfo);
+
+  // Example usage
+  if (!subscriptionInfo.subscribed && subscriptionInfo.payment_url) {
+      const dashboard = document.querySelector("#section-product"); // or any container
+      const notice = document.createElement("div");
+      notice.className = "bg-yellow-100 text-yellow-800 p-4 rounded-lg mb-6";
+      notice.innerHTML = `
+          ⚠️ Your subscription is inactive. 
+          <a href="${subscriptionInfo.payment_url}" class="underline text-blue-600">Click here to pay</a> to enable full access.
+      `;
+      dashboard.prepend(notice);
+  }
+</script>
 
 </body>
 </html>
