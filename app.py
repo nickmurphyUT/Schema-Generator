@@ -51,6 +51,9 @@ allowed_origins = [
     "https://nontransferrnick.myshopify.com"
 ]
 
+SHOPIFY_GRAPHQL_URL = "https://nontransferrnick.myshopify.com/admin/api/2026-01/graphql.json"
+
+
 CORS(app, origins=allowed_origins, supports_credentials=True)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
@@ -388,6 +391,44 @@ def parse_schema_metaobject(node):
 
     return result
 
+
+import requests
+
+SHOPIFY_GRAPHQL_URL = "https://{shop}/admin/api/2026-01/graphql.json"
+
+def get_payment_url(shop, access_token, plan_name="Basic Plan"):
+    """Create a one-time or recurring app charge in Shopify."""
+    mutation = """
+    mutation appSubscriptionCreate($name: String!, $returnUrl: URL!) {
+      appSubscriptionCreate(
+        name: $name,
+        returnUrl: $returnUrl,
+        lineItems: [{ plan: { appRecurringPricingDetails: { price: { amount: 9.99, currencyCode: USD } } } }]
+      ) {
+        userErrors {
+          field
+          message
+        }
+        confirmationUrl
+        appSubscription {
+          id
+        }
+      }
+    }
+    """
+    return_url = f"https://{shop}/admin/apps/your-app"  # or your redirect route
+    resp = requests.post(
+        f"https://{shop}/admin/api/2026-01/graphql.json",
+        headers={"Content-Type": "application/json", "X-Shopify-Access-Token": access_token},
+        json={"query": mutation, "variables": {"name": plan_name, "returnUrl": return_url}},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json().get("data", {})
+    confirmation_url = data.get("appSubscriptionCreate", {}).get("confirmationUrl")
+    return confirmation_url
+
+
 @app.route("/")
 def home():
     shop = session.get("shop") or request.args.get("shop")
@@ -399,6 +440,9 @@ def home():
 
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
+
+    payment_required = False
+    payment_url = None
 
     product_metafields = []
     collection_metafields = []
@@ -413,6 +457,14 @@ def home():
 
     if access_token:
         try:
+            # -------------------------
+            # CHECK ACTIVE SUBSCRIPTION
+            # -------------------------
+            active_subs = get_active_subscription(shop, access_token)
+            if not active_subs:
+                payment_required = True
+                payment_url = get_payment_url(shop, access_token)
+
             # --------------------------------------------------
             # Metafield definitions (SAFE + VERBOSE LOGGING)
             # --------------------------------------------------
@@ -516,21 +568,21 @@ def home():
             page_config = {
                 "page_schema_mappings": (
                     normalize(raw_page, "page_schema_mappings")
-                    or normalize(raw_product, "page_schema_mappings")
+                    or normalize(raw_product, "product_schema_mappings")
                 )
             }
 
             blog_config = {
                 "blog_schema_mappings": (
                     normalize(raw_blog, "blog_schema_mappings")
-                    or normalize(raw_product, "blog_schema_mappings")
+                    or normalize(raw_product, "product_schema_mappings")
                 )
             }
 
             homepage_config = {
                 "homepage_schema_mappings": (
                     normalize(raw_homepage, "homepage_schema_mappings")
-                    or normalize(raw_product, "homepage_schema_mappings")
+                    or normalize(raw_product, "product_schema_mappings")
                 )
             }
 
@@ -541,7 +593,6 @@ def home():
     # Schema.org fields (ALL, CACHED)
     # --------------------------------------------------
     schema_fields = fetch_organization_schema_properties()
-
     org_fields = schema_fields.get("org_schema_fields", [])
     product_schema_fields = schema_fields.get("product_schema_fields", [])
     collection_schema_fields = schema_fields.get("collection_schema_fields", [])
@@ -568,6 +619,8 @@ def home():
                 "page_config": page_config,
                 "blog_config": blog_config,
                 "homepage_config": homepage_config,
+                "payment_required": payment_required,
+                "payment_url": payment_url,
             },
             indent=2,
             default=str,
@@ -581,6 +634,8 @@ def home():
         shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token,
+        payment_required=payment_required,
+        payment_url=payment_url,
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
         page_metafields=page_metafields,
