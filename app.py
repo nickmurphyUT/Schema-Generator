@@ -479,7 +479,9 @@ def home():
     subscription_info = None
     if access_token:
         subscription_info = get_shop_subscription_info(shop, access_token)
-
+    # ---------- LOGGING ----------
+    logging.info("Subscription info for shop %s: %s", shop, subscription_info)
+    
     product_metafields = []
     collection_metafields = []
     page_metafields = []
