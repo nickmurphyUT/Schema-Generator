@@ -409,65 +409,63 @@ def home():
     collection_config = {}
     page_config = {}
     blog_config = {}
-
-    # ✅ NEW
     homepage_config = {}
 
     if access_token:
         try:
-    # --------------------------------------------------
-    # Metafield definitions (SAFE + VERBOSE LOGGING)
-    # --------------------------------------------------
-    meta_data = get_metafield_definitions(shop, access_token)
-    
-    # --- RAW RESPONSE ---
-    logging.info(
-        "RAW Shopify metafieldDefinitions response:\n%s",
-        json.dumps(meta_data, indent=2, default=str)
-    )
-    
-    # --- GRAPHQL ERRORS (if any) ---
-    if isinstance(meta_data, dict) and meta_data.get("errors"):
-        logging.error(
-            "Shopify GraphQL errors detected:\n%s",
-            json.dumps(meta_data["errors"], indent=2, default=str)
-        )
-    
-        # --- DATA SHAPE ---
-        data = meta_data.get("data", {}) if isinstance(meta_data, dict) else {}
-        
-        logging.info("GraphQL top-level keys: %s", list(meta_data.keys()) if isinstance(meta_data, dict) else type(meta_data))
-        logging.info("GraphQL data keys: %s", list(data.keys()) if isinstance(data, dict) else type(data))
-        
-        # --- EXTRACT METAFIELDS (NO BEHAVIOR CHANGE) ---
-        product_metafields = data.get("productDefinitions", {}).get("edges", [])
-        collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
-        page_metafields = data.get("pageDefinitions", {}).get("edges", [])
-        blog_metafields = data.get("articleDefinitions", {}).get("edges", [])
-        
-        # --- COUNTS ---
-        logging.info("Metafield definition counts:")
-        logging.info("  PRODUCT: %d", len(product_metafields))
-        logging.info("  COLLECTION: %d", len(collection_metafields))
-        logging.info("  PAGE: %d", len(page_metafields))
-        logging.info("  ARTICLE (blog): %d", len(blog_metafields))
-        
-        # --- SAMPLE NODES (first item only, safe) ---
-        def log_sample(label, edges):
-            if edges:
-                logging.info(
-                    "%s sample node:\n%s",
-                    label,
-                    json.dumps(edges[0], indent=2, default=str)
-                )
-            else:
-                logging.info("%s has NO metafield definitions", label)
-        
-        log_sample("PRODUCT", product_metafields)
-        log_sample("COLLECTION", collection_metafields)
-        log_sample("PAGE", page_metafields)
-        log_sample("ARTICLE (blog)", blog_metafields)
+            # --------------------------------------------------
+            # Metafield definitions (SAFE + VERBOSE LOGGING)
+            # --------------------------------------------------
+            meta_data = get_metafield_definitions(shop, access_token)
 
+            logging.info(
+                "RAW Shopify metafieldDefinitions response:\n%s",
+                json.dumps(meta_data, indent=2, default=str),
+            )
+
+            if isinstance(meta_data, dict) and meta_data.get("errors"):
+                logging.error(
+                    "Shopify GraphQL errors detected:\n%s",
+                    json.dumps(meta_data["errors"], indent=2, default=str),
+                )
+
+            data = meta_data.get("data", {}) if isinstance(meta_data, dict) else {}
+
+            logging.info(
+                "GraphQL top-level keys: %s",
+                list(meta_data.keys()) if isinstance(meta_data, dict) else type(meta_data),
+            )
+            logging.info(
+                "GraphQL data keys: %s",
+                list(data.keys()) if isinstance(data, dict) else type(data),
+            )
+
+            # --- EXTRACT METAFIELDS (NO BEHAVIOR CHANGE) ---
+            product_metafields = data.get("productDefinitions", {}).get("edges", [])
+            collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
+            page_metafields = data.get("pageDefinitions", {}).get("edges", [])
+            blog_metafields = data.get("articleDefinitions", {}).get("edges", [])
+
+            logging.info("Metafield definition counts:")
+            logging.info("  PRODUCT: %d", len(product_metafields))
+            logging.info("  COLLECTION: %d", len(collection_metafields))
+            logging.info("  PAGE: %d", len(page_metafields))
+            logging.info("  ARTICLE (blog): %d", len(blog_metafields))
+
+            def log_sample(label, edges):
+                if edges:
+                    logging.info(
+                        "%s sample node:\n%s",
+                        label,
+                        json.dumps(edges[0], indent=2, default=str),
+                    )
+                else:
+                    logging.info("%s has NO metafield definitions", label)
+
+            log_sample("PRODUCT", product_metafields)
+            log_sample("COLLECTION", collection_metafields)
+            log_sample("PAGE", page_metafields)
+            log_sample("ARTICLE (blog)", blog_metafields)
 
             # --------------------------------------------------
             # FETCH CONFIG BLOBS (METAOBJECT)
@@ -484,11 +482,10 @@ def home():
             raw_blog = fetch_schema_config_entry(
                 shop, access_token, "blog_schema_mappings"
             )
-
-            # ✅ NEW: homepage config (RAW OBJECT)
             raw_homepage = fetch_schema_config_entry(
                 shop, access_token, "homepage_schema_config"
             )
+
             # --------------------------------------------------
             # NORMALIZATION (BULLETPROOF)
             # --------------------------------------------------
@@ -544,7 +541,7 @@ def home():
     # Schema.org fields (ALL, CACHED)
     # --------------------------------------------------
     schema_fields = fetch_organization_schema_properties()
-    
+
     org_fields = schema_fields.get("org_schema_fields", [])
     product_schema_fields = schema_fields.get("product_schema_fields", [])
     collection_schema_fields = schema_fields.get("collection_schema_fields", [])
@@ -552,10 +549,9 @@ def home():
     blog_schema_fields = schema_fields.get("blog_schema_fields", [])
     homepage_schema_fields = schema_fields.get("homepage_schema_fields", [])
 
-
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
-        {"title": "Homepage Schema", "url": "/app/homepage-schema-builder"},  # ✅ NEW
+        {"title": "Homepage Schema", "url": "/app/homepage-schema-builder"},
         {"title": "Product Schema", "url": "/app/products-schema-builder"},
         {"title": "Collection Schema", "url": "/app/collections-schema-builder"},
         {"title": "Page Schema", "url": "/app/pages-schema-builder"},
@@ -563,10 +559,9 @@ def home():
     ]
 
     logging.info(
-        "Rendering schema_dashboard.html: %s",
+        "Rendering schema_dashboard.html:\n%s",
         json.dumps(
             {
-                "schemas": schemas,
                 "shop_name": shop,
                 "product_config": product_config,
                 "collection_config": collection_config,
@@ -586,28 +581,23 @@ def home():
         shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token,
-    
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
         page_metafields=page_metafields,
         blog_metafields=blog_metafields,
-    
-        # ✅ THIS FIXES PREPOPULATION
         org_schema_fields=org_fields,
-    
-        # ✅ AVAILABLE FOR FUTURE USE
         product_schema_fields=product_schema_fields,
         collection_schema_fields=collection_schema_fields,
         page_schema_fields=page_schema_fields,
         blog_schema_fields=blog_schema_fields,
         homepage_schema_fields=homepage_schema_fields,
-    
         product_config=product_config,
         collection_config=collection_config,
         page_config=page_config,
         blog_config=blog_config,
         homepage_config=homepage_config,
     )
+
 
 
     
