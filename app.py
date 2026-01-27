@@ -395,7 +395,7 @@ def get_shop_subscription_info(shop, access_token):
     """
     graphql_url = f"https://{shop}/admin/api/2026-01/graphql.json"
 
-    # 1️⃣ Check if there is an active subscription
+    # 1️⃣ Check for active subscriptions
     query_active = """
     query {
       currentAppInstallation {
@@ -419,22 +419,20 @@ def get_shop_subscription_info(shop, access_token):
             timeout=15
         )
         resp.raise_for_status()
-        data = resp.json().get("data", {})
-        subs = data.get("currentAppInstallation", {}).get("activeSubscriptions", [])
+        subs = resp.json().get("data", {}).get("currentAppInstallation", {}).get("activeSubscriptions", [])
         active_subs = [s for s in subs if s["status"] == "ACTIVE"]
         if active_subs:
             return {"subscribed": True, "payment_url": None}
     except Exception:
         logging.exception("Failed to fetch active subscriptions")
-        # fallback to "not subscribed" if error
 
-    # 2️⃣ If no active subscription, generate a payment URL
+    # 2️⃣ No active subscription → create one-time purchase URL
     mutation_payment_url = """
     mutation {
       appPurchaseOneTimeCreate(
         name: "Schema App Subscription",
         price: { amount: 5.0, currencyCode: USD },
-        returnUrl: "/"
+        returnUrl: "https://your-app.com/"  # <-- full URL required
       ) {
         confirmationUrl
         userErrors {
@@ -455,10 +453,12 @@ def get_shop_subscription_info(shop, access_token):
             timeout=15
         )
         resp.raise_for_status()
-        data = resp.json().get("data", {})
-        url = (
-            data.get("appPurchaseOneTimeCreate", {}).get("confirmationUrl")
-        )
+        purchase = resp.json().get("data", {}).get("appPurchaseOneTimeCreate", {})
+
+        if purchase.get("userErrors"):
+            logging.error("Shopify subscription creation errors: %s", purchase["userErrors"])
+
+        url = purchase.get("confirmationUrl")
         return {"subscribed": False, "payment_url": url}
     except Exception:
         logging.exception("Failed to generate payment URL")
