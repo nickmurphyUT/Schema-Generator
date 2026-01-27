@@ -1244,27 +1244,60 @@ def get_metafield_definitions(shop, access_token):
     query = """
     {
       productDefinitions: metafieldDefinitions(ownerType: PRODUCT, first: 200) {
-        edges { node { id name namespace key type { name } description } }
+        edges {
+          node {
+            id
+            name
+            namespace
+            key
+            type { name }
+            description
+          }
+        }
       }
 
       collectionDefinitions: metafieldDefinitions(ownerType: COLLECTION, first: 200) {
-        edges { node { id name namespace key type { name } description } }
+        edges {
+          node {
+            id
+            name
+            namespace
+            key
+            type { name }
+            description
+          }
+        }
       }
 
-      pageDefinitions: metafieldDefinitions(
-        ownerType: PAGE,
-        first: 200,
-        visibleToStorefront: false
-      ) {
-        edges { node { id name namespace key type { name } description } }
+      pageDefinitions: metafieldDefinitions(ownerType: PAGE, first: 200) {
+        edges {
+          node {
+            id
+            name
+            namespace
+            key
+            type { name }
+            description
+          }
+        }
       }
 
-      articleDefinitions: metafieldDefinitions(ownerType: ARTICLE, first: 200) {
-        edges { node { id name namespace key type { name } description } }
+      blogDefinitions: metafieldDefinitions(ownerType: BLOG, first: 200) {
+        edges {
+          node {
+            id
+            name
+            namespace
+            key
+            type { name }
+            description
+          }
+        }
       }
     }
     """
     return query_shopify_graphql(shop, access_token, query)
+
 
 
 
