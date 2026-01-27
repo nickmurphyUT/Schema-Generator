@@ -51,9 +51,6 @@ allowed_origins = [
     "https://nontransferrnick.myshopify.com"
 ]
 
-SHOPIFY_GRAPHQL_URL = "https://nontransferrnick.myshopify.com/admin/api/2026-01/graphql.json"
-
-
 CORS(app, origins=allowed_origins, supports_credentials=True)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
@@ -392,41 +389,80 @@ def parse_schema_metaobject(node):
     return result
 
 
-import requests
+def get_shop_subscription_info(shop, access_token):
+    """
+    Returns a dict with subscription status and payment URL if needed.
+    """
+    graphql_url = f"https://{shop}/admin/api/2026-01/graphql.json"
 
-SHOPIFY_GRAPHQL_URL = "https://{shop}/admin/api/2026-01/graphql.json"
-
-def get_payment_url(shop, access_token, plan_name="Basic Plan"):
-    """Create a one-time or recurring app charge in Shopify."""
-    mutation = """
-    mutation appSubscriptionCreate($name: String!, $returnUrl: URL!) {
-      appSubscriptionCreate(
-        name: $name,
-        returnUrl: $returnUrl,
-        lineItems: [{ plan: { appRecurringPricingDetails: { price: { amount: 9.99, currencyCode: USD } } } }]
-      ) {
-        userErrors {
-          field
-          message
-        }
-        confirmationUrl
-        appSubscription {
+    # 1️⃣ Check if there is an active subscription
+    query_active = """
+    query {
+      currentAppInstallation {
+        activeSubscriptions {
           id
+          name
+          status
+          currentPeriodEnd
         }
       }
     }
     """
-    return_url = f"https://{shop}/admin/apps/your-app"  # or your redirect route
-    resp = requests.post(
-        f"https://{shop}/admin/api/2026-01/graphql.json",
-        headers={"Content-Type": "application/json", "X-Shopify-Access-Token": access_token},
-        json={"query": mutation, "variables": {"name": plan_name, "returnUrl": return_url}},
-        timeout=15,
-    )
-    resp.raise_for_status()
-    data = resp.json().get("data", {})
-    confirmation_url = data.get("appSubscriptionCreate", {}).get("confirmationUrl")
-    return confirmation_url
+    try:
+        resp = requests.post(
+            graphql_url,
+            headers={
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": access_token
+            },
+            json={"query": query_active},
+            timeout=15
+        )
+        resp.raise_for_status()
+        data = resp.json().get("data", {})
+        subs = data.get("currentAppInstallation", {}).get("activeSubscriptions", [])
+        active_subs = [s for s in subs if s["status"] == "ACTIVE"]
+        if active_subs:
+            return {"subscribed": True, "payment_url": None}
+    except Exception:
+        logging.exception("Failed to fetch active subscriptions")
+        # fallback to "not subscribed" if error
+
+    # 2️⃣ If no active subscription, generate a payment URL
+    mutation_payment_url = """
+    mutation {
+      appPurchaseOneTimeCreate(
+        name: "Schema App Subscription",
+        price: { amount: 5.0, currencyCode: USD },
+        returnUrl: "/"
+      ) {
+        confirmationUrl
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
+    try:
+        resp = requests.post(
+            graphql_url,
+            headers={
+                "Content-Type": "application/json",
+                "X-Shopify-Access-Token": access_token
+            },
+            json={"query": mutation_payment_url},
+            timeout=15
+        )
+        resp.raise_for_status()
+        data = resp.json().get("data", {})
+        url = (
+            data.get("appPurchaseOneTimeCreate", {}).get("confirmationUrl")
+        )
+        return {"subscribed": False, "payment_url": url}
+    except Exception:
+        logging.exception("Failed to generate payment URL")
+        return {"subscribed": False, "payment_url": None}
 
 
 @app.route("/")
@@ -440,9 +476,9 @@ def home():
 
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
-
-    payment_required = False
-    payment_url = None
+    subscription_info = None
+    if access_token:
+        subscription_info = get_shop_subscription_info(shop, access_token)
 
     product_metafields = []
     collection_metafields = []
@@ -457,14 +493,6 @@ def home():
 
     if access_token:
         try:
-            # -------------------------
-            # CHECK ACTIVE SUBSCRIPTION
-            # -------------------------
-            active_subs = get_active_subscription(shop, access_token)
-            if not active_subs:
-                payment_required = True
-                payment_url = get_payment_url(shop, access_token)
-
             # --------------------------------------------------
             # Metafield definitions (SAFE + VERBOSE LOGGING)
             # --------------------------------------------------
@@ -568,21 +596,21 @@ def home():
             page_config = {
                 "page_schema_mappings": (
                     normalize(raw_page, "page_schema_mappings")
-                    or normalize(raw_product, "product_schema_mappings")
+                    or normalize(raw_product, "page_schema_mappings")
                 )
             }
 
             blog_config = {
                 "blog_schema_mappings": (
                     normalize(raw_blog, "blog_schema_mappings")
-                    or normalize(raw_product, "product_schema_mappings")
+                    or normalize(raw_product, "blog_schema_mappings")
                 )
             }
 
             homepage_config = {
                 "homepage_schema_mappings": (
                     normalize(raw_homepage, "homepage_schema_mappings")
-                    or normalize(raw_product, "product_schema_mappings")
+                    or normalize(raw_product, "homepage_schema_mappings")
                 )
             }
 
@@ -593,6 +621,7 @@ def home():
     # Schema.org fields (ALL, CACHED)
     # --------------------------------------------------
     schema_fields = fetch_organization_schema_properties()
+
     org_fields = schema_fields.get("org_schema_fields", [])
     product_schema_fields = schema_fields.get("product_schema_fields", [])
     collection_schema_fields = schema_fields.get("collection_schema_fields", [])
@@ -619,8 +648,6 @@ def home():
                 "page_config": page_config,
                 "blog_config": blog_config,
                 "homepage_config": homepage_config,
-                "payment_required": payment_required,
-                "payment_url": payment_url,
             },
             indent=2,
             default=str,
@@ -634,8 +661,6 @@ def home():
         shop_name=shop,
         hmac_value=hmac,
         id_token_value=id_token,
-        payment_required=payment_required,
-        payment_url=payment_url,
         product_metafields=product_metafields,
         collection_metafields=collection_metafields,
         page_metafields=page_metafields,
@@ -651,7 +676,9 @@ def home():
         page_config=page_config,
         blog_config=blog_config,
         homepage_config=homepage_config,
+        subscription_info=subscription_info,  # <--- new
     )
+
 
 
 
