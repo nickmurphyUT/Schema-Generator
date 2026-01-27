@@ -405,7 +405,7 @@ function updateBlogMappings() {
         }))
         .filter(m => m.schemaField && m.sourceField);
 }
-function createHomepageRow(defaultSchema = "", defaultSource = "") {
+function createHomepageRow(defaultSchema = "", defaultSource = "", defaultText = "") {
     const schemaOptions = [...commonSchemaFields];
     if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) {
         schemaOptions.push(defaultSchema);
@@ -416,12 +416,10 @@ function createHomepageRow(defaultSchema = "", defaultSource = "") {
         sourceOptions.push(defaultSource);
     }
 
-    const id = homeRowId++;
     const container = document.getElementById("homepage-mapping-container");
 
     const row = document.createElement("div");
     row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
-    row.dataset.rowId = id;
 
     row.innerHTML = `
         <div class="flex-1 flex flex-col gap-2">
@@ -441,9 +439,15 @@ function createHomepageRow(defaultSchema = "", defaultSource = "") {
         </div>
 
         <div class="flex-1 flex flex-col gap-2">
-            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
+            <label class="text-sm text-gray-600 font-medium">Text Value (optional)</label>
+            <input
+                type="text"
+                class="homepage-text-value p-2 border rounded"
+                placeholder="Static text value…"
+                value="${defaultText || ""}"
+            >
             <select class="homepage-source p-2 border rounded bg-white">
-                <option value="">Select Homepage Attribute</option>
+                <option value="">Or select Shopify attribute</option>
                 ${sourceOptions.map(o =>
                     `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`
                 ).join("")}
@@ -463,21 +467,34 @@ function createHomepageRow(defaultSchema = "", defaultSource = "") {
     row.querySelector(".homepage-schema-select").onchange = updateHomepageMappings;
     row.querySelector(".homepage-schema-input").oninput = updateHomepageMappings;
     row.querySelector(".homepage-source").onchange = updateHomepageMappings;
+    row.querySelector(".homepage-text-value").oninput = updateHomepageMappings;
 
     container.appendChild(row);
     updateHomepageMappings();
 }
+
 function updateHomepageMappings() {
     homeMappings = [...document.querySelectorAll("#homepage-mapping-container > div")]
-        .map(row => ({
-            schemaField:
+        .map(row => {
+            const schemaField =
                 row.querySelector(".homepage-schema-input")?.value.trim()
-                || row.querySelector(".homepage-schema-select")?.value.trim(),
-            sourceField:
-                row.querySelector(".homepage-source")?.value.trim()
-        }))
+                || row.querySelector(".homepage-schema-select")?.value.trim();
+
+            const textValue =
+                row.querySelector(".homepage-text-value")?.value.trim();
+
+            const sourceField =
+                row.querySelector(".homepage-source")?.value.trim();
+
+            return {
+                schemaField,
+                sourceField: textValue || sourceField,
+                isStatic: Boolean(textValue)
+            };
+        })
         .filter(m => m.schemaField && m.sourceField);
 }
+
 
     function createCollectionRow(defaultSchema = "", defaultSource = "") {
     const schemaOptions = [...commonSchemaFields];
