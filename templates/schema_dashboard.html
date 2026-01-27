@@ -198,7 +198,25 @@ const productFieldOptions = [
     "variants[].weight",
     {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
+/* ================= PAGE FIELD OPTIONS ================= */
+const pageFieldOptions = [
+    "page.title",
+    "page.handle",
+    "page.url",
+    {% for mf in page_metafields %}
+    "metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",
+    {% endfor %}
+];
 
+/* ================= BLOG FIELD OPTIONS ================= */
+const blogFieldOptions = [
+    "blog.title",
+    "blog.handle",
+    "blog.url",
+    {% for mf in blog_metafields %}
+    "metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",
+    {% endfor %}
+];
 const commonSchemaFields = {{ org_schema_fields | tojson }};
 
 /* ================= CREATE ROW FUNCTIONS ================= */
@@ -249,12 +267,7 @@ function createPageRow(defaultSchema = "", defaultSource = "") {
         schemaOptions.push(defaultSchema);
     }
 
-    const pageFieldOptions = [
-        "page.title",
-        "page.handle",
-        "page.url"
-    ];
-
+    // Use the global pageFieldOptions array (includes metafields)
     const sourceOptions = [...pageFieldOptions];
     if (defaultSource && !pageFieldOptions.includes(defaultSource)) {
         sourceOptions.push(defaultSource);
@@ -312,6 +325,7 @@ function createPageRow(defaultSchema = "", defaultSource = "") {
     updatePageMappings();
 }
 
+
 function updatePageMappings() {
     pageMappings = [...document.querySelectorAll("#page-mapping-container > div")]
         .map(row => ({
@@ -331,12 +345,7 @@ function createBlogRow(defaultSchema = "", defaultSource = "") {
         schemaOptions.push(defaultSchema);
     }
 
-    const blogFieldOptions = [
-        "blog.title",
-        "blog.handle",
-        "blog.url"
-    ];
-
+    // Use the global blogFieldOptions array (includes metafields)
     const sourceOptions = [...blogFieldOptions];
     if (defaultSource && !blogFieldOptions.includes(defaultSource)) {
         sourceOptions.push(defaultSource);
@@ -393,6 +402,7 @@ function createBlogRow(defaultSchema = "", defaultSource = "") {
     container.appendChild(row);
     updateBlogMappings();
 }
+
 
 function updateBlogMappings() {
     blogMappings = [...document.querySelectorAll("#blog-mapping-container > div")]
