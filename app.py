@@ -444,7 +444,7 @@ def home():
             product_metafields = data.get("productDefinitions", {}).get("edges", [])
             collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
             page_metafields = data.get("pageDefinitions", {}).get("edges", [])
-            blog_metafields = data.get("articleDefinitions", {}).get("edges", [])
+            blog_metafields = data.get("blogDefinitions", {}).get("edges", [])
 
             logging.info("Metafield definition counts:")
             logging.info("  PRODUCT: %d", len(product_metafields))
