@@ -2282,19 +2282,22 @@ def extract_product_attribute(product_data, attr_path):
         return ""
 
 
-def wrap_flattened_json_in_schema(flattened_json):
+def wrap_flattened_json_in_schema(flattened_json, schema_type):
     """
-    Takes a dict and wraps it in a minimal schema.org Product structure
+    Wraps flattened JSON in a schema.org structure with a dynamic @type
     """
     schema_wrapped = {
-        "@context": "http://schema.org/",
-        "@type": "Product"
+        "@context": "https://schema.org",
+        "@type": schema_type
     }
 
-    # Merge flattened JSON inside
-    schema_wrapped.update(flattened_json)
+    # Avoid overwriting @context / @type if they exist in mappings
+    for k, v in flattened_json.items():
+        if k not in ("@context", "@type"):
+            schema_wrapped[k] = v
 
     return schema_wrapped
+
 
 
 def load_schema_mappings(shop, access_token, schema_type):
@@ -2991,7 +2994,7 @@ def verify_and_create_metafields():
                 shop,
                 access_token,
                 page["id"],
-                wrap_flattened_json_in_schema(schema)
+                wrap_flattened_json_in_schema(schema, "Page")
             )
 
     def process_blogs():
@@ -3003,7 +3006,7 @@ def verify_and_create_metafields():
                 shop,
                 access_token,
                 article["id"],
-                wrap_flattened_json_in_schema(schema)
+                wrap_flattened_json_in_schema(schema, "Blog")
             )
 
     def process_products():
@@ -3015,7 +3018,7 @@ def verify_and_create_metafields():
                 shop,
                 access_token,
                 product["id"],
-                wrap_flattened_json_in_schema(schema)
+                wrap_flattened_json_in_schema(schema, "Product")
             )
 
     def process_collections():
@@ -3027,7 +3030,7 @@ def verify_and_create_metafields():
                 shop,
                 access_token,
                 col["id"],
-                wrap_flattened_json_in_schema(schema)
+                wrap_flattened_json_in_schema(schema, "Collection")
             )
 
     threading.Thread(target=process_products, daemon=True).start()
