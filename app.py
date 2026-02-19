@@ -476,6 +476,13 @@ def home():
 
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
+    if not access_token:
+    return render_template(
+        "schema_dashboard.html",
+        title="Schema App Dashboard",
+        shop_name=shop,
+        needs_auth=True
+    )
     subscription_info = None
     if access_token:
         subscription_info = get_shop_subscription_info(shop, access_token)
@@ -678,6 +685,7 @@ def home():
         page_config=page_config,
         blog_config=blog_config,
         homepage_config=homepage_config,
+        needs_auth=False,
         subscription_info=subscription_info,  # <--- new
     )
 
