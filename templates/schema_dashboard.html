@@ -25,6 +25,21 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    {% if needs_auth %}
+<div class="max-w-xl mx-auto mt-20 bg-white shadow-lg rounded-xl p-8 text-center border border-gray-200">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+        App Not Authorized
+    </h2>
+    <p class="text-gray-600 mb-6">
+        This store has not completed Shopify authorization.
+    </p>
+    <a href="/auth?shop={{ shop_name }}"
+       class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition">
+        Authorize App
+    </a>
+</div>
+{% endif %}
+
 <div class="max-w-7xl mx-auto px-6 py-4">
   <label class="text-sm font-medium text-gray-600 mr-2">
     Select schema type:
