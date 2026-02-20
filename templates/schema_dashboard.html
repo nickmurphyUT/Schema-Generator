@@ -933,9 +933,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Hide entire app UI
         appContainer.style.display = "none";
+        const shopDomain = shopName;
 
+        // Remove .myshopify.com
+        const storeHandle = shopDomain.replace(".myshopify.com", "");
+
+        authLink.href = `https://admin.shopify.com/store/${storeHandle}/apps/schema-test-1/auth`;
         // Set link dynamically
-        authLink.href = `/auth?shop=${encodeURIComponent(shopName)}`;
+        //https://admin.shopify.com/store/brandography-theme/apps/schema-test-1/auth
+        //authLink.href = `https://admin.shopify.com/store/brandography-theme/apps/schema-test-1/auth`;
+        //authLink.href = `/auth?shop=${encodeURIComponent(shopName)}`;
     }
 });
 </script>
