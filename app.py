@@ -51,7 +51,7 @@ allowed_origins = [
     "https://nontransferrnick.myshopify.com"
 ]
 
-CORS(app, origins=allowed_origins, supports_credentials=True)
+CORS(app)  # Allow all origins
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
