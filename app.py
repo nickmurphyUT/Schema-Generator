@@ -727,7 +727,8 @@ def authenticate():
     return redirect(auth_url)
 
 
-# ✅ Step 2: Handle Shopify OAuth callback and return access token
+from flask import redirect
+
 @app.route("/auth/callback")
 def auth_callback():
     shop = request.args.get("shop")
@@ -742,13 +743,14 @@ def auth_callback():
         "client_secret": SHOPIFY_API_SECRET,
         "code": code,
     }
+
     response = requests.post(token_url, json=payload)
 
     if response.status_code != 200:
         return jsonify({"error": "Error retrieving access token"}), 400
-    
+
     access_token = response.json().get("access_token")
-    
+
     # Save token to DB
     store = StoreToken.query.filter_by(shop=shop).first()
     if store:
@@ -756,17 +758,17 @@ def auth_callback():
     else:
         store = StoreToken(shop=shop, access_token=access_token)
         db.session.add(store)
-    
+
     db.session.commit()
 
+    # 🔥 Extract store handle (remove .myshopify.com)
+    store_handle = shop.replace(".myshopify.com", "")
 
-    return jsonify(
-        {
-            "message": "Authorization successful",
-            "shop": shop,
-            "access_token": access_token,
-        }
+    # 🔥 Redirect back into Shopify Admin app
+    return redirect(
+        f"https://admin.shopify.com/store/{store_handle}/apps/schema-test-1"
     )
+
 #list of needed webhooks: products/update, products/create, products/delete, collections/create, collections/delete, collections/update no page/blog webhooks, maybe a sync button in the app interface?
 @app.route("/createWebhook", methods=["POST"])
 def create_webhook():
