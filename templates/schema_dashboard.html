@@ -25,22 +25,23 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    {% if needs_auth %}
-<div class="max-w-xl mx-auto mt-20 bg-white shadow-lg rounded-xl p-8 text-center border border-gray-200">
+<!-- AUTH BLOCK -->
+<div id="auth-block"
+     class="hidden max-w-xl mx-auto mt-20 bg-white shadow-lg rounded-xl p-8 text-center border border-gray-200">
     <h2 class="text-2xl font-semibold text-gray-800 mb-4">
         App Not Authorized
     </h2>
     <p class="text-gray-600 mb-6">
         This store has not completed Shopify authorization.
     </p>
-    <a href="/auth?shop={{ shop_name }}"
+    <a id="auth-link"
        class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition">
         Authorize App
     </a>
 </div>
-{% endif %}
 
-<div class="max-w-7xl mx-auto px-6 py-4">
+
+<div class="max-w-7xl mx-auto px-6 py-4" id="app-container">
   <label class="text-sm font-medium text-gray-600 mr-2">
     Select schema type:
   </label>
@@ -909,6 +910,35 @@ document.getElementById("schemaSectionSelect").addEventListener("change", e => {
       dashboard.prepend(notice);
   }
 </script>
+
+    <script>
+    const needsAuth = {{ needs_auth | tojson }};
+    const shopName = {{ shop_name | tojson }};
+</script>
+
+
+    <script>
+document.addEventListener("DOMContentLoaded", () => {
+    const authBlock = document.getElementById("auth-block");
+    const appContainer = document.getElementById("app-container");
+    const authLink = document.getElementById("auth-link");
+
+    if (needsAuth) {
+        // Show auth block
+        authBlock.classList.remove("hidden");
+
+        // Hide entire app UI
+        appContainer.style.display = "none";
+
+        // Set link dynamically
+        authLink.href = `/auth?shop=${encodeURIComponent(shopName)}`;
+    } else {
+        authBlock.classList.add("hidden");
+        appContainer.style.display = "block";
+    }
+});
+</script>
+
 
 </body>
 </html>
