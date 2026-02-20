@@ -917,32 +917,28 @@ document.getElementById("schemaSectionSelect").addEventListener("change", e => {
 </script>
 
 
-    <script>
+<script>
 document.addEventListener("DOMContentLoaded", () => {
     const authBlock = document.getElementById("auth-block");
     const appContainer = document.getElementById("app-container");
     const authLink = document.getElementById("auth-link");
 
-    if (needsAuth) {
-       authBlock.classList.add("hidden");
-        appContainer.style.display = "block";
-
-    } else {
-                // Show auth block
+    if (!needsAuth) {
+        // Show auth block
         authBlock.classList.remove("hidden");
-
-        // Hide entire app UI
         appContainer.style.display = "none";
-        const shopDomain = shopName;
 
-        // Remove .myshopify.com
-        const storeHandle = shopDomain.replace(".myshopify.com", "");
+        // Get shop from URL (Shopify always provides it)
+        const params = new URLSearchParams(window.location.search);
+        const shop = params.get("shop");
 
-        authLink.href = `https://admin.shopify.com/store/${storeHandle}/apps/schema-test-1/auth`;
-        // Set link dynamically
-        //https://admin.shopify.com/store/brandography-theme/apps/schema-test-1/auth
-        //authLink.href = `https://admin.shopify.com/store/brandography-theme/apps/schema-test-1/auth`;
-        //authLink.href = `/auth?shop=${encodeURIComponent(shopName)}`;
+        if (shop) {
+            authLink.href = `/auth?shop=${encodeURIComponent(shop)}`;
+            authLink.target = "_top"; // 🔥 break out of iframe
+        }
+    } else {
+        authBlock.classList.add("hidden");
+        appContainer.style.display = "block";
     }
 });
 </script>
