@@ -911,11 +911,10 @@ document.getElementById("schemaSectionSelect").addEventListener("change", e => {
   }
 </script>
 
-    <script>
-    const needsAuth = {{ needs_auth | tojson }};
-    const shopName = {{ shop_name | tojson }};
+<script>
+const needsAuth = {{ needs_auth | tojson }};
+const shopName = {{ shop_name | tojson }};
 </script>
-
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -923,25 +922,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const appContainer = document.getElementById("app-container");
     const authLink = document.getElementById("auth-link");
 
-    if (!needsAuth) {
-        // Show auth block
+    if (needsAuth) {
+        // 🔥 Show auth block
         authBlock.classList.remove("hidden");
         appContainer.style.display = "none";
 
-        // Get shop from URL (Shopify always provides it)
         const params = new URLSearchParams(window.location.search);
         const shop = params.get("shop");
 
         if (shop) {
             authLink.href = `/auth?shop=${encodeURIComponent(shop)}`;
-            authLink.target = "_top"; // 🔥 break out of iframe
+            authLink.target = "_top";
         }
     } else {
+        // 🔥 Show app
         authBlock.classList.add("hidden");
         appContainer.style.display = "block";
     }
 });
 </script>
+
 
 
 </body>
