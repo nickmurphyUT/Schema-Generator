@@ -1519,14 +1519,12 @@ def get_meta_object(store):
 def fetch_schema_config_entry(shop, access_token, schema_type):
     """
     Returns a parsed config value for the requested schema_type.
-
-    schema_type should be one of:
-      - "product_schema_mappings"
-      - "collection_schema_mappings"
-
-    Returns:
-      [] or {} if missing
     """
+
+    logging.info("=== fetch_schema_config_entry START ===")
+    logging.info("Shop: %s", shop)
+    logging.info("Schema Type Requested: %s", schema_type)
+    logging.info("Access token exists: %s", bool(access_token))
 
     query = """
     query {
@@ -1544,22 +1542,64 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
     }
     """
 
-    resp = query_shopify_graphql(shop, access_token, query)
+    try:
+        logging.info("Sending GraphQL query to Shopify...")
+        resp = query_shopify_graphql(shop, access_token, query)
 
-    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
-    if not edges:
+        logging.info("Raw Shopify response type: %s", type(resp))
+        logging.info("Raw Shopify response:\n%s", json.dumps(resp, indent=2, default=str))
+
+        if not isinstance(resp, dict):
+            logging.error("Shopify response is NOT a dict!")
+            return []
+
+        if resp.get("errors"):
+            logging.error("Shopify returned GraphQL errors:\n%s",
+                          json.dumps(resp["errors"], indent=2, default=str))
+
+        edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
+        logging.info("Metaobject edges found: %d", len(edges))
+
+        if not edges:
+            logging.warning("No metaobjects found for shop %s", shop)
+            return []
+
+        node = edges[0].get("node", {})
+        logging.info("Metaobject node ID: %s", node.get("id"))
+
+        fields = node.get("fields", [])
+        logging.info("Total fields found: %d", len(fields))
+        logging.info("Fields raw dump:\n%s", json.dumps(fields, indent=2, default=str))
+
+        for f in fields:
+            key = f.get("key")
+            value = f.get("value")
+
+            logging.info("Inspecting field key: %s", key)
+
+            if key == schema_type:
+                logging.info("Matched schema_type field: %s", schema_type)
+                logging.info("Raw value:\n%s", value)
+
+                try:
+                    parsed = json.loads(value or "[]")
+                    logging.info("Parsed JSON type: %s", type(parsed))
+                    logging.info("Parsed JSON value:\n%s",
+                                 json.dumps(parsed, indent=2, default=str))
+                    logging.info("=== fetch_schema_config_entry SUCCESS ===")
+                    return parsed
+                except Exception:
+                    logging.exception("Failed to JSON parse field value for key %s", key)
+                    return []
+
+        logging.warning("Schema type %s not found in metaobject fields", schema_type)
+        logging.info("=== fetch_schema_config_entry END (not found) ===")
         return []
 
-    fields = edges[0]["node"].get("fields", [])
+    except Exception:
+        logging.exception("CRITICAL ERROR in fetch_schema_config_entry")
+        return []
 
-    for f in fields:
-        if f.get("key") == schema_type:
-            try:
-                return json.loads(f.get("value") or "[]")
-            except Exception:
-                return []
-
-    return []
 
 
 def update_metaobject_entry(shop, access_token, config_id, fields):
