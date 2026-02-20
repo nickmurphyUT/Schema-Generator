@@ -474,37 +474,34 @@ def home():
     latest_values["hmac"] = hmac
     latest_values["id_token"] = id_token
 
-    # Fetch token from DB
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
+    subscription_info = None
 
-    # Determine frontend auth requirement
-    needs_auth = True  # default to True
-
+    # ---------- SAFE TOKEN CHECK ----------
     if access_token:
         try:
-            # Check if token is valid
-            if is_token_valid(shop, access_token):
-                needs_auth = False
-            else:
-                logging.warning(
-                    "Invalid Shopify token detected for %s. Will require re-auth.", shop
-                )
-                # We do NOT commit None to DB; just act as if token is missing
-                access_token = None
+            subscription_info = get_shop_subscription_info(shop, access_token)
         except Exception:
-            logging.exception(
-                "Error while validating Shopify token for %s. Forcing re-auth.", shop
+            logging.warning(
+                "Invalid Shopify token detected for %s. Access denied to API data.", shop
             )
             access_token = None
+            subscription_info = None
 
-    # Fetch subscription info if token is valid
-    subscription_info = None
-    if access_token:
-        subscription_info = get_shop_subscription_info(shop, access_token)
-        logging.info("Subscription info for shop %s: %s", shop, subscription_info)
+    # If no valid token, render auth-required page immediately
+    if not access_token:
+        return render_template(
+            "schema_dashboard.html",
+            title="Schema App Dashboard",
+            shop_name=shop,
+            needs_auth=True
+        )
 
-    # Initialize empty defaults
+    # ---------- LOGGING ----------
+    logging.info("Subscription info for shop %s: %s", shop, subscription_info)
+
+    # ---------- INITIALIZE METAFIELDS & CONFIGS ----------
     product_metafields = []
     collection_metafields = []
     page_metafields = []
@@ -516,30 +513,63 @@ def home():
     blog_config = {}
     homepage_config = {}
 
-    # Only fetch Shopify metafields/config if token is valid
     if access_token:
         try:
+            # -----------------------
+            # Metafield definitions
+            # -----------------------
             meta_data = get_metafield_definitions(shop, access_token)
-
             logging.info(
                 "RAW Shopify metafieldDefinitions response:\n%s",
                 json.dumps(meta_data, indent=2, default=str),
             )
 
+            if isinstance(meta_data, dict) and meta_data.get("errors"):
+                logging.error(
+                    "Shopify GraphQL errors detected:\n%s",
+                    json.dumps(meta_data["errors"], indent=2, default=str),
+                )
+
             data = meta_data.get("data", {}) if isinstance(meta_data, dict) else {}
 
+            logging.info("GraphQL top-level keys: %s", list(meta_data.keys()) if isinstance(meta_data, dict) else type(meta_data))
+            logging.info("GraphQL data keys: %s", list(data.keys()) if isinstance(data, dict) else type(data))
+
+            # Extract metafields
             product_metafields = data.get("productDefinitions", {}).get("edges", [])
             collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
             page_metafields = data.get("pageDefinitions", {}).get("edges", [])
             blog_metafields = data.get("blogDefinitions", {}).get("edges", [])
 
-            # Fetch config blobs
+            logging.info("Metafield definition counts:")
+            logging.info("  PRODUCT: %d", len(product_metafields))
+            logging.info("  COLLECTION: %d", len(collection_metafields))
+            logging.info("  PAGE: %d", len(page_metafields))
+            logging.info("  ARTICLE (blog): %d", len(blog_metafields))
+
+            def log_sample(label, edges):
+                if edges:
+                    logging.info("%s sample node:\n%s", label, json.dumps(edges[0], indent=2, default=str))
+                else:
+                    logging.info("%s has NO metafield definitions", label)
+
+            log_sample("PRODUCT", product_metafields)
+            log_sample("COLLECTION", collection_metafields)
+            log_sample("PAGE", page_metafields)
+            log_sample("ARTICLE (blog)", blog_metafields)
+
+            # -----------------------
+            # Fetch schema config blobs
+            # -----------------------
             raw_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
             raw_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
             raw_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
             raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
             raw_homepage = fetch_schema_config_entry(shop, access_token, "homepage_schema_config")
 
+            # -----------------------
+            # Normalization helper
+            # -----------------------
             def normalize(value, key):
                 if not isinstance(value, dict):
                     return []
@@ -552,15 +582,17 @@ def home():
                 return []
 
             product_config = {"product_schema_mappings": normalize(raw_product, "product_schema_mappings")}
-            collection_config = {"collection_schema_mappings": normalize(raw_collection, "collection_schema_mappings") or normalize(raw_product, "product_schema_mappings")}
-            page_config = {"page_schema_mappings": normalize(raw_page, "page_schema_mappings") or normalize(raw_product, "product_schema_mappings")}
-            blog_config = {"blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings") or normalize(raw_product, "product_schema_mappings")}
-            homepage_config = {"homepage_schema_mappings": normalize(raw_homepage, "homepage_schema_mappings") or normalize(raw_product, "product_schema_mappings")}
+            collection_config = {"collection_schema_mappings": normalize(raw_collection, "collection_schema_mappings") or normalize(raw_product, "collection_schema_mappings")}
+            page_config = {"page_schema_mappings": normalize(raw_page, "page_schema_mappings") or normalize(raw_product, "page_schema_mappings")}
+            blog_config = {"blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings") or normalize(raw_product, "blog_schema_mappings")}
+            homepage_config = {"homepage_schema_mappings": normalize(raw_homepage, "homepage_schema_mappings") or normalize(raw_product, "homepage_schema_mappings")}
 
         except Exception:
-            logging.exception("Failed to fetch metafields or config safely.")
+            logging.exception("Home route failed safely")
 
-    # Fetch Schema.org fields (cached)
+    # -----------------------
+    # Schema.org fields (cached)
+    # -----------------------
     schema_fields = fetch_organization_schema_properties()
     org_fields = schema_fields.get("org_schema_fields", [])
     product_schema_fields = schema_fields.get("product_schema_fields", [])
@@ -579,7 +611,15 @@ def home():
     ]
 
     logging.info(
-        "Rendering schema_dashboard.html with shop %s, needs_auth=%s", shop, needs_auth
+        "Rendering schema_dashboard.html:\n%s",
+        json.dumps({
+            "shop_name": shop,
+            "product_config": product_config,
+            "collection_config": collection_config,
+            "page_config": page_config,
+            "blog_config": blog_config,
+            "homepage_config": homepage_config,
+        }, indent=2, default=str),
     )
 
     return render_template(
@@ -604,9 +644,10 @@ def home():
         page_config=page_config,
         blog_config=blog_config,
         homepage_config=homepage_config,
-        needs_auth=needs_auth,
-        subscription_info=subscription_info,
+        needs_auth=False,
+        subscription_info=subscription_info,  # <--- new
     )
+
 
 
 
