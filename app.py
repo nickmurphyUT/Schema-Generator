@@ -481,8 +481,25 @@ def home():
             "schema_dashboard.html",
             title="Schema App Dashboard",
             shop_name=shop,
-            needs_auth=True
+            needs_auth=True,
+            product_metafields=[],
+            collection_metafields=[],
+            page_metafields=[],
+            blog_metafields=[],
+            org_schema_fields=[],
+            product_schema_fields=[],
+            collection_schema_fields=[],
+            page_schema_fields=[],
+            blog_schema_fields=[],
+            homepage_schema_fields=[],
+            product_config={},
+            collection_config={},
+            page_config={},
+            blog_config={},
+            homepage_config={},
+            subscription_info={},
         )
+
     subscription_info = None
     if access_token:
         subscription_info = get_shop_subscription_info(shop, access_token)
