@@ -474,9 +474,28 @@ def home():
     latest_values["hmac"] = hmac
     latest_values["id_token"] = id_token
 
+    # --------------------------------------------------
+    # TOKEN CHECK + VALIDATION
+    # --------------------------------------------------
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
-    if not access_token:
+
+    needs_auth = True
+
+    if access_token:
+        if is_token_valid(shop, access_token):
+            needs_auth = False
+        else:
+            logging.warning("Invalid Shopify token detected for %s. Clearing token.", shop)
+            store.access_token = None
+            db.session.commit()
+            access_token = None
+            needs_auth = True
+
+    # --------------------------------------------------
+    # EARLY RETURN IF AUTH NEEDED
+    # --------------------------------------------------
+    if needs_auth:
         return render_template(
             "schema_dashboard.html",
             title="Schema App Dashboard",
@@ -500,12 +519,12 @@ def home():
             subscription_info={},
         )
 
-    subscription_info = None
-    if access_token:
-        subscription_info = get_shop_subscription_info(shop, access_token)
-    # ---------- LOGGING ----------
+    # --------------------------------------------------
+    # SAFE TO CONTINUE (TOKEN VALID)
+    # --------------------------------------------------
+    subscription_info = get_shop_subscription_info(shop, access_token)
     logging.info("Subscription info for shop %s: %s", shop, subscription_info)
-    
+
     product_metafields = []
     collection_metafields = []
     page_metafields = []
@@ -517,143 +536,60 @@ def home():
     blog_config = {}
     homepage_config = {}
 
-    if access_token:
-        try:
-            # --------------------------------------------------
-            # Metafield definitions (SAFE + VERBOSE LOGGING)
-            # --------------------------------------------------
-            meta_data = get_metafield_definitions(shop, access_token)
+    try:
+        meta_data = get_metafield_definitions(shop, access_token)
 
-            logging.info(
-                "RAW Shopify metafieldDefinitions response:\n%s",
-                json.dumps(meta_data, indent=2, default=str),
-            )
+        data = meta_data.get("data", {}) if isinstance(meta_data, dict) else {}
 
-            if isinstance(meta_data, dict) and meta_data.get("errors"):
-                logging.error(
-                    "Shopify GraphQL errors detected:\n%s",
-                    json.dumps(meta_data["errors"], indent=2, default=str),
-                )
+        product_metafields = data.get("productDefinitions", {}).get("edges", [])
+        collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
+        page_metafields = data.get("pageDefinitions", {}).get("edges", [])
+        blog_metafields = data.get("blogDefinitions", {}).get("edges", [])
 
-            data = meta_data.get("data", {}) if isinstance(meta_data, dict) else {}
+        raw_product = fetch_schema_config_entry(shop, access_token, "product_schema_mappings")
+        raw_collection = fetch_schema_config_entry(shop, access_token, "collection_schema_mappings")
+        raw_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
+        raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
+        raw_homepage = fetch_schema_config_entry(shop, access_token, "homepage_schema_config")
 
-            logging.info(
-                "GraphQL top-level keys: %s",
-                list(meta_data.keys()) if isinstance(meta_data, dict) else type(meta_data),
-            )
-            logging.info(
-                "GraphQL data keys: %s",
-                list(data.keys()) if isinstance(data, dict) else type(data),
-            )
-
-            # --- EXTRACT METAFIELDS (NO BEHAVIOR CHANGE) ---
-            product_metafields = data.get("productDefinitions", {}).get("edges", [])
-            collection_metafields = data.get("collectionDefinitions", {}).get("edges", [])
-            page_metafields = data.get("pageDefinitions", {}).get("edges", [])
-            blog_metafields = data.get("blogDefinitions", {}).get("edges", [])
-
-            logging.info("Metafield definition counts:")
-            logging.info("  PRODUCT: %d", len(product_metafields))
-            logging.info("  COLLECTION: %d", len(collection_metafields))
-            logging.info("  PAGE: %d", len(page_metafields))
-            logging.info("  ARTICLE (blog): %d", len(blog_metafields))
-
-            def log_sample(label, edges):
-                if edges:
-                    logging.info(
-                        "%s sample node:\n%s",
-                        label,
-                        json.dumps(edges[0], indent=2, default=str),
-                    )
-                else:
-                    logging.info("%s has NO metafield definitions", label)
-
-            log_sample("PRODUCT", product_metafields)
-            log_sample("COLLECTION", collection_metafields)
-            log_sample("PAGE", page_metafields)
-            log_sample("ARTICLE (blog)", blog_metafields)
-
-            # --------------------------------------------------
-            # FETCH CONFIG BLOBS (METAOBJECT)
-            # --------------------------------------------------
-            raw_product = fetch_schema_config_entry(
-                shop, access_token, "product_schema_mappings"
-            )
-            raw_collection = fetch_schema_config_entry(
-                shop, access_token, "collection_schema_mappings"
-            )
-            raw_page = fetch_schema_config_entry(
-                shop, access_token, "page_schema_mappings"
-            )
-            raw_blog = fetch_schema_config_entry(
-                shop, access_token, "blog_schema_mappings"
-            )
-            raw_homepage = fetch_schema_config_entry(
-                shop, access_token, "homepage_schema_config"
-            )
-
-            # --------------------------------------------------
-            # NORMALIZATION (BULLETPROOF)
-            # --------------------------------------------------
-            def normalize(value, key):
-                if not isinstance(value, dict):
-                    return []
-                if isinstance(value.get(key), list):
-                    return value[key]
-                while isinstance(value, dict) and key in value:
-                    value = value.get(key)
-                    if isinstance(value, list):
-                        return value
+        def normalize(value, key):
+            if not isinstance(value, dict):
                 return []
+            if isinstance(value.get(key), list):
+                return value[key]
+            while isinstance(value, dict) and key in value:
+                value = value.get(key)
+                if isinstance(value, list):
+                    return value
+            return []
 
-            product_config = {
-                "product_schema_mappings": normalize(
-                    raw_product, "product_schema_mappings"
-                )
-            }
+        product_config = {
+            "product_schema_mappings": normalize(raw_product, "product_schema_mappings")
+        }
 
-            collection_config = {
-                "collection_schema_mappings": (
-                    normalize(raw_collection, "collection_schema_mappings")
-                    or normalize(raw_product, "collection_schema_mappings")
-                )
-            }
+        collection_config = {
+            "collection_schema_mappings": normalize(raw_collection, "collection_schema_mappings")
+        }
 
-            page_config = {
-                "page_schema_mappings": (
-                    normalize(raw_page, "page_schema_mappings")
-                    or normalize(raw_product, "page_schema_mappings")
-                )
-            }
+        page_config = {
+            "page_schema_mappings": normalize(raw_page, "page_schema_mappings")
+        }
 
-            blog_config = {
-                "blog_schema_mappings": (
-                    normalize(raw_blog, "blog_schema_mappings")
-                    or normalize(raw_product, "blog_schema_mappings")
-                )
-            }
+        blog_config = {
+            "blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings")
+        }
 
-            homepage_config = {
-                "homepage_schema_mappings": (
-                    normalize(raw_homepage, "homepage_schema_mappings")
-                    or normalize(raw_product, "homepage_schema_mappings")
-                )
-            }
+        homepage_config = {
+            "homepage_schema_mappings": normalize(raw_homepage, "homepage_schema_mappings")
+        }
 
-        except Exception:
-            logging.exception("Home route failed safely")
+    except Exception:
+        logging.exception("Home route failed safely")
 
     # --------------------------------------------------
-    # Schema.org fields (ALL, CACHED)
+    # Schema.org Fields
     # --------------------------------------------------
     schema_fields = fetch_organization_schema_properties()
-
-    org_fields = schema_fields.get("org_schema_fields", [])
-    product_schema_fields = schema_fields.get("product_schema_fields", [])
-    collection_schema_fields = schema_fields.get("collection_schema_fields", [])
-    page_schema_fields = schema_fields.get("page_schema_fields", [])
-    blog_schema_fields = schema_fields.get("blog_schema_fields", [])
-    homepage_schema_fields = schema_fields.get("homepage_schema_fields", [])
 
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
@@ -663,22 +599,6 @@ def home():
         {"title": "Page Schema", "url": "/app/pages-schema-builder"},
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
-
-    logging.info(
-        "Rendering schema_dashboard.html:\n%s",
-        json.dumps(
-            {
-                "shop_name": shop,
-                "product_config": product_config,
-                "collection_config": collection_config,
-                "page_config": page_config,
-                "blog_config": blog_config,
-                "homepage_config": homepage_config,
-            },
-            indent=2,
-            default=str,
-        ),
-    )
 
     return render_template(
         "schema_dashboard.html",
@@ -691,21 +611,20 @@ def home():
         collection_metafields=collection_metafields,
         page_metafields=page_metafields,
         blog_metafields=blog_metafields,
-        org_schema_fields=org_fields,
-        product_schema_fields=product_schema_fields,
-        collection_schema_fields=collection_schema_fields,
-        page_schema_fields=page_schema_fields,
-        blog_schema_fields=blog_schema_fields,
-        homepage_schema_fields=homepage_schema_fields,
+        org_schema_fields=schema_fields.get("org_schema_fields", []),
+        product_schema_fields=schema_fields.get("product_schema_fields", []),
+        collection_schema_fields=schema_fields.get("collection_schema_fields", []),
+        page_schema_fields=schema_fields.get("page_schema_fields", []),
+        blog_schema_fields=schema_fields.get("blog_schema_fields", []),
+        homepage_schema_fields=schema_fields.get("homepage_schema_fields", []),
         product_config=product_config,
         collection_config=collection_config,
         page_config=page_config,
         blog_config=blog_config,
         homepage_config=homepage_config,
         needs_auth=False,
-        subscription_info=subscription_info,  # <--- new
+        subscription_info=subscription_info,
     )
-
 
 
 
@@ -3223,6 +3142,20 @@ def get_metafields():
 
     return resp.json()
 
+def is_token_valid(shop, access_token):
+    try:
+        response = requests.get(
+            f"https://{shop}/admin/api/2023-10/shop.json",
+            headers={
+                "X-Shopify-Access-Token": access_token
+            },
+            timeout=5
+        )
+
+        return response.status_code == 200
+
+    except Exception:
+        return False
 
 
 @app.route("/get_app_schema_metafield", methods=["GET"])
