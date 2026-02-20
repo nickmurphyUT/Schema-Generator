@@ -924,7 +924,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const authLink = document.getElementById("auth-link");
 
     if (needsAuth) {
-        // Show auth block
+       authBlock.classList.add("hidden");
+        appContainer.style.display = "block";
+
+    } else {
+                // Show auth block
         authBlock.classList.remove("hidden");
 
         // Hide entire app UI
@@ -932,9 +936,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Set link dynamically
         authLink.href = `/auth?shop=${encodeURIComponent(shopName)}`;
-    } else {
-        authBlock.classList.add("hidden");
-        appContainer.style.display = "block";
     }
 });
 </script>
