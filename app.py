@@ -1420,7 +1420,53 @@ def organization_schema():
     except Exception as e:
         return f"<p>Error fetching metafields: {str(e)}</p>"
 
+# Allowed schema types
+ALLOWED_SCHEMA_TYPES = {
+    "product_schema_mappings",
+    "collection_schema_mappings",
+    "page_schema_mappings",
+    "blog_schema_mappings",
+    "homepage_schema_config"
+}
 
+@app.route("/api/meta_object/<store>", methods=["GET"])
+def get_meta_object(store):
+    """
+    Returns the app metaobject config for a given store and schema type.
+    Example: GET /api/meta_object/myshop.myshopify.com?schema_type=product_schema_mappings
+    """
+    schema_type = request.args.get("schema_type")
+    if not schema_type or schema_type not in ALLOWED_SCHEMA_TYPES:
+        return jsonify({
+            "error": "Invalid or missing schema_type",
+            "allowed_types": list(ALLOWED_SCHEMA_TYPES)
+        }), 400
+
+    # 1️⃣ Lookup the store in the DB
+    store_record = StoreToken.query.filter_by(shop=store).first()
+    if not store_record or not store_record.access_token:
+        return jsonify({
+            "error": "Store not found or access token missing",
+            "needs_auth": True
+        }), 404
+
+    access_token = store_record.access_token
+
+    try:
+        # 2️⃣ Fetch the metaobject entry
+        config_entry = fetch_schema_config_entry(store, access_token, schema_type)
+
+        # 3️⃣ Return as JSON
+        return jsonify({
+            "shop": store,
+            "schema_type": schema_type,
+            "meta_object_entry": config_entry
+        })
+
+    except Exception:
+        logging.exception("Failed to fetch metaobject for store %s and schema_type %s", store, schema_type)
+        return jsonify({"error": "Failed to fetch metaobject entry"}), 500
+        
 def fetch_schema_config_entry(shop, access_token, schema_type):
     """
     Returns a parsed config value for the requested schema_type.
