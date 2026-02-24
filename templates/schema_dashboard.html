@@ -935,28 +935,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-    document.addEventListener("DOMContentLoaded", () => {
-    const toggleBtn = document.getElementById("toggleSubscriptionBtn");
-    const subscriptionView = document.getElementById("subscription-view");
-    const appContainer = document.getElementById("app-container");
-    const backBtn = document.getElementById("backToAppBtn");
+ // Ensure subscriptionInfo is defined first
+  const subscriptionInfo = {{ subscription_info | tojson | safe }};
 
-    toggleBtn.addEventListener("click", () => {
-        appContainer.style.display = "none";
-        subscriptionView.classList.remove("hidden");
-    });
+  document.addEventListener("DOMContentLoaded", () => {
+      const toggleBtn = document.getElementById("toggleSubscriptionBtn");
+      const subscriptionView = document.getElementById("subscription-view");
+      const appContainer = document.getElementById("app-container");
+      const backBtn = document.getElementById("backToAppBtn");
 
-    backBtn.addEventListener("click", () => {
-        subscriptionView.classList.add("hidden");
-        appContainer.style.display = "block";
-    });
+      // Only attach event listeners if elements exist
+      if (toggleBtn && subscriptionView && appContainer && backBtn) {
+          toggleBtn.addEventListener("click", () => {
+              appContainer.style.display = "none";
+              subscriptionView.classList.remove("hidden");
+          });
 
-    // Optional: Show subscription view automatically if not subscribed
-    if (subscriptionInfo && !subscriptionInfo.subscribed) {
-        appContainer.style.display = "none";
-        subscriptionView.classList.remove("hidden");
-    }
-});
+          backBtn.addEventListener("click", () => {
+              subscriptionView.classList.add("hidden");
+              appContainer.style.display = "block";
+          });
+
+          // Show subscription view automatically if user not subscribed
+          if (!subscriptionInfo.subscribed) {
+              appContainer.style.display = "none";
+              subscriptionView.classList.remove("hidden");
+
+              // Optional: disable toggle button if no payment URL
+              if (!subscriptionInfo.payment_url) {
+                  toggleBtn.disabled = true;
+                  toggleBtn.classList.add("opacity-50", "cursor-not-allowed");
+              }
+          }
+      }
+  });
 
 </script>
 
