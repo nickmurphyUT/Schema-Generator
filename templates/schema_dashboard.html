@@ -935,9 +935,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
- // Ensure subscriptionInfo is defined first
-  const subscriptionInfo = {{ subscription_info | tojson | safe }};
-
   document.addEventListener("DOMContentLoaded", () => {
       const toggleBtn = document.getElementById("toggleSubscriptionBtn");
       const subscriptionView = document.getElementById("subscription-view");
