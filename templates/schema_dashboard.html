@@ -39,23 +39,17 @@
         Authorize App
     </a>
 </div>
-
-
-<div class="max-w-7xl mx-auto px-6 py-4" id="app-container">
-  <label class="text-sm font-medium text-gray-600 mr-2">
-    Select schema type:
-  </label>
-
-  <select
-    id="schemaSectionSelect"
-    class="select-field"
-  >
-    <option value="product">Product</option>
-    <option value="collection">Collection</option>
-    <option value="blog">Blog</option>
-    <option value="page">Page</option>
-    <option value="homepage">Homepage</option>
-  </select>
+<!-- Subscription view (hidden by default) -->
+<div id="subscription-view" class="hidden max-w-xl mx-auto mt-20 bg-white shadow-lg rounded-xl p-8 text-center border border-gray-200">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Choose Your Plan</h2>
+    <p class="text-gray-600 mb-6">Select a plan to enable full access to the app.</p>
+    <div class="space-y-4">
+        <a href="/subscribe/basic" class="block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">Basic Plan</a>
+        <a href="/subscribe/pro" class="block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">Pro Plan</a>
+    </div>
+    <button id="backToAppBtn" class="mt-6 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
+        Back to App
+    </button>
 </div>
 
 <!-- PRODUCT SCHEMA MAPPING UI -->
@@ -940,6 +934,30 @@ document.addEventListener("DOMContentLoaded", () => {
         appContainer.style.display = "block";
     }
 });
+
+    document.addEventListener("DOMContentLoaded", () => {
+    const toggleBtn = document.getElementById("toggleSubscriptionBtn");
+    const subscriptionView = document.getElementById("subscription-view");
+    const appContainer = document.getElementById("app-container");
+    const backBtn = document.getElementById("backToAppBtn");
+
+    toggleBtn.addEventListener("click", () => {
+        appContainer.style.display = "none";
+        subscriptionView.classList.remove("hidden");
+    });
+
+    backBtn.addEventListener("click", () => {
+        subscriptionView.classList.add("hidden");
+        appContainer.style.display = "block";
+    });
+
+    // Optional: Show subscription view automatically if not subscribed
+    if (subscriptionInfo && !subscriptionInfo.subscribed) {
+        appContainer.style.display = "none";
+        subscriptionView.classList.remove("hidden");
+    }
+});
+
 </script>
 
 
