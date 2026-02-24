@@ -907,6 +907,41 @@ document.addEventListener("DOMContentLoaded", () => {
       }
   });
 
+
+    // Grab elements
+const toggleSubscriptionBtn = document.getElementById("toggleSubscriptionBtn");
+const subscriptionView = document.getElementById("subscription-view");
+const appContainer = document.getElementById("app-container");
+const backToAppBtn = document.getElementById("backToAppBtn");
+
+// Function to enable the subscription button
+function enableSubscriptionButton() {
+    toggleSubscriptionBtn.disabled = false;
+    toggleSubscriptionBtn.classList.remove("opacity-50", "cursor-not-allowed");
+}
+
+// Initially, if user is unsubscribed, disable the button
+let userSubscribed = false; // This comes from your subscription info check
+
+if (userSubscribed) {
+    enableSubscriptionButton();
+}
+
+// Toggle subscription view
+toggleSubscriptionBtn.addEventListener("click", () => {
+    if (toggleSubscriptionBtn.disabled) return; // safety check
+    subscriptionView.classList.remove("hidden");
+    appContainer.classList.add("hidden");
+});
+
+// Back to App button
+backToAppBtn.addEventListener("click", () => {
+    subscriptionView.classList.add("hidden");
+    appContainer.classList.remove("hidden");
+    // Optionally enable the button now that user came back
+    enableSubscriptionButton();
+});
+
 </script>
 
 
