@@ -35,18 +35,49 @@
     </a>
 </div>
 
-<!-- SUBSCRIPTION VIEW (hidden by default) -->
-<div id="subscription-view" class="hidden max-w-xl  mt-20 bg-white shadow-lg rounded-xl p-8 text-center border border-gray-200">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Choose Your Plan</h2>
-    <p class="text-gray-600 mb-6">Select a plan to enable full access to the app.</p>
-    <div class="space-y-4">
-        <a href="/subscribe/basic" class="block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">Basic Plan</a>
-        <a href="/subscribe/pro" class="block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">Pro Plan</a>
+
+<div id="subscription-view" class="hidden mt-8 w-full bg-white shadow-lg rounded-xl p-8 text-center border border-gray-200 max-w-5xl mx-auto">
+    <h2 class="text-3xl font-bold text-gray-800 mb-4">Choose Your Plan</h2>
+    <p class="text-gray-600 mb-8">Start your journey with a free trial or unlock full access with our paid plan.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Free Trial Plan -->
+        <div class="border border-gray-300 rounded-xl p-6 hover:shadow-lg transition duration-200">
+            <h3 class="text-xl font-semibold mb-2">Free Trial</h3>
+            <p class="text-gray-600 mb-4">15-day free trial</p>
+            <p class="text-gray-800 font-bold text-2xl mb-4">$0</p>
+            <ul class="text-left mb-6 space-y-2 text-gray-600">
+                <li>✅ Unlimited Product Schemas</li>
+                <li>✅ Basic Support</li>
+                <li>✅ Access to core features</li>
+            </ul>
+            <a href="/subscribe/basic" class="block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                Start Free Trial
+            </a>
+        </div>
+
+        <!-- Paid Plan -->
+        <div class="border border-gray-300 rounded-xl p-6 hover:shadow-lg transition duration-200">
+            <h3 class="text-xl font-semibold mb-2">Pro Plan</h3>
+            <p class="text-gray-600 mb-4">Full access to all features</p>
+            <p class="text-gray-800 font-bold text-2xl mb-4">$5 / month</p>
+            <ul class="text-left mb-6 space-y-2 text-gray-600">
+                <li>✅ Unlimited Product Schemas</li>
+                <li>✅ Priority Support</li>
+                <li>✅ Advanced Analytics</li>
+                <li>✅ Early access to new features</li>
+            </ul>
+            <a href="/subscribe/pro" class="block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">
+                Upgrade to Pro
+            </a>
+        </div>
     </div>
-    <button id="backToAppBtn" class="mt-6 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
+
+    <button id="backToAppBtn" class="mt-8 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
         Back to App
     </button>
 </div>
+
 
 <!-- MAIN APP CONTAINER -->
 <div id="app-container">
