@@ -484,12 +484,18 @@ def home():
             subscription_info = get_shop_subscription_info(shop, access_token)
         except Exception:
             logging.warning(
-                "Invalid Shopify token detected for %s. Access denied to API data.", shop
+                "Invalid Shopify token detected for %s. Forcing reauth.", shop
             )
+    
+            # 🔥 Mark token invalid
             access_token = None
-            subscription_info = None
-
-    # If no valid token, render auth-required page immediately
+    
+            # Optional but recommended: delete stored token
+            if store:
+                db.session.delete(store)
+                db.session.commit()
+    
+    # If no valid token, force reauth
     if not access_token:
         return render_template(
             "schema_dashboard.html",
@@ -497,6 +503,7 @@ def home():
             shop_name=shop,
             needs_auth=True
         )
+
 
     # ---------- LOGGING ----------
     logging.info("Subscription info for shop %s: %s", shop, subscription_info)
