@@ -91,9 +91,6 @@
             <button id="toggleSubscriptionBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
                 Manage Subscription
             </button>
-            <button id="toggleSubscriptionBtnB">
-                Manage Subscription
-            </button>
         </div>
         <div id="schema-mapping-container" class="space-y-4 mb-6"></div>
         <button id="addMappingBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
@@ -972,26 +969,5 @@ backToAppBtn.addEventListener("click", () => {
 });
 
 </script>
-
-<script>
-document.getElementById("toggleSubscriptionBtnB")
-  .addEventListener("click", async function () {
-
-    const res = await fetch("/create-subscription", {
-      method: "POST"
-    });
-
-    const data = await res.json();
-
-    if (data.confirmation_url) {
-        window.location.href = data.confirmation_url;
-    } else {
-        console.log(data);
-        alert("Already subscribed or error occurred");
-    }
-});
-</script>
-
-
 </body>
 </html>
