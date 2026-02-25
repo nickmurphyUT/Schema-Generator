@@ -463,7 +463,7 @@ def home():
     access_token = store.access_token if store else None
     subscription_info = None
     needs_auth = False
-
+    billing_confirmation_url = None
     # ---------- SIMPLE AUTH CHECK ----------
     needs_auth = False
     
@@ -502,6 +502,60 @@ def home():
 
     if access_token and not needs_auth:
         try:
+            # 🔥 Check active subscription
+            sub_query = """
+            {
+              currentAppInstallation {
+                activeSubscriptions {
+                  id
+                  status
+                }
+              }
+            }
+            """
+            
+            sub_response = query_shopify_graphql(shop, access_token, sub_query)
+            active_subs = (
+                sub_response.get("data", {})
+                .get("currentAppInstallation", {})
+                .get("activeSubscriptions", [])
+            )
+            
+            if not active_subs:
+                # 🔥 Create subscription if none exists
+                mutation = """
+                mutation {
+                  appSubscriptionCreate(
+                    name: "Pro Plan",
+                    returnUrl: "https://schema-resource-c80feca18260.herokuapp.com/",
+                    test: false,
+                    lineItems: [
+                      {
+                        plan: {
+                          appRecurringPricingDetails: {
+                            price: { amount: 19.99, currencyCode: USD }
+                          }
+                        }
+                      }
+                    ]
+                  ) {
+                    confirmationUrl
+                    userErrors {
+                      field
+                      message
+                    }
+                  }
+                }
+                """
+            
+                billing_response = query_shopify_graphql(shop, access_token, mutation)
+            
+                billing_confirmation_url = (
+                    billing_response.get("data", {})
+                    .get("appSubscriptionCreate", {})
+                    .get("confirmationUrl")
+                )
+
             # -----------------------
             # Metafield definitions
             # -----------------------
@@ -632,7 +686,8 @@ def home():
         blog_config=blog_config,
         homepage_config=homepage_config,
         needs_auth=needs_auth,
-        subscription_info=subscription_info,  # <--- new
+        subscription_info=subscription_info,
+        billing_confirmation_url=billing_confirmation_url,
     )
 
 
