@@ -216,24 +216,26 @@ def verify_id_token(id_token):
 
 
 def query_shopify_graphql(shop, access_token, query):
-    response = requests.post(
-        f"https://{shop}/admin/api/2026-01/graphql.json",
-        headers={
-            "X-Shopify-Access-Token": access_token,
-            "Content-Type": "application/json",
-        },
-        json={"query": query},
-    )
+    url = f"https://{shop}/admin/api/2026-01/graphql.json"
 
-    if response.status_code == 401:
-        return {"_auth_error": True}
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json",
+    }
 
-    if response.status_code != 200:
-        raise Exception(
-            f"GraphQL failed with status {response.status_code}: {response.text}"
+    resp = requests.post(url, json={"query": query}, headers=headers)
+
+    # 🔥 HARD FAIL ON AUTH
+    if resp.status_code == 401:
+        raise requests.exceptions.HTTPError(
+            "Shopify token unauthorized",
+            response=resp
         )
 
-    return response.json()
+    resp.raise_for_status()
+
+    return resp.json()
+
 
 
 #three parameter graphql helper
