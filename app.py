@@ -460,6 +460,7 @@ def home():
     store = StoreToken.query.filter_by(shop=shop).first()
     access_token = store.access_token if store else None
     subscription_info = None
+    needs_auth = False
 
     # ---------- SAFE TOKEN CHECK ----------
     if access_token:
