@@ -216,42 +216,25 @@ def verify_id_token(id_token):
 
 
 def query_shopify_graphql(shop, access_token, query):
-    """
-    Function to send a GraphQL query to Shopify API
-    """
-    # Shopify GraphQL endpoint
-    url = f"https://{shop}/admin/api/2023-01/graphql.json"  # Adjust API version if needed
+    response = requests.post(
+        f"https://{shop}/admin/api/2026-01/graphql.json",
+        headers={
+            "X-Shopify-Access-Token": access_token,
+            "Content-Type": "application/json",
+        },
+        json={"query": query},
+    )
 
-    # Headers to include the access token for authentication
-    headers = {
-        "X-Shopify-Access-Token": access_token,
-        "Content-Type": "application/json"
-    }
+    if response.status_code == 401:
+        return {"_auth_error": True}
 
-    try:
-        # Send the request to Shopify's GraphQL API
-        response = requests.post(url, headers=headers, json={"query": query})
+    if response.status_code != 200:
+        raise Exception(
+            f"GraphQL failed with status {response.status_code}: {response.text}"
+        )
 
-        # Check for errors in the response
-        if response.status_code != 200:
-            logging.error(f"GraphQL query failed with status {response.status_code}: {response.text}")
-            raise Exception(f"GraphQL query failed with status {response.status_code}: {response.text}")
+    return response.json()
 
-        # Log the response for debugging purposes
-        logging.debug(f"GraphQL Response: {response.json()}")
-
-        # Return the response as JSON
-        return response.json()
-    
-    except requests.exceptions.RequestException as e:
-        # Catch request-specific exceptions such as network issues, timeouts, etc.
-        logging.error(f"Request failed: {str(e)}")
-        raise Exception(f"Request failed: {str(e)}")
-    
-    except Exception as e:
-        # Catch all other exceptions
-        logging.error(f"An error occurred: {str(e)}")
-        raise Exception(f"An error occurred: {str(e)}")
 
 #three parameter graphql helper
 def query_shopify_graphql_webhook(shop, access_token, query, variables=None):
@@ -484,25 +467,18 @@ def home():
             subscription_info = get_shop_subscription_info(shop, access_token)
         except Exception:
             logging.warning(
-                "Invalid Shopify token detected for %s. Forcing reauth.", shop
+                "Invalid Shopify token detected for %s. Marking needs_auth.", shop
             )
     
-            # 🔥 Mark token invalid
+            needs_auth = True
             access_token = None
     
-            # Optional but recommended: delete stored token
             if store:
                 db.session.delete(store)
                 db.session.commit()
-    
-    # If no valid token, force reauth
-    if not access_token:
-        return render_template(
-            "schema_dashboard.html",
-            title="Schema App Dashboard",
-            shop_name=shop,
-            needs_auth=True
-        )
+    else:
+        needs_auth = True
+
 
 
     # ---------- LOGGING ----------
@@ -520,7 +496,7 @@ def home():
     blog_config = {}
     homepage_config = {}
 
-    if access_token:
+    if access_token and not needs_auth:
         try:
             # -----------------------
             # Metafield definitions
@@ -651,7 +627,7 @@ def home():
         page_config=page_config,
         blog_config=blog_config,
         homepage_config=homepage_config,
-        needs_auth=False,
+        needs_auth=needs_auth,
         subscription_info=subscription_info,  # <--- new
     )
 
