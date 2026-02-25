@@ -91,7 +91,7 @@
             <button id="toggleSubscriptionBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
                 Manage Subscription
             </button>
-            <button id="toggleSubscriptionBtn">
+            <button id="toggleSubscriptionBtnB">
                 Manage Subscription
             </button>
         </div>
@@ -974,7 +974,7 @@ backToAppBtn.addEventListener("click", () => {
 </script>
 
 <script>
-document.getElementById("toggleSubscriptionBtn")
+document.getElementById("toggleSubscriptionBtnB")
   .addEventListener("click", async function () {
 
     const res = await fetch("/create-subscription", {
