@@ -851,159 +851,55 @@ const shopName = {{ shop_name | tojson }};
 </script>
 
 <script>
-console.log("🔥 Script loaded");
-
-// ===============================
-// AUTH BLOCK HANDLER
-// ===============================
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("📦 DOMContentLoaded (Auth Block)");
-
-    const authBlock = document.getElementById("auth-block");
-    const appContainer = document.getElementById("app-container");
-    const authLink = document.getElementById("auth-link");
-
-    console.log("needsAuth:", typeof needsAuth !== "undefined" ? needsAuth : "UNDEFINED");
-
-    if (needsAuth) {
-        console.log("🔐 Showing auth block");
-
-        authBlock?.classList.remove("hidden");
-        if (appContainer) appContainer.style.display = "none";
-
-        const params = new URLSearchParams(window.location.search);
-        const shop = params.get("shop");
-
-        console.log("Shop param:", shop);
-
-        if (shop && authLink) {
-            authLink.href = `/auth?shop=${encodeURIComponent(shop)}`;
-            authLink.target = "_top";
-            console.log("Auth link set to:", authLink.href);
-        }
-    } else {
-        console.log("✅ Showing app container");
-
-        authBlock?.classList.add("hidden");
-        if (appContainer) appContainer.style.display = "block";
-    }
-});
-
-
-// ===============================
-// SUBSCRIPTION VIEW HANDLER
-// ===============================
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("📦 DOMContentLoaded (Subscription Logic)");
+    console.log("🚀 App Initialized");
 
     const toggleBtn = document.getElementById("toggleSubscriptionBtn");
     const subscriptionView = document.getElementById("subscription-view");
     const appContainer = document.getElementById("app-container");
     const backBtn = document.getElementById("backToAppBtn");
 
-    console.log("Elements found:", {
-        toggleBtn,
-        subscriptionView,
-        appContainer,
-        backBtn
-    });
+    console.log("subscriptionInfo:", subscriptionInfo);
 
-    console.log("subscriptionInfo:", 
-        typeof subscriptionInfo !== "undefined" ? subscriptionInfo : "UNDEFINED"
-    );
-
-    if (toggleBtn && subscriptionView && appContainer && backBtn) {
-
-        toggleBtn.addEventListener("click", () => {
-            console.log("🟣 Toggle Subscription clicked");
-            console.log("Button disabled?", toggleBtn.disabled);
-
-            appContainer.style.display = "none";
-            subscriptionView.classList.remove("hidden");
-        });
-
-        backBtn.addEventListener("click", () => {
-            console.log("⬅️ Back to App clicked");
-
-            subscriptionView.classList.add("hidden");
-            appContainer.style.display = "block";
-        });
-
-        if (typeof subscriptionInfo !== "undefined" && !subscriptionInfo.subscribed) {
-            console.log("❌ User NOT subscribed — forcing subscription view");
-
-            appContainer.style.display = "none";
-            subscriptionView.classList.remove("hidden");
-
-            if (!subscriptionInfo.payment_url) {
-                console.log("⚠️ No payment URL — disabling toggle button");
-
-                toggleBtn.disabled = true;
-                toggleBtn.classList.add("opacity-50", "cursor-not-allowed");
-            }
-        } else {
-            console.log("✅ User is subscribed");
-        }
-    } else {
-        console.warn("⚠️ One or more required elements not found");
+    if (!toggleBtn || !subscriptionView || !appContainer || !backBtn) {
+        console.error("❌ Missing required elements");
+        return;
     }
-});
 
+    const isSubscribed = subscriptionInfo?.subscribed === true;
+    const hasPaymentUrl = !!subscriptionInfo?.payment_url;
 
-// ===============================
-// LEGACY / SECOND HANDLER
-// ===============================
-console.log("Initializing manual subscription handler");
+    console.log("isSubscribed:", isSubscribed);
+    console.log("hasPaymentUrl:", hasPaymentUrl);
 
-const toggleSubscriptionBtn = document.getElementById("toggleSubscriptionBtn");
-const subscriptionView = document.getElementById("subscription-view");
-const appContainer = document.getElementById("app-container");
-const backToAppBtn = document.getElementById("backToAppBtn");
+    // Initial state
+    if (!isSubscribed) {
+        console.log("🔒 User not subscribed — showing subscription view");
+        appContainer.classList.add("hidden");
+        subscriptionView.classList.remove("hidden");
 
-console.log("Manual handler elements:", {
-    toggleSubscriptionBtn,
-    subscriptionView,
-    appContainer,
-    backToAppBtn
-});
+        if (!hasPaymentUrl) {
+            console.log("⚠️ No payment URL — disabling toggle button");
+            toggleBtn.disabled = true;
+            toggleBtn.classList.add("opacity-50", "cursor-not-allowed");
+        }
+    }
 
-function enableSubscriptionButton() {
-    console.log("🟢 Enabling subscription button");
+    toggleBtn.addEventListener("click", () => {
+        console.log("🟣 Toggle clicked");
+        if (toggleBtn.disabled) return;
 
-    toggleSubscriptionBtn.disabled = false;
-    toggleSubscriptionBtn.classList.remove("opacity-50", "cursor-not-allowed");
-}
-
-let userSubscribed = false; // Replace with real value
-console.log("userSubscribed:", userSubscribed);
-
-if (userSubscribed) {
-    enableSubscriptionButton();
-}
-
-if (toggleSubscriptionBtn) {
-    toggleSubscriptionBtn.addEventListener("click", () => {
-        console.log("🟣 Manual toggle clicked");
-        console.log("Disabled state:", toggleSubscriptionBtn.disabled);
-
-        if (toggleSubscriptionBtn.disabled) return;
-
-        subscriptionView?.classList.remove("hidden");
-        appContainer?.classList.add("hidden");
+        appContainer.classList.add("hidden");
+        subscriptionView.classList.remove("hidden");
     });
-}
 
-if (backToAppBtn) {
-    backToAppBtn.addEventListener("click", () => {
-        console.log("⬅️ Manual back clicked");
+    backBtn.addEventListener("click", () => {
+        console.log("⬅️ Back clicked");
 
-        subscriptionView?.classList.add("hidden");
-        appContainer?.classList.remove("hidden");
-
-        enableSubscriptionButton();
+        subscriptionView.classList.add("hidden");
+        appContainer.classList.remove("hidden");
     });
-}
-
+});
 
 </script>
 
