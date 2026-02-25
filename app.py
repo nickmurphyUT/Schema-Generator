@@ -464,23 +464,24 @@ def home():
     subscription_info = None
     needs_auth = False
 
-    # ---------- SAFE TOKEN CHECK ----------
-    if access_token:
-        try:
-            subscription_info = get_shop_subscription_info(shop, access_token)
-        except Exception:
-            logging.warning(
-                "Invalid Shopify token detected for %s. Marking needs_auth.", shop
-            )
+    # ---------- SIMPLE AUTH CHECK ----------
+    needs_auth = False
     
+    if not access_token:
+        needs_auth = True
+    else:
+        try:
+            # 🔥 Smallest possible probe
+            query_shopify_graphql(
+                shop,
+                access_token,
+                "{ shop { name } }"
+            )
+        except Exception:
+            logging.warning("Token failed probe for %s", shop)
             needs_auth = True
             access_token = None
-    
-            if store:
-                db.session.delete(store)
-                db.session.commit()
-    else:
-        needs_auth = True
+
 
 
 
