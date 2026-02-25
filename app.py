@@ -515,6 +515,7 @@ def home():
             """
             
             sub_response = query_shopify_graphql(shop, access_token, sub_query)
+            
             active_subs = (
                 sub_response.get("data", {})
                 .get("currentAppInstallation", {})
@@ -549,6 +550,8 @@ def home():
                 """
             
                 billing_response = query_shopify_graphql(shop, access_token, mutation)
+                logging.info("Billing: appSubscriptionCreate response:\n%s", json.dumps(billing_response, indent=2, default=str))
+
             
                 billing_confirmation_url = (
                     billing_response.get("data", {})
