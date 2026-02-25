@@ -172,8 +172,6 @@ const productFieldOptions = [
     "product.product_type",
     "product.status",
     "product.description",
-    "product.tags[]",
-    "product.images[].src",
     {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 /* ================= PAGE FIELD OPTIONS ================= */
