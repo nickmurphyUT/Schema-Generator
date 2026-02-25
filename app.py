@@ -3320,6 +3320,87 @@ def get_app_schema_metafield():
     }), 200
 
 
+def get_active_subscription(shop, access_token):
+    query = """
+    {
+      currentAppInstallation {
+        activeSubscriptions {
+          id
+          name
+          status
+          test
+        }
+      }
+    }
+    """
+    response = query_shopify_graphql(shop, access_token, query)
+    subs = (
+        response.get("data", {})
+        .get("currentAppInstallation", {})
+        .get("activeSubscriptions", [])
+    )
+    return subs[0] if subs else None
+
+
+
+@app.route("/create-subscription", methods=["POST"])
+def create_subscription():
+    shop = session.get("shop")
+    store = StoreToken.query.filter_by(shop=shop).first()
+    access_token = store.access_token if store else None
+
+    if not access_token:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    # 1️⃣ Check if already subscribed
+    active_sub = get_active_subscription(shop, access_token)
+    if active_sub:
+        return jsonify({"message": "Already subscribed", "subscription": active_sub})
+
+    # 2️⃣ Create subscription
+    mutation = """
+    mutation {
+      appSubscriptionCreate(
+        name: "Pro Plan",
+        returnUrl: "https://schema-resource-c80feca18260.herokuapp.com/billing/confirm",
+        test: false,
+        lineItems: [
+          {
+            plan: {
+              appRecurringPricingDetails: {
+                price: { amount: 19.99, currencyCode: USD }
+              }
+            }
+          }
+        ]
+      ) {
+        confirmationUrl
+        appSubscription {
+          id
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
+
+    response = query_shopify_graphql(shop, access_token, mutation)
+
+    data = response.get("data", {}).get("appSubscriptionCreate", {})
+    confirmation_url = data.get("confirmationUrl")
+
+    if not confirmation_url:
+        return jsonify({"error": data.get("userErrors")}), 400
+
+    return jsonify({"confirmation_url": confirmation_url})
+
+
+@app.route("/billing/confirm")
+def billing_confirm():
+    return redirect("/")
+
 
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
