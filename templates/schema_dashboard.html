@@ -174,10 +174,6 @@ const productFieldOptions = [
     "product.description",
     "product.tags[]",
     "product.images[].src",
-    "variants[].sku",
-    "variants[].price",
-    "variants[].barcode",
-    "variants[].weight",
     {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
 /* ================= PAGE FIELD OPTIONS ================= */
