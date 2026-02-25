@@ -1431,100 +1431,53 @@ ALLOWED_SCHEMA_TYPES = {
 
 @app.route("/api/meta_object/<store>", methods=["GET"])
 def get_meta_object(store):
-    start_time = time.time()
+    """
+    Returns the app metaobject config for a given store and schema type.
+    Example: GET /api/meta_object/myshop.myshopify.com?schema_type=product_schema_mappings
+    """
+    schema_type = request.args.get("schema_type")
+    if not schema_type or schema_type not in ALLOWED_SCHEMA_TYPES:
+        return jsonify({
+            "error": "Invalid or missing schema_type",
+            "allowed_types": list(ALLOWED_SCHEMA_TYPES)
+        }), 400
 
-    logging.info("====================================================")
-    logging.info("🚀 /api/meta_object HIT")
-    logging.info("Incoming store (raw): %s", store)
-    logging.info("Query string: %s", request.query_string.decode())
-    logging.info("Request args: %s", dict(request.args))
-    logging.info("Request headers: %s", dict(request.headers))
-    logging.info("Request referrer: %s", request.referrer)
-    logging.info("Request origin: %s", request.headers.get("Origin"))
-    logging.info("----------------------------------------------------")
+    # 1️⃣ Lookup the store in the DB
+    store_record = StoreToken.query.filter_by(shop=store).first()
+    if not store_record or not store_record.access_token:
+        return jsonify({
+            "error": "Store not found or access token missing",
+            "needs_auth": True
+        }), 404
+
+    access_token = store_record.access_token
 
     try:
-        # Normalize store
-        store = (store or "").strip().lower()
-        logging.info("Normalized store: %s", store)
-
-        schema_type = request.args.get("schema_type")
-        logging.info("schema_type received: %s", schema_type)
-        logging.info("Allowed schema types: %s", list(ALLOWED_SCHEMA_TYPES))
-
-        if not schema_type or schema_type not in ALLOWED_SCHEMA_TYPES:
-            logging.warning("❌ Invalid or missing schema_type")
-            return jsonify({
-                "error": "Invalid or missing schema_type",
-                "allowed_types": list(ALLOWED_SCHEMA_TYPES)
-            }), 400
-
-        # 1️⃣ Lookup store
-        logging.info("🔎 Looking up store in DB...")
-        store_record = StoreToken.query.filter_by(shop=store).first()
-
-        logging.info("Store record found: %s", bool(store_record))
-
-        if store_record:
-            logging.info("Store DB ID: %s", getattr(store_record, "id", "N/A"))
-            logging.info("Access token exists: %s", bool(store_record.access_token))
-            if store_record.access_token:
-                logging.info("Access token preview: %s****", store_record.access_token[:6])
-        else:
-            logging.warning("❌ No store record found in DB")
-
-        if not store_record or not store_record.access_token:
-            logging.error("❌ Store not found or access token missing")
-            return jsonify({
-                "error": "Store not found or access token missing",
-                "needs_auth": True
-            }), 404
-
-        access_token = store_record.access_token
-
-        # 2️⃣ Fetch metaobject
-        logging.info("📡 Calling fetch_schema_config_entry...")
+        # 2️⃣ Fetch the metaobject entry
         config_entry = fetch_schema_config_entry(store, access_token, schema_type)
 
-        logging.info("📦 fetch_schema_config_entry returned type: %s", type(config_entry))
-        logging.info("📦 Returned value preview: %s",
-                     json.dumps(config_entry, indent=2)[:500])
-
-        if isinstance(config_entry, (list, dict)):
-            logging.info("📊 Result length: %s",
-                         len(config_entry) if hasattr(config_entry, "__len__") else "N/A")
-
-        # 3️⃣ Prepare response
-        response_payload = {
+        # 3️⃣ Return as JSON
+        return jsonify({
             "shop": store,
             "schema_type": schema_type,
             "meta_object_entry": config_entry
-        }
+        })
 
-        response_size = len(json.dumps(response_payload))
-        logging.info("📤 Response payload size (bytes): %s", response_size)
-
-        duration = round((time.time() - start_time) * 1000, 2)
-        logging.info("✅ /api/meta_object completed in %sms", duration)
-        logging.info("====================================================")
-
-        return jsonify(response_payload)
-
-    except Exception as e:
-        logging.exception("🔥 FATAL ERROR in /api/meta_object")
-        duration = round((time.time() - start_time) * 1000, 2)
-        logging.error("⏱ Failed after %sms", duration)
+    except Exception:
+        logging.exception("Failed to fetch metaobject for store %s and schema_type %s", store, schema_type)
         return jsonify({"error": "Failed to fetch metaobject entry"}), 500
         
 def fetch_schema_config_entry(shop, access_token, schema_type):
     """
     Returns a parsed config value for the requested schema_type.
-    """
 
-    logging.info("=== fetch_schema_config_entry START ===")
-    logging.info("Shop: %s", shop)
-    logging.info("Schema Type Requested: %s", schema_type)
-    logging.info("Access token exists: %s", bool(access_token))
+    schema_type should be one of:
+      - "product_schema_mappings"
+      - "collection_schema_mappings"
+
+    Returns:
+      [] or {} if missing
+    """
 
     query = """
     query {
@@ -1542,64 +1495,22 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
     }
     """
 
-    try:
-        logging.info("Sending GraphQL query to Shopify...")
-        resp = query_shopify_graphql(shop, access_token, query)
+    resp = query_shopify_graphql(shop, access_token, query)
 
-        logging.info("Raw Shopify response type: %s", type(resp))
-        logging.info("Raw Shopify response:\n%s", json.dumps(resp, indent=2, default=str))
-
-        if not isinstance(resp, dict):
-            logging.error("Shopify response is NOT a dict!")
-            return []
-
-        if resp.get("errors"):
-            logging.error("Shopify returned GraphQL errors:\n%s",
-                          json.dumps(resp["errors"], indent=2, default=str))
-
-        edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
-        logging.info("Metaobject edges found: %d", len(edges))
-
-        if not edges:
-            logging.warning("No metaobjects found for shop %s", shop)
-            return []
-
-        node = edges[0].get("node", {})
-        logging.info("Metaobject node ID: %s", node.get("id"))
-
-        fields = node.get("fields", [])
-        logging.info("Total fields found: %d", len(fields))
-        logging.info("Fields raw dump:\n%s", json.dumps(fields, indent=2, default=str))
-
-        for f in fields:
-            key = f.get("key")
-            value = f.get("value")
-
-            logging.info("Inspecting field key: %s", key)
-
-            if key == schema_type:
-                logging.info("Matched schema_type field: %s", schema_type)
-                logging.info("Raw value:\n%s", value)
-
-                try:
-                    parsed = json.loads(value or "[]")
-                    logging.info("Parsed JSON type: %s", type(parsed))
-                    logging.info("Parsed JSON value:\n%s",
-                                 json.dumps(parsed, indent=2, default=str))
-                    logging.info("=== fetch_schema_config_entry SUCCESS ===")
-                    return parsed
-                except Exception:
-                    logging.exception("Failed to JSON parse field value for key %s", key)
-                    return []
-
-        logging.warning("Schema type %s not found in metaobject fields", schema_type)
-        logging.info("=== fetch_schema_config_entry END (not found) ===")
+    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
+    if not edges:
         return []
 
-    except Exception:
-        logging.exception("CRITICAL ERROR in fetch_schema_config_entry")
-        return []
+    fields = edges[0]["node"].get("fields", [])
 
+    for f in fields:
+        if f.get("key") == schema_type:
+            try:
+                return json.loads(f.get("value") or "[]")
+            except Exception:
+                return []
+
+    return []
 
 
 def update_metaobject_entry(shop, access_token, config_id, fields):
