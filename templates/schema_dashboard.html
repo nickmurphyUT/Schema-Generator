@@ -857,7 +857,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const appContainer = document.getElementById("app-container");
     const authLink = document.getElementById("auth-link");
 
-    if (!needsAuth) {
+    if (needsAuth) {
         // 🔥 Show auth block
         authBlock.classList.remove("hidden");
         appContainer.style.display = "none";
