@@ -930,9 +930,12 @@ document.getElementById("schemaSectionSelect").addEventListener("change", e => {
 </script>
 
 <script>
+const initDate = {{ shop_created_at | toJson }};
 const needsAuth = {{ needs_auth | tojson }};
 const shopName = {{ shop_name | tojson }};
     console.log("needsAuth " + needsAuth);
+    console.log("initial date " + initDate);
+    
 </script>
 
 <script>
