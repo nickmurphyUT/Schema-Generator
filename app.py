@@ -466,7 +466,7 @@ def home():
     billing_confirmation_url = None
     # ---------- SIMPLE AUTH CHECK ----------
     needs_auth = False
-    
+    shop_created_at = None
     if not access_token:
         needs_auth = True
     else:
@@ -502,6 +502,29 @@ def home():
 
     if access_token and not needs_auth:
         try:
+
+            # -----------------------
+            # Fetch Shop Created Date
+            # -----------------------
+            shop_query = """
+            {
+              shop {
+                name
+                createdAt
+              }
+            }
+            """
+            
+            shop_response = query_shopify_graphql(shop, access_token, shop_query)
+            
+            shop_created_at = (
+                shop_response.get("data", {})
+                .get("shop", {})
+                .get("createdAt")
+            )
+            
+            logging.info("Shop created at: %s", shop_created_at)
+
             # 🔥 Check active subscription
             sub_query = """
             {
@@ -691,6 +714,7 @@ def home():
         needs_auth=needs_auth,
         subscription_info=subscription_info,
         billing_confirmation_url=billing_confirmation_url,
+        shop_created_at=shop_created_at,
     )
 
 
