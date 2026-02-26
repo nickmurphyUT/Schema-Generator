@@ -1069,6 +1069,87 @@ backToAppBtn.addEventListener("click", () => {
     enableSubscriptionButton();
 });
 
+
+    <script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const initDate = {{ shop_created_at | tojson }};
+    const subscriptionInfo = {{ subscription_info | tojson | safe }};
+    const needsAuth = {{ needs_auth | tojson }};
+
+    console.log("Store created at:", initDate);
+    console.log("Subscription info:", subscriptionInfo);
+    console.log("Needs auth:", needsAuth);
+
+    const subscriptionView = document.getElementById("subscription-view");
+
+    // -----------------------------
+    // Helper: Calculate Store Age
+    // -----------------------------
+    function getDaysSince(dateString) {
+        if (!dateString) return null;
+
+        const created = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - created;
+
+        return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    }
+
+    const daysOld = getDaysSince(initDate);
+    const trialExpired = daysOld !== null && daysOld > 15;
+
+    console.log("Store age (days):", daysOld);
+    console.log("Trial expired:", trialExpired);
+
+    // -----------------------------
+    // Detect Active Subscription
+    // -----------------------------
+    const hasActiveSubscription =
+        subscriptionInfo &&
+        Array.isArray(subscriptionInfo) &&
+        subscriptionInfo.length > 0;
+
+    console.log("Has active subscription:", hasActiveSubscription);
+
+    // -----------------------------
+    // Access Logic
+    // -----------------------------
+    if (needsAuth) {
+        // If token invalid, force subscription screen hidden (auth flow handles redirect)
+        subscriptionView.classList.add("hidden");
+        return;
+    }
+
+    if (hasActiveSubscription) {
+        // ✅ Paid user
+        subscriptionView.classList.add("hidden");
+
+    } else if (!trialExpired) {
+        // 🟢 Trial still active
+        subscriptionView.classList.add("hidden");
+
+    } else {
+        // 🔴 Trial expired & not subscribed
+        subscriptionView.classList.remove("hidden");
+
+        // Update messaging dynamically
+        const heading = subscriptionView.querySelector("h2");
+        const subText = subscriptionView.querySelector("p");
+
+        if (heading) {
+            heading.textContent = "Your Free Trial Has Expired";
+        }
+
+        if (subText) {
+            subText.textContent =
+                "Subscribe to continue using all features and keep your schema configurations active.";
+        }
+    }
+
+});
+</script>
+
 </script>
 </body>
 </html>
