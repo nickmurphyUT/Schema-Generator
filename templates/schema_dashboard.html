@@ -90,9 +90,12 @@
         <p style="margin-bottom: 1em;">
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus vulputate, turpis nec vulputate molestie, metus tellus pellentesque lectus, non fermentum quam odio ut arcu. Suspendisse potenti. Donec mollis est consequat dolor euismod sagittis. Donec faucibus et sapien in imperdiet. Aenean vulputate, mi eget tristique pretium, diam nibh placerat dui, sit amet semper orci massa interdum felis. Suspendisse ut sem varius, semper lacus in, condimentum lectus. Sed eget imperdiet nisl, iaculis vulputate metus. Etiam augue ante, ornare in mollis vitae, aliquam eu urna. Cras scelerisque euismod leo in auctor. Fusce finibus varius mi, vitae placerat eros tempor quis. Interdum et malesuada fames ac ante ipsum primis in faucibus. Morbi non efficitur tortor.
         </p>
-            <button id="toggleSubscriptionBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
-                Manage Subscription
-            </button>
+<td>
+    <button class="manage-btn">Manage</button>
+
+    <span id="trial-status" class="ml-3 text-sm font-medium"></span>
+</td>
+
         <div id="schema-mapping-container" class="space-y-4 mb-6"></div>
         <button id="addMappingBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
         <button id="sendToBackendBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Schema Metafields</button>
@@ -935,6 +938,40 @@ const needsAuth = {{ needs_auth | tojson }};
 const shopName = {{ shop_name | tojson }};
     console.log("needsAuth " + needsAuth);
     console.log("initial date " + initDate);
+
+
+    function getDaysSince(dateString) {
+    if (!dateString) return null;
+
+    const created = new Date(dateString);
+    const now = new Date();
+
+    const diffMs = now - created;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    return diffDays;
+}
+
+const daysOld = getDaysSince(initDate);
+
+console.log("Store age (days):", daysOld);
+
+    const trialExpired = daysOld !== null && daysOld > 15;
+
+console.log("Trial expired:", trialExpired);
+
+
+    const trialEl = document.getElementById("trial-status");
+
+if (trialExpired) {
+    trialEl.textContent = "Free Trial Expired";
+    trialEl.classList.add("text-red-600");
+} else {
+    trialEl.textContent = "Free Trial Active";
+    trialEl.classList.add("text-green-600");
+}
+
+
     
 </script>
 
