@@ -528,14 +528,17 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
             
             <select class="schema-select p-2 border rounded bg-white">
                 <option value="">Select Schema Field</option>
+                
+                <!-- ✅ Custom is now SECOND -->
+                <option value="__custom__" ${isCustom ? "selected" : ""}>
+                    Custom…
+                </option>
+
                 ${schemaOptions.map(f => `
                     <option value="${f}" ${!isCustom && f === defaultSchema ? "selected" : ""}>
                         ${f}
                     </option>
                 `).join("")}
-                <option value="__custom__" ${isCustom ? "selected" : ""}>
-                    Custom…
-                </option>
             </select>
 
             <input 
@@ -589,6 +592,7 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
     container.appendChild(row);
     updateMappings();
 }
+
 
 
 /* ================= UPDATE FUNCTIONS ================= */
