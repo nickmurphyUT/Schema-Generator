@@ -203,6 +203,46 @@
   </div>
 </div>
 
+
+    <!-- ================= FLOATING CONTACT WIDGET ================= -->
+<div id="contactWidget" class="fixed bottom-6 right-6 z-50">
+
+    <!-- Floating Button -->
+    <button id="contactToggle"
+        class="w-14 h-14 rounded-full bg-purple-600 hover:bg-purple-700 text-white shadow-xl flex items-center justify-center transition-all duration-300">
+        ✉
+    </button>
+
+    <!-- Contact Panel -->
+    <div id="contactPanel"
+        class="hidden absolute bottom-20 right-0 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+
+        <!-- Header -->
+        <div class="bg-purple-600 text-white px-4 py-3 flex justify-between items-center">
+            <span class="font-semibold">Contact Support</span>
+            <button id="contactClose" class="text-white text-lg leading-none">&times;</button>
+        </div>
+
+        <!-- Form -->
+        <form id="contactForm" class="p-4 space-y-3">
+            <input type="email" placeholder="Your email"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                required />
+
+            <textarea rows="3" placeholder="How can we help?"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                required></textarea>
+
+            <button type="submit"
+                class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg text-sm font-medium transition">
+                Send Message
+            </button>
+        </form>
+    </div>
+</div>
+
+
+    
 <script>
     /* ================= PLAN STATE ================= */
 const subscriptionInfo = {{ subscription_info | tojson | safe }};
@@ -1144,7 +1184,50 @@ if (upgradeModal) {
     });
 }
 
-    
+ /* ================= FLOATING CONTACT WIDGET ================= */
+
+const contactToggle = document.getElementById("contactToggle");
+const contactPanel = document.getElementById("contactPanel");
+const contactClose = document.getElementById("contactClose");
+const contactForm = document.getElementById("contactForm");
+
+function openContact() {
+    contactPanel.classList.remove("hidden");
+}
+
+function closeContact() {
+    contactPanel.classList.add("hidden");
+}
+
+if (contactToggle) {
+    contactToggle.addEventListener("click", function () {
+        contactPanel.classList.toggle("hidden");
+    });
+}
+
+if (contactClose) {
+    contactClose.addEventListener("click", closeContact);
+}
+
+// Close when clicking outside
+document.addEventListener("click", function (e) {
+    const widget = document.getElementById("contactWidget");
+    if (!widget.contains(e.target)) {
+        closeContact();
+    }
+});
+
+// Simple submit handler (replace with your backend route)
+if (contactForm) {
+    contactForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        alert("Message sent! We'll get back to you shortly.");
+        contactForm.reset();
+        closeContact();
+    });
+}
+   
 });
 </script>
 
