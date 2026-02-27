@@ -86,7 +86,7 @@
                 <li>✅ Priority support</li>
             </ul>
 
-            <a href="/subscribe/pro" 
+            <a id="goUpgradeBtnMain"
                class="block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">
                 Upgrade to Pro
             </a>
@@ -1274,6 +1274,20 @@ if (continueFreeBtn && subscriptionView && appContainer) {
     continueFreeBtn.addEventListener("click", () => {
         subscriptionView.classList.add("hidden"); // hide subscription view
         appContainer.style.display = "block";    // show main app
+    });
+}
+
+const goUpgradeBtn = document.getElementById("goUpgradeBtn");
+const goUpgradeBtnMain = document.getElementById("goUpgradeBtnMain");
+
+// Use the dynamic payLink from your template
+if (payLink) {
+    [goUpgradeBtn, goUpgradeBtnMain].forEach(btn => {
+        if (btn) {
+            btn.addEventListener("click", () => {
+                window.location.href = payLink;
+            });
+        }
     });
 }
 
