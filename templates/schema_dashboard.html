@@ -172,6 +172,15 @@
 </div> <!-- END APP CONTAINER -->
 
 <script>
+    /* ================= PLAN STATE ================= */
+const subscriptionInfo = {{ subscription_info | tojson | safe }};
+const isPro =
+    subscriptionInfo &&
+    (
+        subscriptionInfo.subscribed === true ||
+        (Array.isArray(subscriptionInfo) && subscriptionInfo.length > 0)
+    );
+const isFree = !isPro;
 /* ================= GLOBAL STATE ================= */
 let collectionMappings = [];
 let collectionRowId = 0;
@@ -663,7 +672,17 @@ function updateMappings() {
 document.getElementById("addCollectionBtn").onclick = () => createCollectionRow();
     document.getElementById("addBlogBtn").onclick = () => createBlogRow();
         document.getElementById("addPageBtn").onclick = () => createPageRow();
-document.getElementById("addMappingBtn").onclick = () => createSchemaRow();
+document.getElementById("addMappingBtn").onclick = () => {
+    const currentRows = document.querySelectorAll("#schema-mapping-container > div").length;
+
+    if (isFree && currentRows >= 2) {
+        alert("Free plan allows only 2 product schemas. Upgrade to Pro for unlimited schemas.");
+        return;
+    }
+
+    createSchemaRow();
+};
+
 document.getElementById("addHomepageBtn").onclick = () => createHomepageRow();
 
 /* ================= PREPOPULATE ================= */
@@ -939,6 +958,24 @@ function showOnlySection(active) {
 // default view
 showOnlySection("product");
 
+/* ================= FREE PLAN LOCK ================= */
+if (isFree) {
+
+  // Disable section dropdown options except product
+  const sectionSelect = document.getElementById("schemaSectionSelect");
+  if (sectionSelect) {
+    [...sectionSelect.options].forEach(opt => {
+      if (opt.value !== "product") {
+        opt.disabled = true;
+      }
+    });
+  }
+
+  // If user somehow selects another section
+  showOnlySection("product");
+}
+
+    
 document.getElementById("schemaSectionSelect").addEventListener("change", e => {
   showOnlySection(e.target.value);
 });
