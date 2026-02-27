@@ -1028,11 +1028,6 @@ function hideUpgradeModal() {
     modal.classList.remove("flex");
 }
 
-document.getElementById("closeUpgradeModal").onclick = hideUpgradeModal;
-
-document.getElementById("goUpgradeBtn").onclick = () => {
-    window.location.href = "/pricing"; // or your subscription page route
-};
 
 </script>
 
@@ -1122,6 +1117,34 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+
+
+    /* ================= MODAL EVENTS ================= */
+
+const closeUpgradeBtn = document.getElementById("closeUpgradeModal");
+const goUpgradeBtn = document.getElementById("goUpgradeBtn");
+const upgradeModal = document.getElementById("upgradeModal");
+
+if (closeUpgradeBtn) {
+    closeUpgradeBtn.addEventListener("click", hideUpgradeModal);
+}
+
+if (goUpgradeBtn) {
+    goUpgradeBtn.addEventListener("click", () => {
+        window.location.href = "/subscribe/pro"; // use your real route
+    });
+}
+
+// Optional: click outside card closes modal
+if (upgradeModal) {
+    upgradeModal.addEventListener("click", (e) => {
+        if (e.target === upgradeModal) {
+            hideUpgradeModal();
+        }
+    });
+}
+
+    
 });
 </script>
 
