@@ -917,237 +917,94 @@ document.getElementById("schemaSectionSelect").addEventListener("change", e => {
 </script>
 
 <script>
-  // Convert Flask data to a JS object
-  const subscriptionInfo = {{ subscription_info | tojson | safe }};
-  console.log("Subscription info:", subscriptionInfo);
-
-  // Example usage
-  if (!subscriptionInfo.subscribed && subscriptionInfo.payment_url) {
-      const dashboard = document.querySelector("#section-product"); // or any container
-      const notice = document.createElement("div");
-      notice.className = "bg-yellow-100 text-yellow-800 p-4 rounded-lg mb-6";
-      notice.innerHTML = `
-          ⚠️ Your subscription is inactive. 
-          <a href="${subscriptionInfo.payment_url}" class="underline text-blue-600">Click here to pay</a> to enable full access.
-      `;
-      dashboard.prepend(notice);
-  }
-</script>
-
-<script>
-const initDate = {{ shop_created_at | tojson }};
-const needsAuth = {{ needs_auth | tojson }};
-const shopName = {{ shop_name | tojson }};
-    console.log("needsAuth " + needsAuth);
-    console.log("initial date " + initDate);
-
-
-    function getDaysSince(dateString) {
-    if (!dateString) return null;
-
-    const created = new Date(dateString);
-    const now = new Date();
-
-    const diffMs = now - created;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    return diffDays;
-}
-
-const daysOld = getDaysSince(initDate);
-
-console.log("Store age (days):", daysOld);
-
-    const trialExpired = daysOld !== null && daysOld > 15;
-
-console.log("Trial expired:", trialExpired);
-
-
-    const trialEl = document.getElementById("trial-status");
-
-if (trialExpired) {
-    trialEl.textContent = "Free Trial Expired";
-    trialEl.classList.add("text-red-600");
-} else {
-    trialEl.textContent = "Free Trial Active";
-    trialEl.classList.add("text-green-600");
-}
-
-
-    
-</script>
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    const authBlock = document.getElementById("auth-block");
-    const appContainer = document.getElementById("app-container");
-    const authLink = document.getElementById("auth-link");
-
-    if (needsAuth) {
-        // 🔥 Show auth block
-        authBlock.classList.remove("hidden");
-        appContainer.style.display = "none";
-
-        const params = new URLSearchParams(window.location.search);
-        const shop = params.get("shop");
-
-        if (shop) {
-            authLink.href = `/auth?shop=${encodeURIComponent(shop)}`;
-            authLink.target = "_top";
-        }
-    } else {
-        // 🔥 Show app
-        authBlock.classList.add("hidden");
-        appContainer.style.display = "block";
-    }
-});
-
-  document.addEventListener("DOMContentLoaded", () => {
-      const toggleBtn = document.getElementById("toggleSubscriptionBtn");
-      const subscriptionView = document.getElementById("subscription-view");
-      const appContainer = document.getElementById("app-container");
-      const backBtn = document.getElementById("backToAppBtn");
-
-      // Only attach event listeners if elements exist
-      if (toggleBtn && subscriptionView && appContainer && backBtn) {
-          toggleBtn.addEventListener("click", () => {
-              appContainer.style.display = "none";
-              subscriptionView.classList.remove("hidden");
-          });
-
-          backBtn.addEventListener("click", () => {
-              subscriptionView.classList.add("hidden");
-              appContainer.style.display = "block";
-          });
-
-          // Show subscription view automatically if user not subscribed
-          if (!subscriptionInfo.subscribed) {
-              appContainer.style.display = "none";
-              subscriptionView.classList.remove("hidden");
-
-              // Optional: disable toggle button if no payment URL
-              if (!subscriptionInfo.payment_url) {
-                  toggleBtn.disabled = true;
-                  toggleBtn.classList.add("opacity-50", "cursor-not-allowed");
-              }
-          }
-      }
-  });
-
-
-    // Grab elements
-const toggleSubscriptionBtn = document.getElementById("toggleSubscriptionBtn");
-const subscriptionView = document.getElementById("subscription-view");
-const appContainer = document.getElementById("app-container");
-const backToAppBtn = document.getElementById("backToAppBtn");
-
-// Function to enable the subscription button
-function enableSubscriptionButton() {
-    toggleSubscriptionBtn.disabled = false;
-    toggleSubscriptionBtn.classList.remove("opacity-50", "cursor-not-allowed");
-}
-
-// Initially, if user is unsubscribed, disable the button
-let userSubscribed = false; // This comes from your subscription info check
-
-if (userSubscribed) {
-    enableSubscriptionButton();
-}
-
-// Toggle subscription view
-toggleSubscriptionBtn.addEventListener("click", () => {
-    if (toggleSubscriptionBtn.disabled) return; // safety check
-    subscriptionView.classList.remove("hidden");
-    appContainer.classList.add("hidden");
-});
-
-// Back to App button
-backToAppBtn.addEventListener("click", () => {
-    subscriptionView.classList.add("hidden");
-    appContainer.classList.remove("hidden");
-    // Optionally enable the button now that user came back
-    enableSubscriptionButton();
-});
-
-
 document.addEventListener("DOMContentLoaded", function () {
 
     const initDate = {{ shop_created_at | tojson }};
     const subscriptionInfo = {{ subscription_info | tojson | safe }};
     const needsAuth = {{ needs_auth | tojson }};
 
-    console.log("Store created at:", initDate);
-    console.log("Subscription info:", subscriptionInfo);
-    console.log("Needs auth:", needsAuth);
-
+    const authBlock = document.getElementById("auth-block");
+    const appContainer = document.getElementById("app-container");
     const subscriptionView = document.getElementById("subscription-view");
+    const toggleBtn = document.getElementById("toggleSubscriptionBtn");
+    const backBtn = document.getElementById("backToAppBtn");
+    const trialEl = document.getElementById("trial-status");
 
-    // -----------------------------
-    // Helper: Calculate Store Age
-    // -----------------------------
     function getDaysSince(dateString) {
-        if (!dateString) return null;
-
+        if (!dateString) return 0;
         const created = new Date(dateString);
         const now = new Date();
-        const diffMs = now - created;
-
-        return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        return Math.floor((now - created) / (1000 * 60 * 60 * 24));
     }
 
     const daysOld = getDaysSince(initDate);
-    const trialExpired = daysOld !== null && daysOld > 15;
+    const trialExpired = daysOld > 15;
 
-    console.log("Store age (days):", daysOld);
-    console.log("Trial expired:", trialExpired);
-
-    // -----------------------------
-    // Detect Active Subscription
-    // -----------------------------
     const hasActiveSubscription =
         subscriptionInfo &&
-        Array.isArray(subscriptionInfo) &&
-        subscriptionInfo.length > 0;
+        (
+            subscriptionInfo.subscribed === true ||
+            (Array.isArray(subscriptionInfo) && subscriptionInfo.length > 0)
+        );
 
-    console.log("Has active subscription:", hasActiveSubscription);
+    console.log("Days old:", daysOld);
+    console.log("Trial expired:", trialExpired);
+    console.log("Subscribed:", hasActiveSubscription);
+    console.log("Needs auth:", needsAuth);
 
-    // -----------------------------
-    // Access Logic
-    // -----------------------------
+    /* ================= AUTH ================= */
     if (needsAuth) {
-        // If token invalid, force subscription screen hidden (auth flow handles redirect)
-        subscriptionView.classList.add("hidden");
+        if (authBlock) authBlock.classList.remove("hidden");
+        if (appContainer) appContainer.style.display = "none";
         return;
+    } else {
+        if (authBlock) authBlock.classList.add("hidden");
+        if (appContainer) appContainer.style.display = "block";
     }
 
-    if (hasActiveSubscription) {
-        // ✅ Paid user
-        subscriptionView.classList.add("hidden");
+    /* ================= STATUS BADGE ================= */
+    if (trialEl) {
+        if (hasActiveSubscription) {
+            trialEl.textContent = "Pro Plan Active";
+            trialEl.className = "ml-3 text-sm font-medium text-green-600";
+        } else if (!trialExpired) {
+            trialEl.textContent = `Free Trial Active (${15 - daysOld} days left)`;
+            trialEl.className = "ml-3 text-sm font-medium text-green-600";
+        } else {
+            trialEl.textContent = "Free Trial Expired";
+            trialEl.className = "ml-3 text-sm font-medium text-red-600";
+        }
+    }
 
-    } else if (!trialExpired) {
-        // 🟢 Trial still active
-        subscriptionView.classList.add("hidden");
-
+    /* ================= ACCESS CONTROL ================= */
+    if (!hasActiveSubscription && trialExpired) {
+        if (appContainer) appContainer.style.display = "none";
+        if (subscriptionView) subscriptionView.classList.remove("hidden");
     } else {
-        // 🔴 Trial expired & not subscribed
-        subscriptionView.classList.remove("hidden");
+        if (subscriptionView) subscriptionView.classList.add("hidden");
+    }
 
-        // Update messaging dynamically
-        const heading = subscriptionView.querySelector("h2");
-        const subText = subscriptionView.querySelector("p");
+    /* ================= TOGGLE ================= */
+    if (toggleBtn && subscriptionView && appContainer) {
+        toggleBtn.disabled = false;
+        toggleBtn.classList.remove("opacity-50", "cursor-not-allowed");
 
-        if (heading) {
-            heading.textContent = "Your Free Trial Has Expired";
-        }
+        toggleBtn.addEventListener("click", () => {
+            appContainer.style.display = "none";
+            subscriptionView.classList.remove("hidden");
+        });
+    }
 
-        if (subText) {
-            subText.textContent =
-                "Subscribe to continue using all features and keep your schema configurations active.";
-        }
+    if (backBtn && subscriptionView && appContainer) {
+        backBtn.addEventListener("click", () => {
+            subscriptionView.classList.add("hidden");
+            appContainer.style.display = "block";
+        });
     }
 
 });
 </script>
+
 
 </script>
 </body>
