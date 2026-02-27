@@ -545,8 +545,8 @@ def home():
                 .get("activeSubscriptions", [])
             )
             
-            if not active_subs:
-                # 🔥 Create subscription if none exists
+            # 🔥 Check active subscription
+            if not active_subs or active_subs[0]["status"] != "ACTIVE":
                 mutation = """
                 mutation {
                   appSubscriptionCreate(
@@ -571,16 +571,24 @@ def home():
                   }
                 }
                 """
+                try:
+                    billing_response = query_shopify_graphql(shop, access_token, mutation)
+                    logging.info("Billing: appSubscriptionCreate response:\n%s", json.dumps(billing_response, indent=2, default=str))
             
-                billing_response = query_shopify_graphql(shop, access_token, mutation)
-                logging.info("Billing: appSubscriptionCreate response:\n%s", json.dumps(billing_response, indent=2, default=str))
+                    billing_confirmation_url = (
+                        billing_response.get("data", {})
+                        .get("appSubscriptionCreate", {})
+                        .get("confirmationUrl")
+                    )
+            
+                    # Fallback to placeholder if Shopify fails
+                    if not billing_confirmation_url:
+                        billing_confirmation_url = "https://www.linkfailure.com/"
+            
+                except Exception:
+                    logging.exception("Failed to create subscription")
+                    billing_confirmation_url = "https://www.linkfailure.com/"
 
-            
-                billing_confirmation_url = (
-                    billing_response.get("data", {})
-                    .get("appSubscriptionCreate", {})
-                    .get("confirmationUrl")
-                )
 
             # -----------------------
             # Metafield definitions
@@ -3450,7 +3458,7 @@ def create_subscription():
           {
             plan: {
               appRecurringPricingDetails: {
-                price: { amount: 19.99, currencyCode: USD }
+                price: { amount: 5.00, currencyCode: USD }
               }
             }
           }
