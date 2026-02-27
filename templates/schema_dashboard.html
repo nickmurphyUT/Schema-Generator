@@ -935,7 +935,24 @@ document.getElementById("schemaSectionSelect").addEventListener("change", e => {
 </script>
 
 <script>
+const initDate = {{ shop_created_at | tojson }};
+const needsAuth = {{ needs_auth | tojson }};
+const shopName = {{ shop_name | tojson }};
+    console.log("needsAuth " + needsAuth);
+    console.log("initial date " + initDate);
 
+
+    function getDaysSince(dateString) {
+    if (!dateString) return null;
+
+    const created = new Date(dateString);
+    const now = new Date();
+
+    const diffMs = now - created;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    return diffDays;
+}
 
 const daysOld = getDaysSince(initDate);
 
@@ -1018,7 +1035,38 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
-    
+    // Grab elements
+const toggleSubscriptionBtn = document.getElementById("toggleSubscriptionBtn");
+const subscriptionView = document.getElementById("subscription-view");
+const appContainer = document.getElementById("app-container");
+const backToAppBtn = document.getElementById("backToAppBtn");
+
+// Function to enable the subscription button
+function enableSubscriptionButton() {
+    toggleSubscriptionBtn.disabled = false;
+    toggleSubscriptionBtn.classList.remove("opacity-50", "cursor-not-allowed");
+}
+
+// Initially, if user is unsubscribed, disable the button
+let userSubscribed = false; // This comes from your subscription info check
+
+if (userSubscribed) {
+    enableSubscriptionButton();
+}
+
+// Toggle subscription view
+toggleSubscriptionBtn.addEventListener("click", () => {
+    if (toggleSubscriptionBtn.disabled) return; // safety check
+    subscriptionView.classList.remove("hidden");
+    appContainer.classList.add("hidden");
+});
+
+// Back to App button
+backToAppBtn.addEventListener("click", () => {
+    subscriptionView.classList.add("hidden");
+    appContainer.classList.remove("hidden");
+    // Optionally enable the button now that user came back
+    enableSubscriptionButton();
 });
 
 
@@ -1028,78 +1076,77 @@ document.addEventListener("DOMContentLoaded", function () {
     const subscriptionInfo = {{ subscription_info | tojson | safe }};
     const needsAuth = {{ needs_auth | tojson }};
 
-    const subscriptionView = document.getElementById("subscription-view");
-    const appContainer = document.getElementById("app-container");
-    const trialEl = document.getElementById("trial-status");
-    const toggleBtn = document.getElementById("toggleSubscriptionBtn");
-    const backBtn = document.getElementById("backToAppBtn");
+    console.log("Store created at:", initDate);
+    console.log("Subscription info:", subscriptionInfo);
+    console.log("Needs auth:", needsAuth);
 
+    const subscriptionView = document.getElementById("subscription-view");
+
+    // -----------------------------
+    // Helper: Calculate Store Age
+    // -----------------------------
     function getDaysSince(dateString) {
         if (!dateString) return null;
+
         const created = new Date(dateString);
         const now = new Date();
-        return Math.floor((now - created) / (1000 * 60 * 60 * 24));
+        const diffMs = now - created;
+
+        return Math.floor(diffMs / (1000 * 60 * 60 * 24));
     }
 
     const daysOld = getDaysSince(initDate);
-    const trialActive = daysOld !== null && daysOld <= 15;
     const trialExpired = daysOld !== null && daysOld > 15;
 
+    console.log("Store age (days):", daysOld);
+    console.log("Trial expired:", trialExpired);
+
+    // -----------------------------
+    // Detect Active Subscription
+    // -----------------------------
     const hasActiveSubscription =
         subscriptionInfo &&
-        (
-            subscriptionInfo.subscribed === true ||
-            (Array.isArray(subscriptionInfo) && subscriptionInfo.length > 0)
-        );
+        Array.isArray(subscriptionInfo) &&
+        subscriptionInfo.length > 0;
 
-    // ---------------- STATUS BADGE ----------------
-    if (hasActiveSubscription) {
-        trialEl.textContent = "Pro Plan Active";
-        trialEl.className = "ml-3 text-sm font-medium text-green-600";
-    }
-    else if (trialActive) {
-        trialEl.textContent = `Free Trial Active (${15 - daysOld} days left)`;
-        trialEl.className = "ml-3 text-sm font-medium text-green-600";
-    }
-    else {
-        trialEl.textContent = "Free Trial Expired";
-        trialEl.className = "ml-3 text-sm font-medium text-red-600";
-    }
+    console.log("Has active subscription:", hasActiveSubscription);
 
-    // ---------------- ACCESS CONTROL ----------------
-    if (needsAuth) return;
-
-    if (hasActiveSubscription || trialActive) {
+    // -----------------------------
+    // Access Logic
+    // -----------------------------
+    if (needsAuth) {
+        // If token invalid, force subscription screen hidden (auth flow handles redirect)
         subscriptionView.classList.add("hidden");
-        appContainer.style.display = "block";
-    } else {
-        subscriptionView.classList.remove("hidden");
-        appContainer.style.display = "none";
+        return;
+    }
 
+    if (hasActiveSubscription) {
+        // ✅ Paid user
+        subscriptionView.classList.add("hidden");
+
+    } else if (!trialExpired) {
+        // 🟢 Trial still active
+        subscriptionView.classList.add("hidden");
+
+    } else {
+        // 🔴 Trial expired & not subscribed
+        subscriptionView.classList.remove("hidden");
+
+        // Update messaging dynamically
         const heading = subscriptionView.querySelector("h2");
         const subText = subscriptionView.querySelector("p");
 
-        if (heading) heading.textContent = "Your Free Trial Has Expired";
+        if (heading) {
+            heading.textContent = "Your Free Trial Has Expired";
+        }
+
         if (subText) {
             subText.textContent =
                 "Subscribe to continue using all features and keep your schema configurations active.";
         }
     }
 
-    // ---------------- TOGGLE SUBSCRIPTION VIEW ----------------
-    toggleBtn?.addEventListener("click", () => {
-        subscriptionView.classList.remove("hidden");
-        appContainer.style.display = "none";
-    });
-
-    backBtn?.addEventListener("click", () => {
-        subscriptionView.classList.add("hidden");
-        appContainer.style.display = "block";
-    });
-
 });
-
-
 </script>
 
 </script>
