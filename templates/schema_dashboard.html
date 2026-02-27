@@ -171,6 +171,38 @@
 
 </div> <!-- END APP CONTAINER -->
 
+
+<!-- Upgrade Modal -->
+<div id="upgradeModal" class="fixed inset-0 hidden items-center justify-center z-50">
+  <!-- Overlay -->
+  <div class="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"></div>
+
+  <!-- Modal Card -->
+  <div class="relative bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 text-center z-10">
+
+    <h2 class="text-2xl font-bold text-gray-800 mb-3">
+      Upgrade Required
+    </h2>
+
+    <p class="text-gray-600 mb-6">
+      The Free plan allows up to <strong>2 product schemas</strong>.
+      Upgrade to Pro for unlimited product, collection, blog, and page schemas.
+    </p>
+
+    <div class="flex justify-center gap-4">
+      <button id="closeUpgradeModal"
+        class="px-5 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">
+        Cancel
+      </button>
+
+      <button id="goUpgradeBtn"
+        class="px-5 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700">
+        Upgrade to Pro
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
     /* ================= PLAN STATE ================= */
 const subscriptionInfo = {{ subscription_info | tojson | safe }};
@@ -675,10 +707,11 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
 document.getElementById("addMappingBtn").onclick = () => {
     const currentRows = document.querySelectorAll("#schema-mapping-container > div").length;
 
-    if (isFree && currentRows >= 2) {
-        alert("Free plan allows only 2 product schemas. Upgrade to Pro for unlimited schemas.");
-        return;
-    }
+if (isFree && currentRows >= 2) {
+    showUpgradeModal();
+    return;
+}
+
 
     createSchemaRow();
 };
@@ -979,6 +1012,27 @@ if (isFree) {
 document.getElementById("schemaSectionSelect").addEventListener("change", e => {
   showOnlySection(e.target.value);
 });
+
+
+    /* ================= UPGRADE MODAL ================= */
+
+function showUpgradeModal() {
+    const modal = document.getElementById("upgradeModal");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+}
+
+function hideUpgradeModal() {
+    const modal = document.getElementById("upgradeModal");
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+}
+
+document.getElementById("closeUpgradeModal").onclick = hideUpgradeModal;
+
+document.getElementById("goUpgradeBtn").onclick = () => {
+    window.location.href = "/pricing"; // or your subscription page route
+};
 
 </script>
 
