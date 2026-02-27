@@ -1153,13 +1153,13 @@ document.addEventListener("DOMContentLoaded", function () {
     /* ================= STATUS BADGE ================= */
     if (trialEl) {
         if (hasActiveSubscription) {
-            trialEl.textContent = "Pro Plan Active";
+            trialEl.textContent = "";
             trialEl.className = "ml-3 text-sm font-medium text-green-600";
         } else if (!trialExpired) {
             trialEl.textContent = `Premium Version Active)`;
             trialEl.className = "ml-3 text-sm font-medium text-green-600";
         } else {
-            trialEl.textContent = "Free Version Active";
+            trialEl.textContent = "";
             trialEl.className = "ml-3 text-sm font-medium text-red-600";
         }
     }
