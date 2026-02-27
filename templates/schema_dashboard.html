@@ -1105,7 +1105,8 @@ function hideUpgradeModal() {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-
+    const payLink = {{ billing_confirmation_url | tojson | safe}};
+    console.log('URL TEST ' + payLink);
     const initDate = {{ shop_created_at | tojson }};
     const subscriptionInfo = {{ subscription_info | tojson | safe }};
     const needsAuth = {{ needs_auth | tojson }};
@@ -1155,10 +1156,10 @@ document.addEventListener("DOMContentLoaded", function () {
             trialEl.textContent = "Pro Plan Active";
             trialEl.className = "ml-3 text-sm font-medium text-green-600";
         } else if (!trialExpired) {
-            trialEl.textContent = `Free Trial Active (${15 - daysOld} days left)`;
+            trialEl.textContent = `Premium Version Active)`;
             trialEl.className = "ml-3 text-sm font-medium text-green-600";
         } else {
-            trialEl.textContent = "Free Trial Expired";
+            trialEl.textContent = "Free Version Active";
             trialEl.className = "ml-3 text-sm font-medium text-red-600";
         }
     }
