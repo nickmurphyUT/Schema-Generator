@@ -37,46 +37,68 @@
 
 
 <div id="subscription-view" class="hidden mt-8 w-full bg-white shadow-lg rounded-xl p-8 text-center border border-gray-200 max-w-5xl mx-auto">
+    
     <h2 class="text-3xl font-bold text-gray-800 mb-4">Choose Your Plan</h2>
-    <p class="text-gray-600 mb-8">Start your journey with a free trial or unlock full access with our paid plan.</p>
+    <p class="text-gray-600 mb-8">
+        Start for free with limited product schemas, or unlock unlimited schema power with Pro.
+    </p>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Free Trial Plan -->
+
+        <!-- Free Plan -->
         <div class="border border-gray-300 rounded-xl p-6 hover:shadow-lg transition duration-200">
-            <h3 class="text-xl font-semibold mb-2">Free Trial</h3>
-            <p class="text-gray-600 mb-4">15-day free trial</p>
+            <h3 class="text-xl font-semibold mb-2">Free Plan</h3>
+            <p class="text-gray-600 mb-4">Always free</p>
             <p class="text-gray-800 font-bold text-2xl mb-4">$0</p>
+
             <ul class="text-left mb-6 space-y-2 text-gray-600">
-                <li>✅ Unlimited Product Schemas</li>
-                <li>✅ Basic Support</li>
-                <li>✅ Access to core features</li>
-                <li><br></li>
+                <li>✅ Up to 2 Product Schemas</li>
+                <li>✅ Works on Product pages only</li>
+                <li>✅ Core schema generation tools</li>
+                <li>❌ No Collection schemas</li>
+                <li>❌ No Blog or Page schemas</li>
+                <li>❌ No advanced analytics</li>
             </ul>
-            <a href="/subscribe/basic" class="block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
-                Start Free Trial
+
+            <a href="/subscribe/basic" 
+               class="block bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                Continue with Free
             </a>
         </div>
 
-        <!-- Paid Plan -->
-        <div class="border border-gray-300 rounded-xl p-6 hover:shadow-lg transition duration-200">
-            <h3 class="text-xl font-semibold mb-2">Pro Plan</h3>
-            <p class="text-gray-600 mb-4">Full access to all features</p>
+        <!-- Pro Plan -->
+        <div class="border-2 border-green-500 rounded-xl p-6 hover:shadow-xl transition duration-200 relative">
+
+            <span class="absolute top-0 right-0 bg-green-500 text-white text-xs px-3 py-1 rounded-bl-xl rounded-tr-xl">
+                MOST POPULAR
+            </span>
+
+            <h3 class="text-xl font-semibold mb-2 text-green-700">Pro Plan</h3>
+            <p class="text-gray-600 mb-4">Full schema access</p>
             <p class="text-gray-800 font-bold text-2xl mb-4">$5 / month</p>
+
             <ul class="text-left mb-6 space-y-2 text-gray-600">
                 <li>✅ Unlimited Product Schemas</li>
-                <li>✅ Priority Support</li>
-                <li>✅ Advanced Analytics</li>
-                <li>✅ Early access to new features</li>
+                <li>✅ Collection Schemas (coming soon)</li>
+                <li>✅ Page Schemas (coming soon)</li>
+                <li>✅ Blog Article Schemas (coming soon)</li>
+                <li>✅ Advanced analytics</li>
+                <li>✅ Priority support</li>
             </ul>
-            <a href="/subscribe/pro" class="block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">
+
+            <a href="/subscribe/pro" 
+               class="block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">
                 Upgrade to Pro
             </a>
         </div>
+
     </div>
 
-    <button id="backToAppBtn" class="mt-8 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
+    <button id="backToAppBtn" 
+            class="mt-8 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
         Back to App
     </button>
+
 </div>
 
 
