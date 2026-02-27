@@ -214,8 +214,11 @@
     </button>
 
     <!-- Contact Panel -->
-    <div id="contactPanel"
-        class="hidden absolute bottom-20 right-0 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden">
+<div id="contactPanel"
+    class="absolute bottom-20 right-0 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden
+           opacity-0 scale-95 translate-y-2 pointer-events-none
+           transition-all duration-200 ease-out">
+
 
         <!-- Header -->
         <div class="bg-purple-600 text-white px-4 py-3 flex justify-between items-center">
@@ -1192,16 +1195,23 @@ const contactClose = document.getElementById("contactClose");
 const contactForm = document.getElementById("contactForm");
 
 function openContact() {
-    contactPanel.classList.remove("hidden");
+    contactPanel.classList.remove("opacity-0", "scale-95", "translate-y-2", "pointer-events-none");
+    contactPanel.classList.add("opacity-100", "scale-100", "translate-y-0");
 }
 
 function closeContact() {
-    contactPanel.classList.add("hidden");
+    contactPanel.classList.remove("opacity-100", "scale-100", "translate-y-0");
+    contactPanel.classList.add("opacity-0", "scale-95", "translate-y-2", "pointer-events-none");
 }
+
 
 if (contactToggle) {
     contactToggle.addEventListener("click", function () {
-        contactPanel.classList.toggle("hidden");
+        if (contactPanel.classList.contains("opacity-0")) {
+    openContact();
+} else {
+    closeContact();
+}
     });
 }
 
