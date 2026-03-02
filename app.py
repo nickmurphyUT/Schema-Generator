@@ -25,8 +25,8 @@ import time
 from threading import Thread
 import re
 from math import ceil
-
-
+import smtplib
+from email.mime.text import MIMEText
 
 SCHEMA_CACHE = {
     "timestamp": 0,
@@ -3490,6 +3490,52 @@ def create_subscription():
 @app.route("/billing/confirm")
 def billing_confirm():
     return redirect("/")
+
+
+
+@app.route("/contact-support", methods=["POST"])
+def contact_support():
+    data = request.json
+    email = data.get("email")
+    message = data.get("message")
+    shop = data.get("shop")
+
+    if not email or not message:
+        return jsonify({"error": "Missing fields"}), 400
+
+    try:
+        send_support_email(email, message, shop)
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        print("Contact error:", e)
+        return jsonify({"error": "Failed to send"}), 500
+
+def send_support_email(user_email, message, shop):
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
+    smtp_user = os.environ.get("SUPPORT_EMAIL")
+    smtp_pass = os.environ.get("SUPPORT_EMAIL_PASSWORD")
+
+    body = f"""
+New Support Request
+
+Shop: {shop}
+User Email: {user_email}
+
+Message:
+{message}
+"""
+
+    msg = MIMEText(body)
+    msg["Subject"] = "New FetchSchema Support Request"
+    msg["From"] = smtp_user
+    msg["To"] = smtp_user
+
+    server = smtplib.SMTP(smtp_server, smtp_port)
+    server.starttls()
+    server.login(smtp_user, smtp_pass)
+    server.sendmail(smtp_user, smtp_user, msg.as_string())
+    server.quit()
 
 
 # Store or retain logs external to shopify's base options?
