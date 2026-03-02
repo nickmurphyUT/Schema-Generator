@@ -304,13 +304,15 @@
 <script>
     /* ================= PLAN STATE ================= */
 const subscriptionInfo = {{ subscription_info | tojson | safe }};
-const isPro =
+let isPro =
     subscriptionInfo &&
     (
         subscriptionInfo.subscribed === true ||
         (Array.isArray(subscriptionInfo) && subscriptionInfo.length > 0)
     );
-const isFree = !isPro;
+
+let isFree = !isPro;
+
 /* ================= GLOBAL STATE ================= */
 let collectionMappings = [];
 let collectionRowId = 0;
@@ -676,7 +678,7 @@ function updateHomepageMappings() {
     container.appendChild(row);
     updateCollectionMappings();
 }
-function createSchemaRow(defaultSchema = "", defaultSource = "") {
+function createSchemaRow(defaultSchema = "", defaultSource = "", isBase = false) {
     const schemaOptions = [...commonSchemaFields];
 
     const isCustom = defaultSchema && !commonSchemaFields.includes(defaultSchema);
@@ -692,6 +694,10 @@ function createSchemaRow(defaultSchema = "", defaultSource = "") {
     const row = document.createElement("div");
     row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
     row.dataset.rowId = id;
+    
+    if (isBase) {
+    row.dataset.base = "true";
+    }
 
     row.innerHTML = `
         <div class="flex-1 flex flex-col gap-2">
@@ -803,16 +809,19 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
     document.getElementById("addBlogBtn").onclick = () => createBlogRow();
         document.getElementById("addPageBtn").onclick = () => createPageRow();
 document.getElementById("addMappingBtn").onclick = () => {
-    const currentRows = document.querySelectorAll("#schema-mapping-container > div").length;
 
-if (isFree && currentRows >= 2) {
-    showUpgradeModal();
-    return;
-}
+    const customRows = [
+        ...document.querySelectorAll("#schema-mapping-container > div")
+    ].filter(row => !row.dataset.base);
 
+    if (isFree && customRows.length >= 2) {
+        showUpgradeModal();
+        return;
+    }
 
     createSchemaRow();
 };
+
 
 document.getElementById("addHomepageBtn").onclick = () => createHomepageRow();
 
@@ -891,12 +900,21 @@ if (savedPageMappings.length > 0) {
 
 
 if (savedProductMappings.length > 0) {
+
     savedProductMappings.forEach(m =>
-        createSchemaRow(m.schemaField || "", m.sourceField || "")
+        createSchemaRow(m.schemaField || "", m.sourceField || "", false)
     );
+
 } else {
-    createSchemaRow();
+
+    // Base standard schema fields
+    createSchemaRow("name", "product.title", true);
+    createSchemaRow("url", "product.handle", true);
+    createSchemaRow("description", "product.description", true);
+    createSchemaRow("sku", "product.selected_or_first_available_variant.sku", true);
+    createSchemaRow("brand.name", "product.vendor", true);
 }
+
 
 if (savedCollectionMappings.length > 0) {
     savedCollectionMappings.forEach(m =>
@@ -1491,9 +1509,6 @@ if (payLink) {
     }
 
 });
-
-</script>
-
 
 </script>
 </body>
