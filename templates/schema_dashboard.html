@@ -1345,6 +1345,65 @@ if (payLink) {
 
     
 });
+
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+    const form = document.getElementById("contactForm");
+    const successBlock = document.getElementById("contactSuccess");
+
+    if (!form || !successBlock) return;
+
+    form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const email = form.querySelector("input[type='email']").value;
+        const message = form.querySelector("textarea").value;
+
+        try {
+            const resp = await fetch("/contact-support", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, message })
+            });
+
+            if (!resp.ok) throw new Error("Request failed");
+
+            // Animate out form
+            form.classList.add("opacity-0", "scale-95");
+
+            setTimeout(() => {
+                form.classList.add("hidden");
+
+                // Animate in success
+                successBlock.classList.remove("hidden");
+                setTimeout(() => {
+                    successBlock.classList.remove("opacity-0", "scale-95");
+                }, 10);
+
+            }, 200);
+
+        } catch (err) {
+            showInlineError(form, "Something went wrong. Please try again.");
+        }
+    });
+
+    function showInlineError(form, message) {
+        let errorEl = document.getElementById("contactError");
+
+        if (!errorEl) {
+            errorEl = document.createElement("div");
+            errorEl.id = "contactError";
+            errorEl.className = "text-red-600 text-sm text-center";
+            form.prepend(errorEl);
+        }
+
+        errorEl.textContent = message;
+    }
+
+});
+
 </script>
 
 
