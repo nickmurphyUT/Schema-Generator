@@ -147,6 +147,11 @@
         <div id="schema-mapping-container" class="space-y-4 mb-6"></div>
         <button id="addMappingBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
         <button id="sendToBackendBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Schema Metafields</button>
+    <button id="resetSchemaBtn"
+        class="ml-4 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+    Reset to Default
+</button>
+
         <div id="metafields-preview" class="mt-4 text-sm text-gray-500"></div>
 <div class="mt-6 flex justify-end">
     <p class="text-gray-400 text-sm">
@@ -1170,6 +1175,25 @@ document.addEventListener("DOMContentLoaded", function () {
     const toggleBtn = document.getElementById("toggleSubscriptionBtn");
     const backBtn = document.getElementById("backToAppBtn");
     const trialEl = document.getElementById("trial-status");
+
+    const resetBtn = document.getElementById("resetSchemaBtn");
+const schemaContainer = document.getElementById("schemaContainer"); // use your actual container ID
+
+resetBtn.addEventListener("click", () => {
+
+    // 1️⃣ Clear everything
+    schemaContainer.innerHTML = "";
+
+    // 2️⃣ Re-add base fields ONLY
+    createSchemaRow("name", "product.title", true);
+    createSchemaRow("url", "product.handle", true);
+    createSchemaRow("description", "product.description", true);
+    createSchemaRow("sku", "product.selected_or_first_available_variant.sku", true);
+    createSchemaRow("brand", "product.vendor", true);
+
+});
+
+    
         const hasActiveSubscription =
         subscriptionInfo &&
         (
