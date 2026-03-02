@@ -1152,7 +1152,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const toggleBtn = document.getElementById("toggleSubscriptionBtn");
     const backBtn = document.getElementById("backToAppBtn");
     const trialEl = document.getElementById("trial-status");
-
+        const hasActiveSubscription =
+        subscriptionInfo &&
+        (
+            subscriptionInfo.subscribed === true ||
+            (Array.isArray(subscriptionInfo) && subscriptionInfo.length > 0)
+        );
 
     const downgradeBtn = document.getElementById("downgradeBtn");
 
@@ -1218,12 +1223,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const daysOld = getDaysSince(initDate);
     const trialExpired = daysOld > 15;
 
-    const hasActiveSubscription =
-        subscriptionInfo &&
-        (
-            subscriptionInfo.subscribed === true ||
-            (Array.isArray(subscriptionInfo) && subscriptionInfo.length > 0)
-        );
+
 
     console.log("Days old:", daysOld);
     console.log("Trial expired:", trialExpired);
