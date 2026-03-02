@@ -1539,37 +1539,46 @@ if (payLink) {
 </script>
 
 <script>
-document.addEventListener("DOMContentLoaded", async function () {
+document.addEventListener("DOMContentLoaded", function () {
 
   const params = new URLSearchParams(window.location.search);
   const host = params.get("host");
-  const shop = params.get("shop");
 
   const AppBridge = window['app-bridge'];
   const createApp = AppBridge.default;
-  const { NavigationMenu } = AppBridge.actions;
 
   const app = createApp({
     apiKey: "{{ access_token }}",
     host: host,
-    forceRedirect: true,
+    forceRedirect: true
   });
 
-  // 🔥 Call backend
-  const response = await fetch(`/api/navigation?shop=${shop}`);
-  const data = await response.json();
-
-  const navItems = data.items.map(item => ({
-    label: item.label,
-    destination: `${item.path}?host=${host}`
-  }));
+  const { NavigationMenu } = AppBridge.actions;
 
   NavigationMenu.create(app, {
-    items: navItems
+    items: [
+      {
+        label: "Dashboard",
+        destination: "/"
+      },
+      {
+        label: "Products Schema",
+        destination: "/?section=product"
+      },
+      {
+        label: "Collections Schema",
+        destination: "/?section=collection"
+      },
+      {
+        label: "Settings",
+        destination: "/?section=settings"
+      }
+    ]
   });
 
 });
 </script>
+
 
 
 </body>
