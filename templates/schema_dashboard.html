@@ -1285,15 +1285,15 @@ if (contactForm) {
             const result = await resp.json();
 
             if (resp.ok) {
-                alert("Message sent successfully!");
+                //alert("Message sent successfully!");
                 contactForm.reset();
                 closeContact();
             } else {
-                alert("Error sending message.");
+                //alert("Error sending message.");
             }
 
         } catch (err) {
-            alert("Network error.");
+            //alert("Network error.");
         }
     });
 }
