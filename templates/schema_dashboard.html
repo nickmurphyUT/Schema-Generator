@@ -1192,16 +1192,44 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
     
-                // ✅ Success
-                alert("Subscription cancelled. You are now on Free plan.");
-    
-                // Update UI immediately
-                downgradeBtn.classList.add("hidden");
-    
-                subscriptionView.classList.add("hidden");
-                appContainer.style.display = "block";
-    
-                location.reload(); // optional but safest
+// ✅ Success
+alert("Subscription cancelled. You are now on Free plan.");
+
+// 1️⃣ Update frontend plan state
+window.isPro = false;
+window.isFree = true;
+
+// 2️⃣ Hide downgrade button
+downgradeBtn.classList.add("hidden");
+
+// 3️⃣ Lock non-product sections
+const sectionSelect = document.getElementById("schemaSectionSelect");
+if (sectionSelect) {
+    [...sectionSelect.options].forEach(opt => {
+        if (opt.value !== "product") {
+            opt.disabled = true;
+        }
+    });
+    sectionSelect.value = "product";
+}
+
+// 4️⃣ Force product section visible
+showOnlySection("product");
+
+// 5️⃣ Enforce free limit immediately
+const productRows = document.querySelectorAll("#schema-mapping-container > div");
+
+if (productRows.length > 2) {
+    for (let i = 2; i < productRows.length; i++) {
+        productRows[i].remove();
+    }
+    updateMappings();
+}
+
+// 6️⃣ Show app UI
+subscriptionView.classList.add("hidden");
+appContainer.style.display = "block";
+
     
             } catch (err) {
                 alert("Network error");
