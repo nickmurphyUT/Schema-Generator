@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "Schema App Dashboard" }}</title>
     <!-- Load Tailwind CSS via CDN -->
+      <meta charset="utf-8">
+  <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
@@ -1535,5 +1537,40 @@ if (payLink) {
 });
 
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+
+  const params = new URLSearchParams(window.location.search);
+  const host = params.get("host");
+  const shop = params.get("shop");
+
+  const AppBridge = window['app-bridge'];
+  const createApp = AppBridge.default;
+  const { NavigationMenu } = AppBridge.actions;
+
+  const app = createApp({
+    apiKey: "{{ api_key }}",
+    host: host,
+    forceRedirect: true,
+  });
+
+  // 🔥 Call backend
+  const response = await fetch(`/api/navigation?shop=${shop}`);
+  const data = await response.json();
+
+  const navItems = data.items.map(item => ({
+    label: item.label,
+    destination: `${item.path}?host=${host}`
+  }));
+
+  NavigationMenu.create(app, {
+    items: navItems
+  });
+
+});
+</script>
+
+
 </body>
 </html>
