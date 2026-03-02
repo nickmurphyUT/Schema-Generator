@@ -3596,6 +3596,28 @@ def cancel_subscription():
     }
 
 
+@app.route("/api/navigation")
+def get_navigation():
+    shop = request.args.get("shop")
+
+    # Validate shop / session here
+    store = StoreToken.query.filter_by(shop=shop).first()
+
+    if not store:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # Example: dynamic based on subscription
+    items = [
+        {"label": "Dashboard", "path": "/"},
+        {"label": "Settings", "path": "/settings"},
+    ]
+
+    if store.plan == "pro":
+        items.append({"label": "Advanced", "path": "/advanced"})
+
+    return jsonify({"items": items})
+
+
 def send_support_email(user_email, message, shop):
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
