@@ -723,6 +723,7 @@ def home():
         subscription_info=subscription_info,
         billing_confirmation_url=billing_confirmation_url,
         shop_created_at=shop_created_at,
+        access_token=access_token,  
     )
 
 
