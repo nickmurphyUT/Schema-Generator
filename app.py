@@ -3510,6 +3510,92 @@ def contact_support():
         print("Contact error:", e)
         return jsonify({"error": "Failed to send"}), 500
 
+
+@app.route("/cancel_subscription", methods=["POST"])
+def cancel_subscription():
+    data = request.json
+    shop = data.get("shop")
+
+    if not shop:
+        return {"error": "Missing shop"}, 400
+
+    # Fetch store from DB
+    store = StoreToken.query.filter_by(shop=shop).first()
+
+    if not store or not store.access_token:
+        return {"error": "Store not found or access token missing"}, 400
+
+    if not store.subscription_id:
+        return {"error": "No active subscription found"}, 400
+
+    access_token = store.access_token
+    subscription_id = store.subscription_id
+
+    # GraphQL mutation to cancel subscription
+    mutation = """
+    mutation appSubscriptionCancel($id: ID!) {
+      appSubscriptionCancel(id: $id) {
+        appSubscription {
+          id
+          status
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
+
+    variables = {
+        "id": subscription_id
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
+
+    resp = requests.post(
+        f"https://{shop}/admin/api/2025-10/graphql.json",
+        json={
+            "query": mutation,
+            "variables": variables
+        },
+        headers=headers
+    )
+
+    if resp.status_code != 200:
+        return {
+            "error": "Failed to cancel subscription",
+            "details": resp.text
+        }, 400
+
+    response_json = resp.json()
+
+    user_errors = response_json.get("data", {}) \
+        .get("appSubscriptionCancel", {}) \
+        .get("userErrors", [])
+
+    if user_errors:
+        return {
+            "error": "Shopify returned errors",
+            "details": user_errors
+        }, 400
+
+    # ✅ Downgrade locally to free
+    store.plan = "free"
+    store.subscription_id = None
+    store.subscription_status = "cancelled"
+
+    db.session.commit()
+
+    return {
+        "success": True,
+        "message": "Subscription cancelled. Downgraded to Free."
+    }
+
+
 def send_support_email(user_email, message, shop):
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
