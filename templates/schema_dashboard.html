@@ -64,6 +64,12 @@
                         class="block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
                     Continue with Free
                 </button>
+
+                <button id="downgradeBtn"
+                    class="hidden mt-3 w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg">
+                    Downgrade to Free
+                </button>
+
         </div>
 
         <!-- Pro Plan -->
@@ -1147,6 +1153,61 @@ document.addEventListener("DOMContentLoaded", function () {
     const backBtn = document.getElementById("backToAppBtn");
     const trialEl = document.getElementById("trial-status");
 
+
+    const downgradeBtn = document.getElementById("downgradeBtn");
+
+    if (hasActiveSubscription && downgradeBtn) {
+    downgradeBtn.classList.remove("hidden");
+    }
+    if (downgradeBtn) {
+        downgradeBtn.addEventListener("click", async () => {
+    
+            if (!confirm("Are you sure you want to cancel your Pro subscription?")) {
+                return;
+            }
+    
+            downgradeBtn.disabled = true;
+            downgradeBtn.textContent = "Cancelling...";
+    
+            try {
+                const resp = await fetch("/cancel_subscription", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        shop: "{{ shop_name }}"
+                    })
+                });
+    
+                const result = await resp.json();
+    
+                if (!resp.ok) {
+                    alert("Error: " + (result.error || "Unknown error"));
+                    downgradeBtn.disabled = false;
+                    downgradeBtn.textContent = "Downgrade to Free";
+                    return;
+                }
+    
+                // ✅ Success
+                alert("Subscription cancelled. You are now on Free plan.");
+    
+                // Update UI immediately
+                downgradeBtn.classList.add("hidden");
+    
+                subscriptionView.classList.add("hidden");
+                appContainer.style.display = "block";
+    
+                location.reload(); // optional but safest
+    
+            } catch (err) {
+                alert("Network error");
+                downgradeBtn.disabled = false;
+                downgradeBtn.textContent = "Downgrade to Free";
+            }
+        });
+    }
+
+
+    
     function getDaysSince(dateString) {
         if (!dateString) return 0;
         const created = new Date(dateString);
