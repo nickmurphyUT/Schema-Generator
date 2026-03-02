@@ -1265,14 +1265,39 @@ document.addEventListener("click", function (e) {
 
 // Simple submit handler (replace with your backend route)
 if (contactForm) {
-    contactForm.addEventListener("submit", function (e) {
+    contactForm.addEventListener("submit", async function (e) {
         e.preventDefault();
 
-        alert("Message sent! We'll get back to you shortly.");
-        contactForm.reset();
-        closeContact();
+        const email = contactForm.querySelector('input[type="email"]').value;
+        const message = contactForm.querySelector('textarea').value;
+
+        try {
+            const resp = await fetch("/contact-support", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: email,
+                    message: message,
+                    shop: "{{ shop_name }}"
+                })
+            });
+
+            const result = await resp.json();
+
+            if (resp.ok) {
+                alert("Message sent successfully!");
+                contactForm.reset();
+                closeContact();
+            } else {
+                alert("Error sending message.");
+            }
+
+        } catch (err) {
+            alert("Network error.");
+        }
     });
 }
+
 
 const continueFreeBtn = document.getElementById("continueFreeBtn");
 
