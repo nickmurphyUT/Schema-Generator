@@ -864,15 +864,30 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
         document.getElementById("addPageBtn").onclick = () => createPageRow();
 document.getElementById("addMappingBtn").onclick = () => {
 
-    updateMappings();
+    const rows = [
+        ...document.querySelectorAll("#schema-mapping-container > div[data-row-id]")
+    ];
 
     if (isFree) {
 
-        const extraFields = mappings.filter(m =>
-            !CORE_PRODUCT_FIELDS.includes(m.schemaField)
-        );
+        let extraCount = 0;
 
-        if (extraFields.length >= 2) {
+        rows.forEach(row => {
+            const selectVal = row.querySelector(".schema-select")?.value || "";
+            const customVal = row.querySelector(".schema-input")?.value.trim() || "";
+
+            const field = selectVal === "__custom__" ? customVal : selectVal;
+
+            // Ignore empty rows
+            if (!field) return;
+
+            // Count only non-core fields
+            if (!CORE_PRODUCT_FIELDS.includes(field)) {
+                extraCount++;
+            }
+        });
+
+        if (extraCount >= 2) {
             showUpgradeModal();
             return;
         }
@@ -880,6 +895,7 @@ document.getElementById("addMappingBtn").onclick = () => {
 
     createSchemaRow();
 };
+
 
 
 
