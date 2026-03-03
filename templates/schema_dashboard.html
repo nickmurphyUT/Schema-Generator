@@ -320,6 +320,16 @@ let isPro =
 
 let isFree = !isPro;
 
+
+    /* ================= FREE PRODUCT CORE FIELDS ================= */
+const CORE_PRODUCT_FIELDS = [
+    "name",
+    "url",
+    "description",
+    "sku",
+    "brand.name"
+];
+
 /* ================= GLOBAL STATE ================= */
 let collectionMappings = [];
 let collectionRowId = 0;
@@ -854,17 +864,23 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
         document.getElementById("addPageBtn").onclick = () => createPageRow();
 document.getElementById("addMappingBtn").onclick = () => {
 
-    const customRows = [
-        ...document.querySelectorAll("#schema-mapping-container > div")
-    ].filter(row => !row.dataset.base);
+    updateMappings();
 
-    if (isFree && customRows.length >= 2) {
-        showUpgradeModal();
-        return;
+    if (isFree) {
+
+        const extraFields = mappings.filter(m =>
+            !CORE_PRODUCT_FIELDS.includes(m.schemaField)
+        );
+
+        if (extraFields.length >= 2) {
+            showUpgradeModal();
+            return;
+        }
     }
 
     createSchemaRow();
 };
+
 
 
 document.getElementById("addHomepageBtn").onclick = () => createHomepageRow();
