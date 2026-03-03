@@ -801,16 +801,57 @@ function createSchemaRow(defaultSchema = "", defaultSource = "", isBase = false)
     const inputEl = row.querySelector(".schema-input");
 
     // Toggle custom input visibility
-    selectEl.addEventListener("change", () => {
-        if (selectEl.value === "__custom__") {
-            inputEl.classList.remove("hidden");
-            inputEl.focus();
-        } else {
+selectEl.addEventListener("change", () => {
+
+    const selectedValue = selectEl.value;
+
+    // Toggle custom input visibility
+    if (selectedValue === "__custom__") {
+        inputEl.classList.remove("hidden");
+        inputEl.focus();
+    } else {
+        inputEl.classList.add("hidden");
+        inputEl.value = "";
+    }
+
+    // 🔒 FREE PLAN ENFORCEMENT
+    if (isFree) {
+
+        const rows = [
+            ...document.querySelectorAll("#schema-mapping-container > div")
+        ];
+
+        let extraCount = 0;
+
+        rows.forEach(r => {
+
+            const sel = r.querySelector(".schema-select")?.value || "";
+            const custom = r.querySelector(".schema-input")?.value.trim() || "";
+
+            const field = sel === "__custom__" ? custom : sel;
+
+            if (!field) return;
+
+            if (!CORE_PRODUCT_FIELDS.includes(field)) {
+                extraCount++;
+            }
+        });
+
+        if (extraCount > 2) {
+            showUpgradeModal();
+
+            // Revert selection
+            selectEl.value = "";
             inputEl.classList.add("hidden");
             inputEl.value = "";
+
+            return;
         }
-        updateMappings();
-    });
+    }
+
+    updateMappings();
+});
+
 
     row.querySelector(".delete-row").onclick = () => {
         row.remove();
