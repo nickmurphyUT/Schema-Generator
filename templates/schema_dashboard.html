@@ -375,7 +375,7 @@ const blogFieldOptions = [
     "metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",
     {% endfor %}
 ];
-const commonSchemaFields = Array.isArray({{ org_schema_fields | tojson }})
+const baseFields = Array.isArray({{ org_schema_fields | tojson }})
     ? {{ org_schema_fields | tojson }}
     : [];
 
@@ -386,6 +386,19 @@ const requiredProductSchemaFields = [
     "name",
     "availability"
 ];
+
+// Merge + dedupe using Set
+const commonSchemaFields = [
+    ...new Set([
+        ...baseFields,
+        ...requiredProductSchemaFields
+    ])
+];
+
+// 🔤 Sort alphabetically (case insensitive)
+commonSchemaFields.sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+);
 
 requiredProductSchemaFields.forEach(field => {
     if (!commonSchemaFields.includes(field)) {
