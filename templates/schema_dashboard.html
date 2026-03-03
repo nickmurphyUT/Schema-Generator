@@ -375,14 +375,15 @@ const blogFieldOptions = [
     "metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",
     {% endfor %}
 ];
-const commonSchemaFields = {{ org_schema_fields | tojson }};
+const commonSchemaFields = Array.isArray({{ org_schema_fields | tojson }})
+    ? {{ org_schema_fields | tojson }}
+    : [];
 
-// Ensure required Product schema fields always exist
 const requiredProductSchemaFields = [
     "url",
     "description",
     "sku",
-    "brand",
+    "brand.name",
     "offers.availability"
 ];
 
@@ -391,6 +392,7 @@ requiredProductSchemaFields.forEach(field => {
         commonSchemaFields.push(field);
     }
 });
+
 
 
 // Inject if not already present
