@@ -377,9 +377,7 @@ const blogFieldOptions = [
 ];
 const commonSchemaFields = {{ org_schema_fields | tojson }};
 
-
-    Add:
-
+// Ensure required Product schema fields always exist
 const requiredProductSchemaFields = [
     "url",
     "description",
@@ -387,6 +385,13 @@ const requiredProductSchemaFields = [
     "brand",
     "offers.availability"
 ];
+
+requiredProductSchemaFields.forEach(field => {
+    if (!commonSchemaFields.includes(field)) {
+        commonSchemaFields.push(field);
+    }
+});
+
 
 // Inject if not already present
 requiredProductSchemaFields.forEach(field => {
