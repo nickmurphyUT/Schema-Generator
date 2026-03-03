@@ -377,6 +377,23 @@ const blogFieldOptions = [
 ];
 const commonSchemaFields = {{ org_schema_fields | tojson }};
 
+
+    Add:
+
+const requiredProductSchemaFields = [
+    "url",
+    "description",
+    "sku",
+    "brand",
+    "offers.availability"
+];
+
+// Inject if not already present
+requiredProductSchemaFields.forEach(field => {
+    if (!commonSchemaFields.includes(field)) {
+        commonSchemaFields.push(field);
+    }
+});
 /* ================= CREATE ROW FUNCTIONS ================= */
 function createCollectionRow(defaultSchema = "", defaultSource = "") {
     const schemaOptions = [...commonSchemaFields];
