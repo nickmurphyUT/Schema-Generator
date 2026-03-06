@@ -1045,8 +1045,18 @@ if (savedCollectionMappings.length > 0) {
 /* ================= SAVE HANDLERS ================= */
 // Product Save Only
 document.getElementById("sendToBackendBtn").onclick = async () => {
-    const payload = buildFullPayload();
+
+    updateMappings(); // make sure mappings is current
+
+    const validation = validateFreePlanLimits();
     const preview = document.getElementById("metafields-preview");
+
+    if (!validation.valid) {
+        preview.innerHTML = `⚠️ ${validation.message}`;
+        return;
+    }
+
+    const payload = buildFullPayload();
     preview.innerHTML = "Saving…";
 
     try {
@@ -1055,12 +1065,18 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
+
         const result = await resp.json();
-        preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error || JSON.stringify(result)}`;
+
+        preview.innerHTML = resp.ok
+            ? "Saved!"
+            : `Error: ${result.error || JSON.stringify(result)}`;
+
     } catch {
         preview.innerHTML = "Network Error";
     }
 };
+
 
 
 // Collection Save Only
@@ -1687,6 +1703,29 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
 });
+
+
+function validateFreePlanLimits() {
+    if (!isFree) return { valid: true };
+
+    const selectedSchemas = mappings
+        .map(m => m.schema)
+        .filter(Boolean);
+
+    const extraFields = selectedSchemas.filter(
+        s => !CORE_PRODUCT_FIELDS.includes(s)
+    );
+
+    if (extraFields.length > 2) {
+        return {
+            valid: false,
+            message: `Free plan allows only 2 additional product fields. You currently have ${extraFields.length}.`
+        };
+    }
+
+    return { valid: true };
+}
+
 </script>
 
 
