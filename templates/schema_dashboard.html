@@ -756,6 +756,28 @@ function updateHomepageMappings() {
     container.appendChild(row);
     updateCollectionMappings();
 }
+
+    function updateFreePlanNote(row) {
+
+    const select = row.querySelector(".schema-select");
+    const input = row.querySelector(".schema-input");
+    const note = row.querySelector(".free-plan-note");
+
+    const selected = select.value;
+
+    const field = selected === "__custom__"
+        ? input.value.trim()
+        : selected;
+
+    if (isFree && field && !CORE_PRODUCT_FIELDS.includes(field)) {
+        note.classList.remove("hidden");
+    } else {
+        note.classList.add("hidden");
+    }
+}
+
+
+    
 function createSchemaRow(defaultSchema = "", defaultSource = "", isBase = false) {
     const schemaOptions = [...commonSchemaFields];
 
@@ -877,17 +899,8 @@ selectEl.addEventListener("change", () => {
             return;
         }
     }
-    const field = selectedValue === "__custom__"
-    ? inputEl.value.trim()
-    : selectedValue;
-
-if (isFree && field && !CORE_PRODUCT_FIELDS.includes(field)) {
-    note.classList.remove("hidden");
-} else {
-    note.classList.add("hidden");
-}
-
-    updateMappings();
+updateFreePlanNote(row);
+updateMappings();
 });
 
 
@@ -897,7 +910,11 @@ if (isFree && field && !CORE_PRODUCT_FIELDS.includes(field)) {
     };
 
     row.querySelector(".product-source").onchange = updateMappings;
-    inputEl.oninput = updateMappings;
+    inputEl.oninput = () => {
+    updateFreePlanNote(row);
+    updateMappings();
+};
+
 
     container.appendChild(row);
     updateMappings();
