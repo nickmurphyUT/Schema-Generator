@@ -755,7 +755,13 @@ function createSchemaRow(defaultSchema = "", defaultSource = "", isBase = false)
 
     row.innerHTML = `
         <div class="flex-1 flex flex-col gap-2">
-            <label class="text-sm text-gray-600 font-medium">Schema Field</label>
+            <label class="text-sm text-gray-600 font-medium flex items-center gap-2">
+                    Schema Field
+                <span id="freeCounter" class="text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-700">
+                    0/2
+                </span>
+            </label>
+
             
             <select class="schema-select p-2 border rounded bg-white">
                 <option value="">Select Schema Field</option>
@@ -896,7 +902,10 @@ function updateMappings() {
             };
         })
         .filter(m => m.schemaField && m.sourceField);
+
+    updateFreeCounter(); // ⭐ add this
 }
+
 
 
 /* ================= ADD BUTTONS ================= */
@@ -1724,6 +1733,47 @@ function validateFreePlanLimits() {
     }
 
     return { valid: true };
+}
+
+
+    function updateFreeCounter() {
+
+    if (!isFree) return;
+
+    const rows = [
+        ...document.querySelectorAll("#schema-mapping-container > div")
+    ];
+
+    let extraCount = 0;
+
+    rows.forEach(row => {
+
+        const selectVal = row.querySelector(".schema-select")?.value || "";
+        const customVal = row.querySelector(".schema-input")?.value.trim() || "";
+
+        const field = selectVal === "__custom__" ? customVal : selectVal;
+
+        if (!field) return;
+
+        if (!CORE_PRODUCT_FIELDS.includes(field)) {
+            extraCount++;
+        }
+    });
+
+    const counter = document.getElementById("freeCounter");
+
+    if (counter) {
+
+        counter.textContent = `${extraCount}/2`;
+
+        if (extraCount >= 2) {
+            counter.classList.remove("bg-gray-200");
+            counter.classList.add("bg-red-200", "text-red-700");
+        } else {
+            counter.classList.remove("bg-red-200", "text-red-700");
+            counter.classList.add("bg-gray-200", "text-gray-700");
+        }
+    }
 }
 
 </script>
