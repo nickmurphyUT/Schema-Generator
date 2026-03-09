@@ -1113,21 +1113,28 @@ if (savedCollectionMappings.length > 0) {
 }
 updateFreeCounter();
 
+function showUpgradeModal() {
+    const modal = document.getElementById("upgradeModal");
+    if (!modal) return;
+
+    modal.classList.remove("hidden");
+}
 
 /* ================= SAVE HANDLERS ================= */
+// Product Save Only
 // Product Save Only
 document.getElementById("sendToBackendBtn").onclick = async () => {
 
     updateMappings(); // make sure mappings is current
 
     const validation = validateFreePlanLimits();
-    const preview = document.getElementById("metafields-preview");
 
     if (!validation.valid) {
-        preview.innerHTML = `⚠️ ${validation.message}`;
+        showUpgradeModal();
         return;
     }
 
+    const preview = document.getElementById("metafields-preview");
     const payload = buildFullPayload();
     preview.innerHTML = "Saving…";
 
@@ -1148,6 +1155,7 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
         preview.innerHTML = "Network Error";
     }
 };
+
 
 
 
