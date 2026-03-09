@@ -917,6 +917,7 @@ updateMappings();
 
 
     container.appendChild(row);
+    updateFreePlanNote(row);
     updateMappings();
 }
 
@@ -1819,8 +1820,8 @@ document.addEventListener("DOMContentLoaded", function () {
 function validateFreePlanLimits() {
     if (!isFree) return { valid: true };
 
-    const selectedSchemas = mappings
-        .map(m => m.schema)
+const selectedSchemas = mappings
+    .map(m => m.schemaField)
         .filter(Boolean);
 
     const extraFields = selectedSchemas.filter(
