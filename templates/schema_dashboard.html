@@ -872,6 +872,46 @@ selectEl.addEventListener("change", () => {
 }
 
 
+    function updateFreeCounter() {
+
+    if (!isFree) return;
+
+    const rows = [
+        ...document.querySelectorAll("#schema-mapping-container > div")
+    ];
+
+    let extraCount = 0;
+
+    rows.forEach(row => {
+
+        const selectVal = row.querySelector(".schema-select")?.value || "";
+        const customVal = row.querySelector(".schema-input")?.value.trim() || "";
+
+        const field = selectVal === "__custom__" ? customVal : selectVal;
+
+        if (!field) return;
+
+        if (!CORE_PRODUCT_FIELDS.includes(field)) {
+            extraCount++;
+        }
+    });
+
+    const counter = document.getElementById("freeCounter");
+
+    if (counter) {
+
+        counter.textContent = `${extraCount}/2`;
+
+        if (extraCount >= 2) {
+            counter.classList.remove("bg-gray-200");
+            counter.classList.add("bg-red-200", "text-red-700");
+        } else {
+            counter.classList.remove("bg-red-200", "text-red-700");
+            counter.classList.add("bg-gray-200", "text-gray-700");
+        }
+    }
+}    
+
 
 /* ================= UPDATE FUNCTIONS ================= */
 function updateCollectionMappings() {
@@ -1733,47 +1773,6 @@ function validateFreePlanLimits() {
     }
 
     return { valid: true };
-}
-
-
-    function updateFreeCounter() {
-
-    if (!isFree) return;
-
-    const rows = [
-        ...document.querySelectorAll("#schema-mapping-container > div")
-    ];
-
-    let extraCount = 0;
-
-    rows.forEach(row => {
-
-        const selectVal = row.querySelector(".schema-select")?.value || "";
-        const customVal = row.querySelector(".schema-input")?.value.trim() || "";
-
-        const field = selectVal === "__custom__" ? customVal : selectVal;
-
-        if (!field) return;
-
-        if (!CORE_PRODUCT_FIELDS.includes(field)) {
-            extraCount++;
-        }
-    });
-
-    const counter = document.getElementById("freeCounter");
-
-    if (counter) {
-
-        counter.textContent = `${extraCount}/2`;
-
-        if (extraCount >= 2) {
-            counter.classList.remove("bg-gray-200");
-            counter.classList.add("bg-red-200", "text-red-700");
-        } else {
-            counter.classList.remove("bg-red-200", "text-red-700");
-            counter.classList.add("bg-gray-200", "text-gray-700");
-        }
-    }
 }
 
 </script>
