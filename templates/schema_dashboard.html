@@ -146,7 +146,23 @@
     <span id="trial-status" class="ml-3 text-sm font-medium"></span>
 </td>
 
-        <div id="schema-mapping-container" class="space-y-4 mb-6"></div>
+        <!-- Free plan notice -->
+<div id="freePlanWidget"
+     class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+
+    <div>
+        <strong>Free Plan:</strong> You can add <strong>2 additional schema fields</strong>.
+    </div>
+
+    <div id="freeCounter"
+         class="px-2 py-1 rounded bg-blue-200 text-blue-900 font-semibold">
+        0 / 2 used
+    </div>
+
+</div>
+
+<div id="schema-mapping-container" class="space-y-4 mb-6"></div>
+
         <button id="addMappingBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
         <button id="sendToBackendBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Schema Metafields</button>
                 <button id="resetSchemaBtn"
@@ -320,6 +336,14 @@ let isPro =
 
 let isFree = !isPro;
 
+document.addEventListener("DOMContentLoaded", () => {
+
+    if (isFree) {
+        const widget = document.getElementById("freePlanWidget");
+        if (widget) widget.classList.remove("hidden");
+    }
+
+});
 
     /* ================= FREE PRODUCT CORE FIELDS ================= */
 const CORE_PRODUCT_FIELDS = [
@@ -882,6 +906,50 @@ function updateCollectionMappings() {
     }));
 }
 
+
+    function updateFreeCounter() {
+
+    if (!isFree) return;
+
+    const rows = [
+        ...document.querySelectorAll("#schema-mapping-container > div")
+    ];
+
+    let extraCount = 0;
+
+    rows.forEach(row => {
+
+        const selectVal = row.querySelector(".schema-select")?.value || "";
+        const customVal = row.querySelector(".schema-input")?.value.trim() || "";
+
+        const field = selectVal === "__custom__" ? customVal : selectVal;
+
+        if (!field) return;
+
+        if (!CORE_PRODUCT_FIELDS.includes(field)) {
+            extraCount++;
+        }
+
+    });
+
+    const counter = document.getElementById("freeCounter");
+
+    if (counter) {
+
+        counter.textContent = `${extraCount} / 2 used`;
+
+        if (extraCount >= 2) {
+            counter.classList.remove("bg-blue-200","text-blue-900");
+            counter.classList.add("bg-red-200","text-red-800");
+        } else {
+            counter.classList.remove("bg-red-200","text-red-800");
+            counter.classList.add("bg-blue-200","text-blue-900");
+        }
+
+    }
+
+}
+
 function updateMappings() {
     mappings = [...document.querySelectorAll("#schema-mapping-container > div")]
         .map(row => {
@@ -896,7 +964,10 @@ function updateMappings() {
             };
         })
         .filter(m => m.schemaField && m.sourceField);
+
+    updateFreeCounter();
 }
+
 
 
 /* ================= ADD BUTTONS ================= */
@@ -1040,6 +1111,7 @@ if (savedCollectionMappings.length > 0) {
 } else {
     createCollectionRow();
 }
+updateFreeCounter();
 
 
 /* ================= SAVE HANDLERS ================= */
