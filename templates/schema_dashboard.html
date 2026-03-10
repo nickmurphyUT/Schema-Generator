@@ -1364,6 +1364,7 @@ const sectionIds = [
 ];
 
 function showOnlySection(active) {
+    console.log("showOnlySectionContent");
   sectionIds.forEach(name => {
     const el = document.getElementById(`section-${name}`);
     if (!el) return;
@@ -1408,7 +1409,7 @@ document.getElementById("schemaSectionSelect").addEventListener("change", e => {
 });
 
 document.querySelectorAll(".schema-tab").forEach(btn => {
-
+console.log("section change");
     btn.addEventListener("click", () => {
 
         const section = btn.dataset.section;
