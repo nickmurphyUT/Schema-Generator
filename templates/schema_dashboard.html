@@ -221,6 +221,12 @@
      class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-8
             transition-all duration-300 ease-out
             opacity-0 translate-y-3 pointer-events-none">
+    <p class="text-gray-600 mb-6 leading-relaxed">
+Automatically generate structured data for blog posts to enable
+rich results in Google such as article previews, authors, and
+publish dates.
+</p>
+
 <div id="freePlanWidgetBlogs"
      class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
 
@@ -249,6 +255,11 @@
             opacity-0 translate-y-3 pointer-events-none">
 <div id="freePlanWidgetPages"
      class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+<p class="text-gray-600 mb-6 leading-relaxed">
+Generate structured data for Shopify pages to improve how
+important pages appear in search results. Map page attributes
+or metafields directly to schema fields with no coding required.
+</p>
 
     <div>
         <strong>Free Plan:</strong> You can add <strong>2 additional schema fields</strong>.
@@ -387,10 +398,14 @@ let isFree = !isPro;
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    if (isFree) {
-        const widget = document.getElementById("freePlanWidget");
-        if (widget) widget.classList.remove("hidden");
-    }
+if (isFree) {
+
+    document.getElementById("freePlanWidget")?.classList.remove("hidden");
+    document.getElementById("freePlanWidgetPages")?.classList.remove("hidden");
+    document.getElementById("freePlanWidgetBlogs")?.classList.remove("hidden");
+
+}
+
 
 });
 
@@ -1104,6 +1119,31 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
 
     createPageRow();
 };
+function countExtraFields(containerId, coreFields) {
+
+    const rows = [...document.querySelectorAll(`#${containerId} > div`)];
+
+    let extra = 0;
+
+    rows.forEach(row => {
+
+        const select = row.querySelector("select");
+        const input = row.querySelector("input[type=text]");
+
+        const field = select?.value === "__custom__"
+            ? input?.value.trim()
+            : select?.value;
+
+        if (!field) return;
+
+        if (!coreFields.includes(field)) {
+            extra++;
+        }
+
+    });
+
+    return extra;
+}
 
 document.getElementById("addMappingBtn").onclick = () => {
 
