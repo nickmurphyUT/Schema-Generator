@@ -221,6 +221,19 @@
      class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-8
             transition-all duration-300 ease-out
             opacity-0 translate-y-3 pointer-events-none">
+<div id="freePlanWidgetBlogs"
+     class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+
+    <div>
+        <strong>Free Plan:</strong> You can add <strong>2 additional schema fields</strong>.
+    </div>
+
+    <div id="freeCounterBlogs"
+         class="px-2 py-1 rounded bg-blue-200 text-blue-900 font-semibold">
+        0 / 2 used
+    </div>
+
+</div>
 
         <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">Blog Schema Generator</h3>
         <div id="blog-mapping-container" class="space-y-4 mb-6"></div>
@@ -234,6 +247,19 @@
      class="bg-white rounded-xl p-6 shadow-lg border border-gray-100 mb-8
             transition-all duration-300 ease-out
             opacity-0 translate-y-3 pointer-events-none">
+<div id="freePlanWidgetPages"
+     class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+
+    <div>
+        <strong>Free Plan:</strong> You can add <strong>2 additional schema fields</strong>.
+    </div>
+
+    <div id="freeCounterPages"
+         class="px-2 py-1 rounded bg-blue-200 text-blue-900 font-semibold">
+        0 / 2 used
+    </div>
+
+</div>
 
         <h3 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">Page Schema Generator</h3>
         <div id="page-mapping-container" class="space-y-4 mb-6"></div>
@@ -377,6 +403,20 @@ const CORE_PRODUCT_FIELDS = [
     "brand.name"
 ];
 
+
+    const CORE_PAGE_FIELDS = [
+    "name",
+    "url",
+    "description"
+];
+
+const CORE_BLOG_FIELDS = [
+    "headline",
+    "url",
+    "description"
+];
+
+    
 /* ================= GLOBAL STATE ================= */
 let collectionMappings = [];
 let collectionRowId = 0;
@@ -1027,8 +1067,44 @@ function updateMappings() {
 
 /* ================= ADD BUTTONS ================= */
 document.getElementById("addCollectionBtn").onclick = () => createCollectionRow();
-    document.getElementById("addBlogBtn").onclick = () => createBlogRow();
-        document.getElementById("addPageBtn").onclick = () => createPageRow();
+    document.getElementById("addBlogBtn").onclick = () => {
+
+    if (isFree) {
+
+        const extra = countExtraFields(
+            "blog-mapping-container",
+            CORE_BLOG_FIELDS
+        );
+
+        if (extra >= 2) {
+            showUpgradeModal();
+            return;
+        }
+
+    }
+
+    createBlogRow();
+};
+
+        document.getElementById("addPageBtn").onclick = () => {
+
+    if (isFree) {
+
+        const extra = countExtraFields(
+            "page-mapping-container",
+            CORE_PAGE_FIELDS
+        );
+
+        if (extra >= 2) {
+            showUpgradeModal();
+            return;
+        }
+
+    }
+
+    createPageRow();
+};
+
 document.getElementById("addMappingBtn").onclick = () => {
 
     const rows = [
