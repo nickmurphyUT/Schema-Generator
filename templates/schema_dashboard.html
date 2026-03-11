@@ -2116,8 +2116,31 @@ const selectedSchemas = mappings
     return { valid: true };
 }
 
-</script>
 
+document.addEventListener("DOMContentLoaded", () => {
+    const authBlock = document.getElementById("auth-block");
+    const appContainer = document.getElementById("app-container");
+    const authLink = document.getElementById("auth-link");
+
+    if (needsAuth) {
+        // 🔥 Show auth block
+        authBlock.classList.remove("hidden");
+        appContainer.style.display = "none";
+
+        const params = new URLSearchParams(window.location.search);
+        const shop = params.get("shop");
+
+        if (shop) {
+            authLink.href = `/auth?shop=${encodeURIComponent(shop)}`;
+            authLink.target = "_top";
+        }
+    } else {
+        // 🔥 Show app
+        authBlock.classList.add("hidden");
+        appContainer.style.display = "block";
+    }
+});
+</script>
 
 
 </body>
