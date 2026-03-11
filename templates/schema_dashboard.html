@@ -1352,8 +1352,68 @@ function showUpgradeModal(section = "product") {
 
 
 /* ================= SAVE HANDLERS ================= */
-// Product Save Only
-// Product Save Only
+    document.getElementById("saveBlogBtn").onclick = async () => {
+    updateMappings(); // make sure mappings is current
+
+    const validation = validateFreePlanLimits();
+
+    if (!validation.valid) {
+        //showUpgradeModal(old);
+        return;
+    }
+
+    const preview = document.getElementById("metafields-preview");
+    const payload = buildFullPayload();
+    preview.innerHTML = "Saving…";
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await resp.json();
+
+        preview.innerHTML = resp.ok
+            ? "Saved!"
+            : `Error: ${result.error || JSON.stringify(result)}`;
+
+    } catch {
+        preview.innerHTML = "Network Error";
+    }
+};
+     document.getElementById("savePageBtn").onclick = async () => {
+    updateMappings(); // make sure mappings is current
+
+    const validation = validateFreePlanLimits();
+
+    if (!validation.valid) {
+        //showUpgradeModal(old);
+        return;
+    }
+
+    const preview = document.getElementById("metafields-preview");
+    const payload = buildFullPayload();
+    preview.innerHTML = "Saving…";
+
+    try {
+        const resp = await fetch("/verify_and_create_metafields", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await resp.json();
+
+        preview.innerHTML = resp.ok
+            ? "Saved!"
+            : `Error: ${result.error || JSON.stringify(result)}`;
+
+    } catch {
+        preview.innerHTML = "Network Error";
+    }
+};
 document.getElementById("sendToBackendBtn").onclick = async () => {
 
     updateMappings(); // make sure mappings is current
@@ -1420,49 +1480,11 @@ updateFreeCounterFor(
 
 
     // Collection Save Only
-document.getElementById("saveBlogBtn").onclick = async () => {
-  const payload = buildFullPayload();
-  const preview = document.getElementById("blog-preview");
-  preview.innerHTML = "Saving…";
 
-  try {
-    const resp = await fetch("/verify_and_create_metafields", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const result = await resp.json();
-    preview.innerHTML = resp.ok ? "Saved!" : `Error: ${result.error || JSON.stringify(result)}`;
-  } catch {
-    preview.innerHTML = "Network Error";
-  }
-};
 
 document.getElementById("saveHomepageBtn").onclick = async () => {
   const payload = buildFullPayload();
   const preview = document.getElementById("homepage-preview");
-  preview.innerHTML = "Saving…";
-
-  try {
-    const resp = await fetch("/verify_and_create_metafields", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await resp.json();
-    preview.innerHTML = resp.ok
-      ? "Saved!"
-      : `Error: ${result.error || JSON.stringify(result)}`;
-  } catch {
-    preview.innerHTML = "Network Error";
-  }
-};
-
-
- document.getElementById("savePageBtn").onclick = async () => {
-  const payload = buildFullPayload();
-  const preview = document.getElementById("page-preview");
   preview.innerHTML = "Saving…";
 
   try {
