@@ -188,7 +188,7 @@
 
         <button id="addMappingBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
         <button id="sendToBackendBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Schema Metafields</button>
-                <button id="resetSchemaBtn"
+                <button id="resetProductSchemaBtn"
         class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
     Reset to Default
 </button>
@@ -259,7 +259,7 @@ publish dates.
         <div id="blog-mapping-container" class="space-y-4 mb-6"></div>
         <button id="addBlogBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
         <button id="saveBlogBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Blog Schema Metafields</button>
-     <button id="resetSchemaBtn"
+     <button id="resetBlogSchemaBtn"
         class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
     Reset to Default
 </button>
@@ -303,7 +303,7 @@ or metafields directly to schema fields with no coding required.
         <div id="page-mapping-container" class="space-y-4 mb-6"></div>
         <button id="addPageBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
         <button id="savePageBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Page Schema Metafields</button>
-     <button id="resetSchemaBtn"
+     <button id="resetPageSchemaBtn"
         class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
     Reset to Default
 </button>
@@ -680,6 +680,12 @@ function updatePageMappings() {
                 row.querySelector(".page-source")?.value.trim()
         }))
         .filter(m => m.schemaField && m.sourceField);
+    updateFreeCounterFor(
+    "page-mapping-container",
+    CORE_PAGE_FIELDS,
+    "freeCounterPages"
+);
+
 }
 
 
@@ -758,6 +764,12 @@ function updateBlogMappings() {
                 row.querySelector(".blog-source")?.value.trim()
         }))
         .filter(m => m.schemaField && m.sourceField);
+    updateFreeCounterFor(
+    "blog-mapping-container",
+    CORE_BLOG_FIELDS,
+    "freeCounterBlogs"
+);
+
 }
 function createHomepageRow(defaultSchema = "", defaultValue = "") {
     const schemaOptions = [...commonSchemaFields];
@@ -1004,7 +1016,7 @@ selectEl.addEventListener("change", () => {
         });
 
         if (extraCount > 2) {
-            showUpgradeModal();
+            showUpgradeModal("product");
 
             // Revert selection
             selectEl.value = "";
@@ -1054,48 +1066,45 @@ function updateCollectionMappings() {
 }
 
 
-    function updateFreeCounter() {
+function updateFreeCounterFor(containerId, coreFields, counterId) {
 
     if (!isFree) return;
 
-    const rows = [
-        ...document.querySelectorAll("#schema-mapping-container > div")
-    ];
-
+    const rows = [...document.querySelectorAll(`#${containerId} > div`)];
     let extraCount = 0;
 
     rows.forEach(row => {
 
-        const selectVal = row.querySelector(".schema-select")?.value || "";
-        const customVal = row.querySelector(".schema-input")?.value.trim() || "";
+        const select = row.querySelector("select");
+        const input = row.querySelector("input[type=text]");
 
-        const field = selectVal === "__custom__" ? customVal : selectVal;
+        const field = select?.value === "__custom__"
+            ? input?.value.trim()
+            : select?.value;
 
         if (!field) return;
 
-        if (!CORE_PRODUCT_FIELDS.includes(field)) {
+        if (!coreFields.includes(field)) {
             extraCount++;
         }
 
     });
 
-    const counter = document.getElementById("freeCounter");
+    const counter = document.getElementById(counterId);
 
-    if (counter) {
+    if (!counter) return;
 
-        counter.textContent = `${extraCount} / 2 used`;
+    counter.textContent = `${extraCount} / 2 used`;
 
-        if (extraCount >= 2) {
-            counter.classList.remove("bg-blue-200","text-blue-900");
-            counter.classList.add("bg-red-200","text-red-800");
-        } else {
-            counter.classList.remove("bg-red-200","text-red-800");
-            counter.classList.add("bg-blue-200","text-blue-900");
-        }
-
+    if (extraCount >= 2) {
+        counter.classList.remove("bg-blue-200","text-blue-900");
+        counter.classList.add("bg-red-200","text-red-800");
+    } else {
+        counter.classList.remove("bg-red-200","text-red-800");
+        counter.classList.add("bg-blue-200","text-blue-900");
     }
-
 }
+
 
 function updateMappings() {
     mappings = [...document.querySelectorAll("#schema-mapping-container > div")]
@@ -1112,7 +1121,12 @@ function updateMappings() {
         })
         .filter(m => m.schemaField && m.sourceField);
 
-    updateFreeCounter();
+   updateFreeCounterFor(
+    "schema-mapping-container",
+    CORE_PRODUCT_FIELDS,
+    "freeCounter"
+);
+
 }
 
 
@@ -1129,7 +1143,7 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
         );
 
         if (extra >= 2) {
-            showUpgradeModal();
+            showUpgradeModal("blog");
             return;
         }
 
@@ -1148,7 +1162,7 @@ document.getElementById("addCollectionBtn").onclick = () => createCollectionRow(
         );
 
         if (extra >= 2) {
-            showUpgradeModal();
+            showUpgradeModal("page");
             return;
         }
 
@@ -1208,7 +1222,7 @@ document.getElementById("addMappingBtn").onclick = () => {
         });
 
         if (extraCount >= 2) {
-            showUpgradeModal();
+            showUpgradeModal("product");
             return;
         }
     }
@@ -1319,14 +1333,23 @@ if (savedCollectionMappings.length > 0) {
 } else {
     createCollectionRow();
 }
-updateFreeCounter();
 
-function showUpgradeModal() {
+
+function showUpgradeModal(section = "product") {
+
     const modal = document.getElementById("upgradeModal");
     if (!modal) return;
 
+    const text = modal.querySelector(".upgrade-section");
+
+    if (text) {
+        text.textContent = section;
+    }
+
     modal.classList.remove("hidden");
+    modal.classList.add("flex");
 }
+
 
 /* ================= SAVE HANDLERS ================= */
 // Product Save Only
@@ -1338,7 +1361,7 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
     const validation = validateFreePlanLimits();
 
     if (!validation.valid) {
-        showUpgradeModal();
+        //showUpgradeModal(old);
         return;
     }
 
@@ -1388,6 +1411,11 @@ document.getElementById("saveCollectionBtn").onclick = async () => {
     preview.innerHTML = "Network Error";
   }
 };
+updateFreeCounterFor(
+    "schema-mapping-container",
+    CORE_PRODUCT_FIELDS,
+    "freeCounter"
+);
 
 
 
@@ -1609,22 +1637,41 @@ document.addEventListener("DOMContentLoaded", function () {
     const backBtn = document.getElementById("backToAppBtn");
     const trialEl = document.getElementById("trial-status");
 
-    const resetBtn = document.getElementById("resetSchemaBtn");
+    
     const schemaContainer = document.getElementById("schema-mapping-container");
 
-resetBtn.addEventListener("click", () => {
+document.getElementById("resetProductSchemaBtn").addEventListener("click", () => {
 
-    // 1️⃣ Clear everything
     schemaContainer.innerHTML = "";
 
-    // 2️⃣ Re-add base fields ONLY
     createSchemaRow("name", "product.title", true);
     createSchemaRow("url", "product.handle", true);
     createSchemaRow("description", "product.description", true);
     createSchemaRow("sku", "product.selected_or_first_available_variant.sku", true);
-    createSchemaRow("brand", "product.vendor", true);
+    createSchemaRow("brand.name", "product.vendor", true);
 
 });
+document.getElementById("resetBlogSchemaBtn").addEventListener("click", () => {
+
+    const container = document.getElementById("blog-mapping-container");
+    container.innerHTML = "";
+
+    createBlogRow("headline", "blog.title");
+    createBlogRow("url", "blog.url");
+    createBlogRow("description", "blog.description");
+
+});
+document.getElementById("resetPageSchemaBtn").addEventListener("click", () => {
+
+    const container = document.getElementById("page-mapping-container");
+    container.innerHTML = "";
+
+    createPageRow("name", "page.title");
+    createPageRow("url", "page.url");
+    createPageRow("description", "page.body_html");
+
+});
+
 document.querySelectorAll(".schema-tab").forEach(btn => {
 console.log("section change");
     btn.addEventListener("click", () => {
