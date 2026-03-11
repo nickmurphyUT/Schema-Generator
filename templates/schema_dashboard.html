@@ -2116,7 +2116,8 @@ const selectedSchemas = mappings
     return { valid: true };
 }
 
-
+const needsAuth = {{ needs_auth | tojson }};
+const shopName = {{ shop_name | tojson }};
 document.addEventListener("DOMContentLoaded", () => {
     const authBlock = document.getElementById("auth-block");
     const appContainer = document.getElementById("app-container");
