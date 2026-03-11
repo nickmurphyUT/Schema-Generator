@@ -263,7 +263,7 @@ publish dates.
         class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
     Reset to Default
 </button>
-        <div id="metafields-preview" class="mt-4 text-sm text-gray-500"></div>
+        <div id="metafields-preview-blog" class="mt-4 text-sm text-gray-500"></div>
 <div class="mt-6 flex justify-end">
 
     <p class="text-gray-400 text-sm">
@@ -307,7 +307,7 @@ or metafields directly to schema fields with no coding required.
         class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
     Reset to Default
 </button>
-        <div id="metafields-preview" class="mt-4 text-sm text-gray-500"></div>
+        <div id="metafields-preview-page" class="mt-4 text-sm text-gray-500"></div>
 <div class="mt-6 flex justify-end">
 
     <p class="text-gray-400 text-sm">
@@ -1362,7 +1362,7 @@ function showUpgradeModal(section = "product") {
         return;
     }
 
-    const preview = document.getElementById("metafields-preview");
+    const preview = document.getElementById("metafields-preview-blog");
     const payload = buildFullPayload();
     preview.innerHTML = "Saving…";
 
@@ -1393,7 +1393,7 @@ function showUpgradeModal(section = "product") {
         return;
     }
 
-    const preview = document.getElementById("metafields-preview");
+    const preview = document.getElementById("metafields-preview-page");
     const payload = buildFullPayload();
     preview.innerHTML = "Saving…";
 
