@@ -3091,16 +3091,27 @@ def verify_and_create_metafields():
             )
 
     def process_blogs():
+        logging.info("Starting blog schema processing")
+    
         articles = fetch_all_blog_articles(shop, access_token)
+        logging.info(f"Fetched {len(articles)} blog articles")
+    
         for article in articles:
-            mfs = fetch_blog_metafields(shop, access_token, article["id"].split("/")[-1])
+            logging.info(f"Processing article {article.get('id')}")
+    
+            mfs = fetch_blog_metafields(
+                shop, access_token, article["id"].split("/")[-1]
+            )
+    
             schema = build_schema_from_mappings(article, mfs, blog_schema_mappings)
+    
             upsert_app_metafield(
                 shop,
                 access_token,
                 article["id"],
                 wrap_flattened_json_in_schema(schema, "Blog")
             )
+
 
     def process_products():
         products = fetch_all_products(shop, access_token)
