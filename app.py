@@ -3861,14 +3861,16 @@ Message:
     server.sendmail(smtp_user, smtp_user, msg.as_string())
     server.quit()
 
+import logging
+
 NAMESPACE = "app_schema"
 KEY = "prod_schema"
 TYPE = "json"
 
-def ensure_metafield(shop, access_token, existing_edges, owner_type):
+def ensure_unstructured_metafield(shop, access_token, existing_edges, owner_type):
     """
     Ensure an app-owned unstructured JSON metafield exists for a given owner type.
-    If it already exists in existing_edges, do nothing.
+    Works for public apps by automatically fetching the shop-specific app ID.
     """
 
     # Skip if already exists
@@ -3880,9 +3882,30 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
         logging.info("Metafield %s.%s already exists for %s", NAMESPACE, KEY, owner_type)
         return
 
+    # Step 1: Fetch shop-specific appId
+    try:
+        app_id_query = """
+        {
+          app {
+            id
+            title
+          }
+        }
+        """
+        app_resp = query_shopify_graphql_webhook(shop, access_token, app_id_query)
+        app_data = app_resp.get("data", {}).get("app")
+        if not app_data or "id" not in app_data:
+            logging.error("Unable to fetch app ID for shop %s", shop)
+            return
+        app_id = app_data["id"]
+        logging.info("Fetched app ID for shop %s: %s", shop, app_id)
+    except Exception as e:
+        logging.exception("Failed to fetch app ID: %s", str(e))
+        return
+
+    # Step 2: Create unstructured JSON metafield
     logging.info("Creating %s unstructured JSON metafield %s.%s", owner_type, NAMESPACE, KEY)
 
-    # GraphQL mutation with variables
     mutation = """
     mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
       metafieldDefinitionCreate(definition: $definition) {
@@ -3897,9 +3920,10 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
             "namespace": NAMESPACE,
             "key": KEY,
             "name": KEY,
-            "type": TYPE,
+            "type": TYPE,            # must be "json"
             "ownerType": owner_type,
-            "description": "App unstructured JSON metafield"
+            "description": "App unstructured JSON metafield",
+            "appId": app_id           # critical for unstructured / app-owned
         }
     }
 
@@ -3916,6 +3940,7 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
             logging.info("%s metafield %s.%s created successfully", owner_type, NAMESPACE, KEY)
     except Exception as e:
         logging.exception("Exception creating %s metafield: %s", owner_type, str(e))
+
 
 
 # Store or retain logs external to shopify's base options?
