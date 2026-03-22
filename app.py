@@ -617,12 +617,23 @@ def home():
             blog_metafields = data.get("blogDefinitions", {}).get("edges", [])
 
             # -----------------------
-            # Ensure app_schema.prod_schema exists
+            # Ensure app_schema.prod_schema exists for products/pages/blogs
             # -----------------------
-            if access_token:
+            try:
                 ensure_metafield(shop, access_token, product_metafields, "PRODUCT")
+            except Exception as e:
+                logging.exception("Failed to ensure PRODUCT metafield: %s", e)
+            
+            try:
                 ensure_metafield(shop, access_token, page_metafields, "PAGE")
+            except Exception as e:
+                logging.exception("Failed to ensure PAGE metafield: %s", e)
+            
+            try:
                 ensure_metafield(shop, access_token, blog_metafields, "ARTICLE")
+            except Exception as e:
+                logging.exception("Failed to ensure ARTICLE (blog) metafield: %s", e)
+
 
 
             logging.info("Metafield definition counts:")
