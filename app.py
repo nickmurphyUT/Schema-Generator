@@ -3877,24 +3877,24 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
 
     logging.info("Creating %s metafield %s.%s", owner_type, NAMESPACE, KEY)
 
-    mutation = (
-        "mutation {"
-        "  metafieldDefinitionCreate(definition: {"
-        "    namespace: \"" + NAMESPACE + "\""
-        "    key: \"" + KEY + "\""
-        "    name: \"" + KEY + "\""
-        "    type: \"" + TYPE + "\""
-        "    ownerType: " + owner_type
-        "  }) {"
-        "    createdDefinition {"
-        "      id"
-        "    }"
-        "    userErrors {"
-        "      message"
-        "    }"
-        "  }"
-        "}"
-    )
+    mutation = """
+    mutation {
+      metafieldDefinitionCreate(definition: {
+        namespace: "%s"
+        key: "%s"
+        name: "%s"
+        type: "%s"
+        ownerType: %s
+      }) {
+        createdDefinition {
+          id
+        }
+        userErrors {
+          message
+        }
+      }
+    }
+    """ % (NAMESPACE, KEY, KEY, TYPE, owner_type)
 
     resp = query_shopify_graphql(shop, access_token, mutation)
     errors = (
@@ -3904,6 +3904,7 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
     )
     if errors:
         logging.error("%s creation failed: %s", owner_type, errors)
+
 
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
