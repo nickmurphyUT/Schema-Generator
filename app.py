@@ -3867,7 +3867,7 @@ NAMESPACE = "app_schema"
 KEY = "prod_schema"
 TYPE = "json"
 
-def ensure_unstructured_metafield(shop, access_token, existing_edges, owner_type):
+def ensure_metafield(shop, access_token, existing_edges, owner_type):
     """
     Ensure an app-owned unstructured JSON metafield exists for a given owner type.
     Works for public apps by automatically fetching the shop-specific app ID.
