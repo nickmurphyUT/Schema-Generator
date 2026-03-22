@@ -616,6 +616,15 @@ def home():
             page_metafields = data.get("pageDefinitions", {}).get("edges", [])
             blog_metafields = data.get("blogDefinitions", {}).get("edges", [])
 
+            # -----------------------
+            # Ensure app_schema.prod_schema exists
+            # -----------------------
+            if access_token:
+                ensure_metafield(shop, access_token, product_metafields, "PRODUCT")
+                ensure_metafield(shop, access_token, page_metafields, "PAGE")
+                ensure_metafield(shop, access_token, blog_metafields, "ARTICLE")
+
+
             logging.info("Metafield definition counts:")
             logging.info("  PRODUCT: %d", len(product_metafields))
             logging.info("  COLLECTION: %d", len(collection_metafields))
@@ -3841,6 +3850,49 @@ Message:
     server.sendmail(smtp_user, smtp_user, msg.as_string())
     server.quit()
 
+NAMESPACE = "app_schema"
+KEY = "prod_schema"
+TYPE = "json"
+
+def ensure_metafield(shop, access_token, existing_edges, owner_type):
+    # Skip if already exists
+    exists = any(
+        e["node"]["namespace"] == NAMESPACE and
+        e["node"]["key"] == KEY
+        for e in existing_edges
+    )
+    if exists:
+        return
+
+    logging.info("Creating %s metafield %s.%s", owner_type, NAMESPACE, KEY)
+
+    mutation = (
+        "mutation {"
+        "  metafieldDefinitionCreate(definition: {"
+        "    namespace: \"" + NAMESPACE + "\""
+        "    key: \"" + KEY + "\""
+        "    name: \"" + KEY + "\""
+        "    type: \"" + TYPE + "\""
+        "    ownerType: " + owner_type
+        "  }) {"
+        "    createdDefinition {"
+        "      id"
+        "    }"
+        "    userErrors {"
+        "      message"
+        "    }"
+        "  }"
+        "}"
+    )
+
+    resp = query_shopify_graphql(shop, access_token, mutation)
+    errors = (
+        resp.get("data", {})
+        .get("metafieldDefinitionCreate", {})
+        .get("userErrors", [])
+    )
+    if errors:
+        logging.error("%s creation failed: %s", owner_type, errors)
 
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
