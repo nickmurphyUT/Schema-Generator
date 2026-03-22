@@ -3629,6 +3629,116 @@ def get_navigation():
 
     return jsonify({"items": items})
 
+# ─────────────────────────────────────────────────────────────
+# 🔐 Verify Shopify Webhook
+# ─────────────────────────────────────────────────────────────
+def verify_shopify_webhook(req):
+    hmac_header = req.headers.get("X-Shopify-Hmac-Sha256")
+    if not hmac_header:
+        return False
+
+    data = req.get_data()
+
+    digest = hmac.new(
+        SHOPIFY_WEBHOOK_SECRET.encode("utf-8"),
+        data,
+        hashlib.sha256
+    ).digest()
+
+    computed_hmac = base64.b64encode(digest).decode()
+
+    return hmac.compare_digest(computed_hmac, hmac_header)
+
+
+# ─────────────────────────────────────────────────────────────
+# 🏪 Mock DB Lookup (REPLACE THIS)
+# ─────────────────────────────────────────────────────────────
+def get_store_by_domain(shop_domain):
+    """
+    Replace with your actual DB lookup.
+    You should store:
+      - shop domain
+      - access token
+    """
+    # Example structure
+    return {
+        "shop": shop_domain,
+        "access_token": "shpat_xxxxx"
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# 🧹 GDPR: Customer Data Request
+# ─────────────────────────────────────────────────────────────
+@app.route("/webhooks/customers/data_request", methods=["POST"])
+def customers_data_request():
+    if not verify_shopify_webhook(request):
+        return "Unauthorized", 401
+
+    shop = request.headers.get("X-Shopify-Shop-Domain")
+    payload = request.json or {}
+
+    store = get_store_by_domain(shop)
+
+    print(f"📦 Data request for shop: {shop}")
+    print(json.dumps(payload, indent=2))
+
+    # TODO:
+    # - Collect customer data from your system
+    # - Shopify expects you to respond (or email data if required)
+
+    return jsonify({"status": "ok"}), 200
+
+
+# ─────────────────────────────────────────────────────────────
+# 🧹 GDPR: Customer Redact
+# ─────────────────────────────────────────────────────────────
+@app.route("/webhooks/customers/redact", methods=["POST"])
+def customers_redact():
+    if not verify_shopify_webhook(request):
+        return "Unauthorized", 401
+
+    shop = request.headers.get("X-Shopify-Shop-Domain")
+    payload = request.json or {}
+
+    store = get_store_by_domain(shop)
+
+    print(f"🧹 Customer redact for shop: {shop}")
+    print(json.dumps(payload, indent=2))
+
+    customer_id = payload.get("customer", {}).get("id")
+
+    # TODO:
+    # - Delete ALL data tied to this customer in your system
+
+    print(f"Deleted data for customer {customer_id}")
+
+    return "", 200
+
+
+# ─────────────────────────────────────────────────────────────
+# 🏪 GDPR: Shop Redact
+# ─────────────────────────────────────────────────────────────
+@app.route("/webhooks/shop/redact", methods=["POST"])
+def shop_redact():
+    if not verify_shopify_webhook(request):
+        return "Unauthorized", 401
+
+    shop = request.headers.get("X-Shopify-Shop-Domain")
+    payload = request.json or {}
+
+    store = get_store_by_domain(shop)
+
+    print(f"🏪 Shop redact for shop: {shop}")
+    print(json.dumps(payload, indent=2))
+
+    # TODO:
+    # - Delete ALL data for this shop from your database
+
+    print(f"Deleted all data for shop {shop}")
+
+    return "", 200
+    
 
 def send_support_email(user_email, message, shop):
     smtp_server = "smtp.gmail.com"
