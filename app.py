@@ -3866,45 +3866,57 @@ KEY = "prod_schema"
 TYPE = "json"
 
 def ensure_metafield(shop, access_token, existing_edges, owner_type):
+    """
+    Ensure an app-owned unstructured JSON metafield exists for a given owner type.
+    If it already exists in existing_edges, do nothing.
+    """
+
     # Skip if already exists
     exists = any(
-        e["node"]["namespace"] == NAMESPACE and
-        e["node"]["key"] == KEY
+        e["node"]["namespace"] == NAMESPACE and e["node"]["key"] == KEY
         for e in existing_edges
     )
     if exists:
+        logging.info("Metafield %s.%s already exists for %s", NAMESPACE, KEY, owner_type)
         return
 
     logging.info("Creating %s unstructured JSON metafield %s.%s", owner_type, NAMESPACE, KEY)
 
+    # GraphQL mutation with variables
     mutation = """
-    mutation {
-      metafieldDefinitionCreate(definition: {
-        namespace: "%s"
-        key: "%s"
-        name: "%s"
-        type: "%s"
-        ownerType: %s
-        description: "App unstructured JSON metafield"
-      }) {
-        createdDefinition {
-          id
-        }
-        userErrors {
-          message
-        }
+    mutation metafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
+      metafieldDefinitionCreate(definition: $definition) {
+        createdDefinition { id namespace key }
+        userErrors { field message }
       }
     }
-    """ % (NAMESPACE, KEY, KEY, TYPE, owner_type)
+    """
 
-    resp = query_shopify_graphql(shop, access_token, mutation)
-    errors = (
-        resp.get("data", {})
-        .get("metafieldDefinitionCreate", {})
-        .get("userErrors", [])
-    )
-    if errors:
-        logging.error("%s creation failed: %s", owner_type, errors)
+    variables = {
+        "definition": {
+            "namespace": NAMESPACE,
+            "key": KEY,
+            "name": KEY,
+            "type": TYPE,
+            "ownerType": owner_type,
+            "description": "App unstructured JSON metafield"
+        }
+    }
+
+    try:
+        resp = query_shopify_graphql(shop, access_token, mutation, variables)
+        errors = (
+            resp.get("data", {})
+            .get("metafieldDefinitionCreate", {})
+            .get("userErrors", [])
+        )
+        if errors:
+            logging.error("%s metafield creation failed: %s", owner_type, errors)
+        else:
+            logging.info("%s metafield %s.%s created successfully", owner_type, NAMESPACE, KEY)
+    except Exception as e:
+        logging.exception("Exception creating %s metafield: %s", owner_type, str(e))
+
 
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
