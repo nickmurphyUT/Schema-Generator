@@ -27,7 +27,7 @@ import re
 from math import ceil
 import smtplib
 from email.mime.text import MIMEText
-
+import secrets
 SCHEMA_CACHE = {
     "timestamp": 0,
     "fields": {}  # e.g. { "Organization": [...], "Product": [...] }
