@@ -3612,6 +3612,12 @@ def cancel_subscription():
         "success": True,
         "message": "Subscription cancelled. Downgraded to Free."
     }
+    
+@app.route("/webhooks/compliance", methods=["POST"])
+def compliance_webhook():
+    print("🔥 COMPLIANCE WEBHOOK HIT")
+
+    return "", 200
 
 
 @app.route("/api/navigation")
