@@ -2195,95 +2195,72 @@ def _find_metafield_by_key_rest(shop, access_token, resource_type, resource_id, 
 
 def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
     """
-    Create or update a JSON app-owned metafield on a resource (e.g., product)
-    using the Shopify REST Admin API with Read-Modify-Write (RMW) pattern.
+    Upsert a structured JSON metafield using Shopify GraphQL (metafieldsSet).
+    Works with metafield definitions (structured metafields).
     """
+
     METAFIELD_NAMESPACE = "app_schema"
     METAFIELD_KEY = "prod_schema"
-    
-    try:
-        parts = owner_gid.split("/")
-        # remove empty elements caused by double slashes
-        parts = [p for p in parts if p]
-    
-        # expected: ["gid:", "shopify", "Product", "8085504262319"]
-        if len(parts) != 4 or parts[0] != "gid:":
-            raise ValueError()
-    
-        resource_type = parts[2].lower()
-        resource_id = parts[3]
-    except Exception:
-        raise ValueError("Invalid owner_gid format. Expected format like 'gid://shopify/Product/123456789'.")
 
+    url = f"https://{shop}/admin/api/2026-01/graphql.json"
 
-    # --- RMW Step 1: Read Existing State ---
-    existing_metafield = _find_metafield_by_key_rest(
-        shop, access_token, resource_type, resource_id, METAFIELD_NAMESPACE, METAFIELD_KEY
-    )
-
-    if existing_metafield:
-        metafield_id = existing_metafield.get('id')
-        current_data = {}
-        
-        # RMW Step 2: Deserialization
-        try:
-            # Check if the existing value is an empty string before parsing
-            existing_value_str = existing_metafield.get('value')
-            if existing_value_str:
-                current_data = json.loads(existing_value_str)
-        except json.JSONDecodeError as e:
-            logging.error(f"Failed to parse existing metafield JSON for {owner_gid} (ID: {metafield_id}): {e}. Starting with empty object.")
-            # If parsing fails, start with an empty object to prevent corruption
-
-        # RMW Step 3: Object Mutation (Merge new value_dict into existing data)
-        # This prevents the partial value_dict from overwriting all existing keys.
-        merged_data = current_data.copy()
-        merged_data.update(value_dict)
-        
-        # RMW Step 4: Re-serialization
-        final_json_string = json.dumps(value_dict)
-        
-        # Determine URL and Method for Write operation (PUT for Update)
-        url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields/{metafield_id}.json"
-        http_method = requests.put
-        log_action = "Updated"
-    else:
-        # If metafield doesn't exist, we skip RMW and create a new one (POST)
-        final_json_string = json.dumps(value_dict)
-        
-        # Determine URL and Method for Write operation (POST for Create)
-        url = f"https://{shop}/admin/api/2026-01/{resource_type}s/{resource_id}/metafields.json"
-        http_method = requests.post
-        log_action = "Created"
-
-    # 5. Prepare the REST Payload for the Write operation
-    payload = {
-        "metafield": {
-            "type": "json",
-            "namespace": METAFIELD_NAMESPACE,
-            "key": METAFIELD_KEY, 
-            "value": final_json_string  # The full, merged JSON string
+    query = """
+    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+      metafieldsSet(metafields: $metafields) {
+        metafields {
+          id
+          namespace
+          key
         }
+        userErrors {
+          field
+          message
+        }
+      }
     }
-    
+    """
+
+    variables = {
+        "metafields": [
+            {
+                "ownerId": owner_gid,  # MUST be full GID
+                "namespace": METAFIELD_NAMESPACE,
+                "key": METAFIELD_KEY,
+                "type": "json",  # MUST match your definition
+                "value": json.dumps(value_dict)  # MUST be string
+            }
+        ]
+    }
+
     headers = {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token
     }
 
-    logging.info(f"Sending {http_method.__name__.upper()} to: {url}")
-    logging.debug(f"Payload (Metafield Value String): {final_json_string}")
+    logging.info(f"GraphQL metafieldsSet → {owner_gid}")
+    logging.debug(f"Payload: {json.dumps(variables, indent=2)}")
 
-    # RMW Step 5: Make the Request (PUT/POST)
-    resp = http_method(url, headers=headers, json=payload)
-    
-    # Check for REST API error status (4xx or 5xx)
+    resp = requests.post(
+        url,
+        headers=headers,
+        json={
+            "query": query,
+            "variables": variables
+        }
+    )
+
     resp.raise_for_status()
-    
-    response_json = resp.json()
-    logging.info(f"{log_action} {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}.")
+    data = resp.json()
 
-    return response_json
+    user_errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors")
+    if user_errors:
+        logging.error(f"Metafield userErrors: {user_errors}")
+        raise Exception(f"Metafield write failed: {user_errors}")
+
+    logging.info(f"Upserted {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}")
+
+    return data
+
 
 
 
