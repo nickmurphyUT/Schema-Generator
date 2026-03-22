@@ -730,25 +730,47 @@ def home():
 
 
     
-#access token gen
 @app.route("/auth")
 def authenticate():
     shop = request.args.get("shop")
     if not shop:
         return jsonify({"error": "Missing shop parameter"}), 400
 
+    state = secrets.token_urlsafe(16)
+    session["oauth_state"] = state
+
     auth_url = (
         f"https://{shop}/admin/oauth/authorize?"
         f"client_id={SHOPIFY_API_KEY}&"
         f"scope={SCOPES}&"
         f"redirect_uri={REDIRECT_URI}&"
-        f"state=secure_random_string"
+        f"state={state}"
     )
+
     return redirect(auth_url)
 
 
 from flask import redirect
 
+def verify_oauth_hmac(params, secret):
+    params = dict(params)
+
+    hmac_received = params.pop("hmac", None)
+    if not hmac_received:
+        return False
+
+    # Sort params and encode
+    sorted_params = sorted((k, v) for k, v in params.items())
+    message = "&".join(f"{k}={v}" for k, v in sorted_params)
+
+    digest = hmac.new(
+        secret.encode("utf-8"),
+        message.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(digest, hmac_received)
+    
 @app.route("/auth/callback")
 def auth_callback():
     shop = request.args.get("shop")
