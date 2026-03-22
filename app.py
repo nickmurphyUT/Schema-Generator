@@ -3875,7 +3875,7 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
     if exists:
         return
 
-    logging.info("Creating %s metafield %s.%s", owner_type, NAMESPACE, KEY)
+    logging.info("Creating %s unstructured JSON metafield %s.%s", owner_type, NAMESPACE, KEY)
 
     mutation = """
     mutation {
@@ -3885,6 +3885,7 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
         name: "%s"
         type: "%s"
         ownerType: %s
+        description: "App unstructured JSON metafield"
       }) {
         createdDefinition {
           id
@@ -3904,7 +3905,6 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
     )
     if errors:
         logging.error("%s creation failed: %s", owner_type, errors)
-
 
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
