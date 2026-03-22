@@ -1607,7 +1607,7 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
 
     query = """
     query {
-      metaobjects(type: "app_config", first: 1) {
+      metaobjects(type: "app_schema", first: 1) {
         edges {
           node {
             id
