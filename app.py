@@ -2594,10 +2594,10 @@ def ensure_metaobject_definition(shop, access_token):
 
     return node["metaobjectDefinition"]["id"]
 
-def ensure_app_config_definition(shop, access_token):
+def ensure_app_schema_definition(shop, access_token):
     query = """
     query {
-      metaobjectDefinitionByType(type: "app_config") {
+      metaobjectDefinitionByType(type: "app_schema") {
         id
       }
     }
@@ -2613,7 +2613,7 @@ def ensure_app_config_definition(shop, access_token):
     mutation {
       metaobjectDefinitionCreate(definition: {
         name: "App Config",
-        type: "app_config",
+        type: "app_schema",
         fieldDefinitions: [
           { key: "product_schema_mappings", name: "Product Schema Mappings", type: "json" },
           { key: "collection_schema_mappings", name: "Collection Schema Mappings", type: "json" }
@@ -2653,10 +2653,10 @@ def ensure_config_entry(shop, access_token, metaobject_type, field_mappings=None
     node = resp.get("data", {}).get("metaobjectByHandle")
 
     if node and node.get("id"):
-        logging.info("Reusing existing app_config metaobject: %s", node["id"])
+        logging.info("Reusing existing app_schema metaobject: %s", node["id"])
         return node["id"]
 
-    logging.info("No existing app_config metaobject found — creating one")
+    logging.info("No existing app_schema metaobject found — creating one")
 
     # ------------------------------------------------------------------
     # 2️⃣ Build fields payload (JSON-safe)
@@ -2707,7 +2707,7 @@ def ensure_config_entry(shop, access_token, metaobject_type, field_mappings=None
         raise Exception("Metaobject create errors: {}".format(result["userErrors"]))
 
     metaobject_id = result["metaobject"]["id"]
-    logging.info("Created new app_config metaobject: %s", metaobject_id)
+    logging.info("Created new app_schema metaobject: %s", metaobject_id)
 
     return metaobject_id
 
@@ -2759,7 +2759,7 @@ def create_config_entry(shop, access_token, mappings_json):
     mutation = (
         "mutation {"
         "  metaobjectCreate(metaobject: {"
-        '    type: "app_config"'
+        '    type: "app_schema"'
         "    fields: ["
         "      {"
         '        key: "product_schema_mappings"'
@@ -2809,7 +2809,7 @@ def update_config_entry(shop, access_token, entry_id, mappings_json, field_key=N
 
 def fetch_metaobject_fields(shop, access_token, config_id):
     """
-    Fetch existing fields from a Shopify metaobject (app_config).
+    Fetch existing fields from a Shopify metaobject (app_schema).
     Returns a dict: { field_key: value } with JSON-decoded values.
     """
     query = """
@@ -2967,7 +2967,7 @@ def verify_and_create_metafields():
     # Ensure metaobject definition exists
     # ---------------------------------------------------------
     ensure_metaobject_definition(shop, access_token)
-    metaobject_type = "app_config"
+    metaobject_type = "app_schema"
 
     # ---------------------------------------------------------
     # Helpers
@@ -3183,7 +3183,7 @@ def verify_and_create_metafields():
 
 def fetch_homepage_schema_config(shop, access_token):
     """
-    Returns homepage_schema_config from app_config metaobject
+    Returns homepage_schema_config from app_schema metaobject
     """
     entry = fetch_schema_config_entry(
         shop,
