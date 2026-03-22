@@ -781,13 +781,19 @@ def auth_callback():
 
     db.session.commit()
 
+    # 🔥 REGISTER GDPR WEBHOOKS HERE
+    try:
+        register_gdpr_webhooks(shop, access_token)
+    except Exception as e:
+        print(f"❌ Failed to register GDPR webhooks: {e}")
+
     # 🔥 Extract store handle (remove .myshopify.com)
     store_handle = shop.replace(".myshopify.com", "")
 
-    # 🔥 Redirect back into Shopify Admin app
     return redirect(
         f"https://admin.shopify.com/store/{store_handle}/apps/schema-test-1"
     )
+
 
 #list of needed webhooks: products/update, products/create, products/delete, collections/create, collections/delete, collections/update no page/blog webhooks, maybe a sync button in the app interface?
 @app.route("/createWebhook", methods=["POST"])
@@ -3739,6 +3745,33 @@ def shop_redact():
 
     return "", 200
     
+
+def register_gdpr_webhooks(shop, access_token):
+    url = f"https://{shop}/admin/api/2024-10/webhooks.json"
+
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json"
+    }
+
+    topics = [
+        "customers/data_request",
+        "customers/redact",
+        "shop/redact"
+    ]
+
+    for topic in topics:
+        data = {
+            "webhook": {
+                "topic": topic,
+                "address": f"https://schema-resource-c80feca18260.herokuapp.com/webhooks/{topic}",
+                "format": "json"
+            }
+        }
+
+        resp = requests.post(url, json=data, headers=headers)
+        print(f"{topic} → {resp.status_code} {resp.text}")
+
 
 def send_support_email(user_email, message, shop):
     smtp_server = "smtp.gmail.com"
