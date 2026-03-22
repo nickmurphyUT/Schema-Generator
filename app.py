@@ -3617,7 +3617,20 @@ def cancel_subscription():
 def compliance_webhook():
     print("🔥 COMPLIANCE WEBHOOK HIT")
 
+    if not verify_shopify_webhook(request):
+        print("❌ HMAC FAILED")
+        return "Unauthorized", 401  # 🔥 REQUIRED
+
+    print("✅ HMAC PASSED")
+
+    topic = request.headers.get("X-Shopify-Topic")
+    payload = request.get_json(silent=True) or {}
+
+    print(f"📩 Topic: {topic}")
+    print(payload)
+
     return "", 200
+
 
 
 @app.route("/api/navigation")
@@ -3645,21 +3658,21 @@ def get_navigation():
 # 🔐 Verify Shopify Webhook
 # ─────────────────────────────────────────────────────────────
 def verify_shopify_webhook(req):
-    hmac_header = req.headers.get("X-Shopify-Hmac-Sha256")
-    if not hmac_header:
+    shopify_hmac = req.headers.get("X-Shopify-Hmac-Sha256")
+    if not shopify_hmac:
         return False
 
-    data = req.get_data()
+    raw_body = req.get_data()  # 🔥 CRITICAL
 
     digest = hmac.new(
         SHOPIFY_WEBHOOK_SECRET.encode("utf-8"),
-        data,
+        raw_body,
         hashlib.sha256
     ).digest()
 
-    computed_hmac = base64.b64encode(digest).decode()
+    computed_hmac = base64.b64encode(digest).decode("utf-8")
 
-    return hmac.compare_digest(computed_hmac, hmac_header)
+    return hmac.compare_digest(computed_hmac, shopify_hmac)
 
 
 # ─────────────────────────────────────────────────────────────
