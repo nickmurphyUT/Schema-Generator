@@ -3904,7 +3904,7 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
     }
 
     try:
-        resp = query_shopify_graphql(shop, access_token, mutation, variables)
+        resp = query_shopify_graphql_webhook(shop, access_token, mutation, variables)
         errors = (
             resp.get("data", {})
             .get("metafieldDefinitionCreate", {})
