@@ -3095,8 +3095,15 @@ def verify_and_create_metafields():
     )
 
     node = resp.get("data", {}).get("metaobjectCreate")
-    if not node or node.get("userErrors"):
-        raise Exception("Failed to create config entry")
+    if not node:
+        logging.error(f"MetaobjectCreate missing: {json.dumps(resp, indent=2)}")
+        raise Exception("MetaobjectCreate returned null")
+    
+    user_errors = node.get("userErrors")
+    if user_errors:
+        logging.error(f"MetaobjectCreate userErrors: {json.dumps(user_errors, indent=2)}")
+        raise Exception(f"MetaobjectCreate failed: {user_errors}")
+
 
     logging.info("Created config entry: %s", node["metaobject"]["id"])
 
