@@ -81,7 +81,7 @@ ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN") # Can be retrieved dynamically 
 # Hardcoded Admin API credentials (ONLY FOR SERVER-SIDE USAGE)
 SHOPIFY_ADMIN_ACCESS_TOKEN = os.getenv("SHOPIFY_ACCESS_TOKEN")
 SHOPIFY_API_VERSION = "2024-01"  # or current stable version
-
+SHOPIFY_WEBHOOK_SECRET = os.getenv("SHOPIFY_API_SECRET")
 
 # ---------------- DASHBOARD ----------------
 # store the latest dynamic values from Shopify
