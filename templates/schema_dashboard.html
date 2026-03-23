@@ -1362,24 +1362,33 @@ function showUpgradeModal(section = "product") {
 
 
 /* ================= SAVE HANDLERS ================= */
-    document.getElementById("saveBlogBtn").onclick = async () => {
-    updateMappings(); // make sure mappings is current
+document.getElementById("saveBlogBtn").onclick = async () => {
+    updateMappings(); // keep your current mapping logic
 
     const validation = validateFreePlanLimits();
-
-    if (!validation.valid) {
-        //showUpgradeModal(old);
-        return;
-    }
+    if (!validation.valid) return;
 
     const preview = document.getElementById("metafields-preview-blog");
     const payload = buildFullPayload();
     preview.innerHTML = "Saving…";
 
     try {
+        // ✅ Get Shopify session token
+        let token = null;
+        if (window.shopify?.idToken) {
+            try {
+                token = await window.shopify.idToken();
+            } catch (e) {
+                console.error("Token fetch failed:", e);
+            }
+        }
+
         const resp = await fetch("/verify_and_create_metafields", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
             body: JSON.stringify(payload)
         });
 
@@ -1389,10 +1398,12 @@ function showUpgradeModal(section = "product") {
             ? "Saved!"
             : `Error: ${result.error || JSON.stringify(result)}`;
 
-    } catch {
+    } catch (e) {
+        console.error(e);
         preview.innerHTML = "Network Error";
     }
 };
+
      document.getElementById("savePageBtn").onclick = async () => {
     updateMappings(); // make sure mappings is current
 
