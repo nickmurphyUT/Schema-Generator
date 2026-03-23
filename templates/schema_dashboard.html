@@ -1,25 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-    <script>
-      const app = window['app-bridge'].default({
-        apiKey: "6ffa33279f9441b59c495f01ba90ebe6",
-        host: new URLSearchParams(window.location.search).get("host"),
-        forceRedirect: true,
-      });
-    </script>
-    <script>
-  async function getSessionToken() {
-    const app = window['app-bridge'].default({
-      apiKey: "6ffa33279f9441b59c495f01ba90ebe6",
-      host: new URLSearchParams(window.location.search).get("host"),
-    });
-
-    const utils = window['app-bridge-utils'];
-    return await utils.getSessionToken(app);
-  }
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "Schema App Dashboard" }}</title>
