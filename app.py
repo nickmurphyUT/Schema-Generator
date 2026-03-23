@@ -2568,7 +2568,7 @@ def ensure_metaobject_definition(shop, access_token):
         fieldDefinitions: [
           {
             name: "Schema Type",
-            key: "schema_type",
+            key: "product_schema_mappings",
             type: "single_line_text_field",
             required: true
           },
