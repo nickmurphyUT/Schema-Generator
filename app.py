@@ -3901,7 +3901,18 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
     except Exception as e:
         logging.exception("Exception creating %s metafield: %s", owner_type, str(e))
 
-
+def verify_shopify_token(token):
+    try:
+        decoded = jwt.decode(
+            token,
+            SHOPIFY_API_SECRET,
+            algorithms=["HS256"],
+            audience=SHOPIFY_API_KEY
+        )
+        return decoded
+    except Exception as e:
+        print("JWT ERROR:", e)
+        return None
 # Store or retain logs external to shopify's base options?
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
