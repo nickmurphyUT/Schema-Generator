@@ -2946,6 +2946,22 @@ def verify_and_create_metafields():
     data = request.json
     logging.info("INPUT (schema save): %s", json.dumps(data, indent=2))
 
+    auth_header = request.headers.get("Authorization")
+    
+    if not auth_header:
+        return jsonify({"error": "Missing Authorization header"}), 401
+    
+    try:
+        token = auth_header.split(" ")[1]
+    except IndexError:
+        return jsonify({"error": "Invalid Authorization format"}), 401
+    
+    decoded = verify_shopify_token(token)
+    
+    if not decoded:
+        return jsonify({"error": "Invalid token"}), 401
+
+    
     shop = data.get("shop") or session.get("shop")
     access_token = get_access_token_for_shop(shop)
     if not access_token:
