@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -267,7 +268,7 @@ publish dates.
 </div>
         <div id="blog-mapping-container" class="space-y-4 mb-6"></div>
         <button id="addBlogBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
-        <button id="" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Blog Schema Metafields</button>
+        <button id="saveBlogBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Blog Schema Metafields</button>
      <button id="resetBlogSchemaBtn"
         class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
     Reset to Default
@@ -1361,25 +1362,24 @@ function showUpgradeModal(section = "product") {
 
 
 /* ================= SAVE HANDLERS ================= */
-document.getElementById("saveBlogBtn").onclick = async () => {
-    updateMappings();
+    document.getElementById("saveBlogBtn").onclick = async () => {
+    updateMappings(); // make sure mappings is current
 
     const validation = validateFreePlanLimits();
-    if (!validation.valid) return;
+
+    if (!validation.valid) {
+        //showUpgradeModal(old);
+        return;
+    }
 
     const preview = document.getElementById("metafields-preview-blog");
     const payload = buildFullPayload();
     preview.innerHTML = "Saving…";
 
     try {
-        const token = await window.shopify.idToken();
-
         const resp = await fetch("/verify_and_create_metafields", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
 
@@ -1389,12 +1389,10 @@ document.getElementById("saveBlogBtn").onclick = async () => {
             ? "Saved!"
             : `Error: ${result.error || JSON.stringify(result)}`;
 
-    } catch (e) {
+    } catch {
         preview.innerHTML = "Network Error";
-        console.error(e);
     }
 };
-
      document.getElementById("savePageBtn").onclick = async () => {
     updateMappings(); // make sure mappings is current
 
