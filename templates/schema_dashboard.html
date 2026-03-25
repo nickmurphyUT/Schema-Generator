@@ -250,7 +250,7 @@ publish dates.
 </p>
         </p>
 <td>
-                <button id="toggleSubscriptionBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
+                <button id="toggleSubscriptionBtnBlog" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
                 Manage Subscription
             </button>
 <div id="freePlanWidgetBlogs"
@@ -295,7 +295,7 @@ or metafields directly to schema fields with no coding required.
 </p>
             </p>
 <td>
-                <button id="toggleSubscriptionBtn" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
+                <button id="toggleSubscriptionBtnPage" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
                 Manage Subscription
             </button>
     <div id="freePlanWidgetPages"
@@ -1677,6 +1677,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const appContainer = document.getElementById("app-container");
     const subscriptionView = document.getElementById("subscription-view");
     const toggleBtn = document.getElementById("toggleSubscriptionBtn");
+    const toggleBtnPage = document.getElementById("toggleSubscriptionBtnPage");
+    const toggleBtnProduct = document.getElementById("toggleSubscriptionBtnBlog");
     const backBtn = document.getElementById("backToAppBtn");
     const trialEl = document.getElementById("trial-status");
 
@@ -1878,6 +1880,24 @@ appContainer.style.display = "block";
 
     /* ================= TOGGLE ================= */
     if (toggleBtn && subscriptionView && appContainer) {
+        toggleBtn.disabled = false;
+        toggleBtn.classList.remove("opacity-50", "cursor-not-allowed");
+
+        toggleBtn.addEventListener("click", () => {
+            appContainer.style.display = "none";
+            subscriptionView.classList.remove("hidden");
+        });
+    }
+        if (toggleBtnPage  && subscriptionView && appContainer) {
+        toggleBtn.disabled = false;
+        toggleBtn.classList.remove("opacity-50", "cursor-not-allowed");
+
+        toggleBtn.addEventListener("click", () => {
+            appContainer.style.display = "none";
+            subscriptionView.classList.remove("hidden");
+        });
+    }
+        if (toggleBtnProduct  && subscriptionView && appContainer) {
         toggleBtn.disabled = false;
         toggleBtn.classList.remove("opacity-50", "cursor-not-allowed");
 
