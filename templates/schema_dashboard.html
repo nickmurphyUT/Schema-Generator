@@ -58,93 +58,86 @@
 
 <s-page id="subscription-view" hidden>
 
-  <div style="max-width: 900px; margin: 40px auto;">
+  <div style="max-width: 720px; margin: 0 auto;">
+    
+    <s-stack gap="300">
 
-    <s-card>
-      <div style="padding: 24px;">
+      <!-- HEADER -->
+      <s-stack gap="100" alignment="center">
+        <s-text variant="headingLg">Choose your plan</s-text>
+        <s-text tone="subdued">
+          Start free or unlock unlimited schema power.
+        </s-text>
+      </s-stack>
 
-        <s-stack gap="400">
+      <!-- PLANS -->
+      <s-grid columns="2" gap="300">
 
-          <!-- HEADER -->
-          <s-text variant="headingXl" alignment="center">
-            Choose Your Plan
-          </s-text>
+        <!-- FREE -->
+        <s-card padding="400">
+          <s-stack gap="200">
 
-          <s-text alignment="center" tone="subdued">
-            Start for free with limited product schemas, or unlock unlimited schema power with Pro.
-          </s-text>
+            <s-stack gap="50">
+              <s-text variant="headingMd">Free</s-text>
+              <s-text tone="subdued">For getting started</s-text>
+            </s-stack>
 
-          <!-- GRID -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <s-text variant="headingXl">$0</s-text>
 
-            <!-- ================= FREE PLAN ================= -->
-            <s-card style="padding: 20px;">
-              <s-stack gap="300">
+            <s-stack gap="100">
+              <s-text>✔ 2 Custom schemas</s-text>
+              <s-text>✔ Works on products, pages, blogs</s-text>
+              <s-text>✔ Core schema tools</s-text>
+              <s-text tone="subdued">✖ No priority support</s-text>
+            </s-stack>
 
-                <s-text variant="headingMd">Free Plan</s-text>
-                <s-text tone="subdued">Always free</s-text>
-                <s-text variant="headingLg">$0</s-text>
-
-                <ul style="line-height: 1.6;">
-                  <li>✅ Up to 2 Custom Schemas</li>
-                  <li>✅ Works on Products, Page, and Blogs</li>
-                  <li>✅ Core schema generation tools</li>
-                  <li>❌ No advanced support</li>
-                </ul>
-
-                <!-- KEEP ID -->
-                <s-button id="continueFreeBtn">
-                  Continue with Free
-                </s-button>
-
-                <!-- KEEP ID -->
-                <s-button id="downgradeBtn" tone="critical" hidden>
-                  Downgrade to Free
-                </s-button>
-
-              </s-stack>
-            </s-card>
-
-            <!-- ================= PRO PLAN ================= -->
-            <s-card style="padding: 20px; border: 2px solid #16a34a;">
-              <s-stack gap="300">
-
-                <!-- Badge aligned right -->
-                <div style="display:flex; justify-content:flex-end;">
-                  <s-badge tone="success">MOST POPULAR</s-badge>
-                </div>
-
-                <s-text variant="headingMd">Pro Plan</s-text>
-                <s-text tone="subdued">Full schema access</s-text>
-                <s-text variant="headingLg">$5 / month</s-text>
-
-                <ul style="line-height: 1.6;">
-                  <li>✅ Unlimited Custom Schemas Fields</li>
-                  <li>✅ Collection Schemas (coming soon)</li>
-                  <li>✅ Priority support</li>
-                </ul>
-
-                <!-- KEEP ID -->
-                <s-button id="goUpgradeBtnMain" variant="primary">
-                  Upgrade to Pro
-                </s-button>
-
-              </s-stack>
-            </s-card>
-
-          </div>
-
-          <!-- FOOTER BUTTON -->
-          <div style="display:flex; justify-content:center;">
-            <s-button id="backToAppBtn" tone="subdued">
-              Back to App
+            <s-button id="continueFreeBtn" variant="secondary" fullWidth>
+              Continue
             </s-button>
-          </div>
 
-        </s-stack>
+            <s-button id="downgradeBtn" tone="critical" hidden fullWidth>
+              Downgrade
+            </s-button>
 
-      </div>
-    </s-card>
+          </s-stack>
+        </s-card>
+
+        <!-- PRO -->
+        <s-card padding="400" style="border: 2px solid #008060;">
+          <s-stack gap="200">
+
+            <s-badge tone="success">Most popular</s-badge>
+
+            <s-stack gap="50">
+              <s-text variant="headingMd">Pro</s-text>
+              <s-text tone="subdued">For growing stores</s-text>
+            </s-stack>
+
+            <s-text variant="headingXl">$5<span style="font-size:14px;">/mo</span></s-text>
+
+            <s-stack gap="100">
+              <s-text>✔ Unlimited schemas</s-text>
+              <s-text>✔ Collection schemas</s-text>
+              <s-text>✔ Priority support</s-text>
+            </s-stack>
+
+            <s-button id="goUpgradeBtnMain" variant="primary" fullWidth>
+              Upgrade to Pro
+            </s-button>
+
+          </s-stack>
+        </s-card>
+
+      </s-grid>
+
+      <!-- FOOTER -->
+      <s-stack alignment="center">
+        <s-button id="backToAppBtn" tone="subdued">
+          Back to app
+        </s-button>
+      </s-stack>
+
+    </s-stack>
 
   </div>
 
