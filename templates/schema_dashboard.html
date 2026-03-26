@@ -191,7 +191,7 @@
     <h2 class="text-2xl font-semibold text-gray-800 mb-4">App Not Authorized</h2>
     <p class="text-gray-600 mb-6">This store has not completed Shopify authorization.</p>
     <a id="auth-link"
-       class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition">
+       class="inline-block bg-black-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition">
         Authorize App
     </a>
 </div>
@@ -484,9 +484,10 @@ or metafields directly to schema fields with no coding required.
 </p>
             </p>
 <td>
-                <button id="toggleSubscriptionBtnPage" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
-                Manage Subscription
-            </button>
+
+                <s-button id="toggleSubscriptionBtnPage" variant="primary" fullWidth>
+                  Manage Subscription
+                </s-button>
     <div id="freePlanWidgetPages"
      class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
     <div>
@@ -500,12 +501,15 @@ or metafields directly to schema fields with no coding required.
 
 </div>
         <div id="page-mapping-container" class="space-y-4 mb-6"></div>
-        <button id="addPageBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
-        <button id="savePageBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Page Schema Metafields</button>
-     <button id="resetPageSchemaBtn"
-        class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
-    Reset to Default
-</button>
+                    <s-button id="addPageBtn" variant="primary" fullWidth>
+                  + Add Schema Mapping
+                </s-button>
+                  <s-button id="savePageBtn" variant="primary" fullWidth>
+                  Save & Generate Page Schema Metafields
+                </s-button>
+                <s-button id="resetPageSchemaBtn" variant="secondary" fullWidth>
+                  Reset to Default
+                </s-button>
         <div id="metafields-preview-page" class="mt-4 text-sm text-gray-500"></div>
 <div class="mt-6 flex justify-end">
 
