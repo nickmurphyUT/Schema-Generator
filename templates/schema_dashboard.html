@@ -40,6 +40,147 @@
             border-color: #005bd3;
             box-shadow: 0 0 0 2px rgba(0, 91, 211, 0.2);
         }
+      /* ===== Layout tightening ===== */
+#subscription-view {
+  padding-top: 20px;
+}
+
+#subscription-view > div {
+  max-width: 860px; /* slightly tighter than 900 */
+}
+
+/* Grid spacing */
+#subscription-view .plan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px; /* tighter gap */
+}
+
+/* ===== Card styling ===== */
+#subscription-view s-card {
+  border-radius: 12px;
+  transition: all 0.15s ease;
+}
+
+/* Subtle hover like Shopify */
+#subscription-view s-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Free plan card */
+.plan-free {
+  border: 1px solid #e1e3e5;
+  background: #ffffff;
+}
+
+/* Pro plan emphasis */
+.plan-pro {
+  border: 2px solid #16a34a;
+  background: #f6fef9;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.08);
+}
+
+/* ===== Typography hierarchy ===== */
+
+/* Plan title */
+.plan-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #202223;
+}
+
+/* Subtitle */
+.plan-subtitle {
+  font-size: 13px;
+  color: #6d7175;
+}
+
+/* Price */
+.plan-price {
+  font-size: 28px;
+  font-weight: 700;
+  color: #202223;
+  margin-top: 4px;
+}
+
+/* /month */
+.plan-price span {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6d7175;
+  margin-left: 4px;
+}
+
+/* ===== Feature list ===== */
+.plan-features {
+  margin: 8px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-features li {
+  font-size: 13px;
+  color: #202223;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Muted "no support" */
+.plan-features li.muted {
+  color: #8c9196;
+}
+
+/* ===== Badge ===== */
+.plan-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #bbf7d0;
+  color: #065f46;
+}
+
+/* ===== Buttons ===== */
+#subscription-view s-button {
+  margin-top: 6px;
+}
+
+/* Primary button tweak */
+#subscription-view s-button[variant="primary"] {
+  font-weight: 600;
+}
+
+/* Secondary / subtle buttons */
+#subscription-view s-button[tone="subdued"] {
+  font-size: 13px;
+}
+
+/* ===== Header tightening ===== */
+.plan-header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.plan-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.plan-header p {
+  font-size: 13px;
+  color: #6d7175;
+}
+
+/* ===== Footer spacing ===== */
+.plan-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
