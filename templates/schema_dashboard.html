@@ -1817,7 +1817,7 @@ if (productRows.length > 2) {
 }
 
 // 6️⃣ Show app UI
-subscriptionView.classList.add("hidden");
+subscriptionView.setAttribute("hidden", "");
 appContainer.style.display = "block";
 
     
@@ -1874,12 +1874,12 @@ appContainer.style.display = "block";
 
     /* ================= ACCESS CONTROL ================= */
     if (!hasActiveSubscription && trialExpired) {
-        if (appContainer) appContainer.style.display = "none";
-        if (subscriptionView) subscriptionView.removeAttribute("hidden"); 
+        appContainer.style.display = "none";
+        subscriptionView.removeAttribute("hidden"); // show
     } else {
-        if (subscriptionView) subscriptionView.removeAttribute("hidden");
-
+        subscriptionView.setAttribute("hidden", ""); // hide ✅
     }
+
 
     /* ================= TOGGLE ================= */
     if (toggleBtn && subscriptionView && appContainer) {
@@ -1911,11 +1911,11 @@ appContainer.style.display = "block";
     }
 
     if (backBtn && subscriptionView && appContainer) {
-        backBtn.addEventListener("click", () => {
-            subscriptionView.removeAttribute("hidden");
+backBtn.addEventListener("click", () => {
+    subscriptionView.setAttribute("hidden", ""); // hide ✅
+    appContainer.style.display = "block";
+});
 
-            appContainer.style.display = "block";
-        });
     }
 
 
@@ -2021,7 +2021,7 @@ const continueFreeBtn = document.getElementById("continueFreeBtn");
 
 if (continueFreeBtn && subscriptionView && appContainer) {
     continueFreeBtn.addEventListener("click", () => {
-        subscriptionView.classList.add("hidden"); // hide subscription view
+        subscriptionView.setAttribute("hidden", ""); // hide subscription view
         appContainer.style.display = "block";    // show main app
     });
 }
