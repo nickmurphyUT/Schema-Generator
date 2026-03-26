@@ -57,54 +57,48 @@
 
 <s-page id="subscription-view" hidden>
 
-  <div style="max-width: 920px; margin: 48px auto;">
+  <div style="max-width: 920px; margin: 40px auto;">
 
     <s-card>
-      <div style="padding: 32px;">
+      <div style="padding: 28px;">
 
-        <s-stack gap="500">
+        <s-stack gap="400">
 
           <!-- HEADER -->
           <div style="text-align:center; max-width: 520px; margin: 0 auto;">
-            <s-text variant="headingXl" style="font-weight:600; margin-bottom:8px;">
+            <s-text variant="headingLg" style="font-weight:600; margin-bottom:6px;">
               Choose your plan
             </s-text>
 
-            <s-text tone="subdued" style="font-size:14px;">
+            <s-text tone="subdued" style="font-size:13px;">
               Start free or unlock unlimited schema power.
             </s-text>
           </div>
 
-          <!-- GRID (KEEP THIS — WORKING) -->
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <!-- GRID -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
 
-            <!-- ================= FREE PLAN ================= -->
+            <!-- ================= FREE ================= -->
             <s-card style="
-              padding: 24px;
-              border-radius: 14px;
-              box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+              padding: 20px;
+              border-radius: 12px;
+              box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             ">
-              <s-stack gap="350">
+              <div style="display:flex; flex-direction:column; gap:18px;">
 
                 <!-- TITLE -->
                 <div>
-                  <s-text variant="headingMd" style="font-weight:600;">
-                    Free
-                  </s-text>
-                  <s-text tone="subdued" style="font-size:13px;">
-                    For small stores
-                  </s-text>
+                  <div style="font-weight:600; font-size:15px;">Free</div>
+                  <div style="font-size:12px; color:#6b7280;">For small stores</div>
                 </div>
 
                 <!-- PRICE -->
-                <div>
-                  <span style="font-size:34px; font-weight:650; line-height:1;">
-                    $0
-                  </span>
+                <div style="display:flex; align-items:flex-end; gap:6px;">
+                  <div style="font-size:30px; font-weight:650; line-height:1;">$0</div>
                 </div>
 
                 <!-- FEATURES -->
-                <div style="display:flex; flex-direction:column; gap:10px; font-size:14px;">
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:13.5px;">
                   <div>✔ Up to 2 custom schemas</div>
                   <div>✔ Products, pages, blogs</div>
                   <div>✔ Core schema tools</div>
@@ -120,18 +114,17 @@
                   Downgrade
                 </s-button>
 
-              </s-stack>
+              </div>
             </s-card>
 
-            <!-- ================= PRO PLAN ================= -->
+            <!-- ================= PRO ================= -->
             <s-card style="
-              padding: 24px;
-              border-radius: 14px;
+              padding: 20px;
+              border-radius: 12px;
               border: 2px solid #16a34a;
-              box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-              transform: scale(1.02);
+              box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             ">
-              <s-stack gap="350">
+              <div style="display:flex; flex-direction:column; gap:18px;">
 
                 <!-- BADGE -->
                 <div style="display:flex; justify-content:flex-end;">
@@ -140,26 +133,18 @@
 
                 <!-- TITLE -->
                 <div>
-                  <s-text variant="headingMd" style="font-weight:600;">
-                    Pro
-                  </s-text>
-                  <s-text tone="subdued" style="font-size:13px;">
-                    For growing stores
-                  </s-text>
+                  <div style="font-weight:600; font-size:15px;">Pro</div>
+                  <div style="font-size:12px; color:#6b7280;">For growing stores</div>
                 </div>
 
                 <!-- PRICE -->
-                <div>
-                  <span style="font-size:34px; font-weight:650; line-height:1;">
-                    $5
-                  </span>
-                  <span style="font-size:14px; color:#6b7280; margin-left:6px;">
-                    /month
-                  </span>
+                <div style="display:flex; align-items:flex-end; gap:6px;">
+                  <div style="font-size:30px; font-weight:650; line-height:1;">$5</div>
+                  <div style="font-size:13px; color:#6b7280;">/month</div>
                 </div>
 
                 <!-- FEATURES -->
-                <div style="display:flex; flex-direction:column; gap:10px; font-size:14px;">
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:13.5px;">
                   <div>✔ Unlimited schemas</div>
                   <div>✔ Collection schemas (soon)</div>
                   <div>✔ Priority support</div>
@@ -170,7 +155,7 @@
                   Upgrade to Pro
                 </s-button>
 
-              </s-stack>
+              </div>
             </s-card>
 
           </div>
