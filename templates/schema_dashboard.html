@@ -1875,9 +1875,10 @@ appContainer.style.display = "block";
     /* ================= ACCESS CONTROL ================= */
     if (!hasActiveSubscription && trialExpired) {
         if (appContainer) appContainer.style.display = "none";
-        if (subscriptionView) subscriptionView.removeAttribute("hidden");
+        if (subscriptionView) subscriptionView.removeAttribute("hidden"); 
     } else {
-        if (subscriptionView) subscriptionView.classList.add("hidden");
+        if (subscriptionView) subscriptionView.removeAttribute("hidden");
+
     }
 
     /* ================= TOGGLE ================= */
@@ -1911,7 +1912,8 @@ appContainer.style.display = "block";
 
     if (backBtn && subscriptionView && appContainer) {
         backBtn.addEventListener("click", () => {
-            subscriptionView.classList.add("hidden");
+            subscriptionView.removeAttribute("hidden");
+
             appContainer.style.display = "block";
         });
     }
