@@ -56,78 +56,77 @@
 </div>
 
 
-<div id="subscription-view" class="hidden mt-8 w-full bg-white shadow-lg rounded-xl p-8 text-center border border-gray-200 max-w-5xl mx-auto">
-    
-    <h2 class="text-3xl font-bold text-gray-800 mb-4">Choose Your Plan</h2>
-    <p class="text-gray-600 mb-8">
+<s-page id="subscription-view" hidden>
+  <s-card>
+    <s-stack gap="400">
+
+      <s-text variant="headingLg" alignment="center">
+        Choose Your Plan
+      </s-text>
+
+      <s-text alignment="center" tone="subdued">
         Start for free with limited product schemas, or unlock unlimited schema power with Pro.
-    </p>
+      </s-text>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <s-grid columns="2" gap="400">
 
-        <!-- Free Plan -->
-        <div class="border border-gray-300 rounded-xl p-6 hover:shadow-lg transition duration-200">
-            <h3 class="text-xl font-semibold mb-2">Free Plan</h3>
-            <p class="text-gray-600 mb-4">Always free</p>
-            <p class="text-gray-800 font-bold text-2xl mb-4">$0</p>
+        <!-- FREE PLAN -->
+        <s-card>
+          <s-stack gap="200">
+            <s-text variant="headingMd">Free Plan</s-text>
+            <s-text tone="subdued">Always free</s-text>
+            <s-text variant="headingLg">$0</s-text>
 
-            <ul class="text-left mb-6 space-y-2 text-gray-600">
-                <li>✅ Up to 2 Custom Schemas</li>
-                <li>✅ Works on Products, Page, and Blogs</li>
-                <li>✅ Core schema generation tools</li>
-                <li>❌ No advanced support</li>
+            <ul>
+              <li>✅ Up to 2 Custom Schemas</li>
+              <li>✅ Works on Products, Page, and Blogs</li>
+              <li>✅ Core schema generation tools</li>
+              <li>❌ No advanced support</li>
             </ul>
 
-                <button id="continueFreeBtn" 
-                        class="block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
-                    Continue with Free
-                </button>
+            <!-- KEEP ID -->
+            <s-button id="continueFreeBtn" variant="primary">
+              Continue with Free
+            </s-button>
 
-                <button id="downgradeBtn"
-                    class="hidden mt-3 w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg">
-                    Downgrade to Free
-                </button>
+            <s-button id="downgradeBtn" tone="critical" hidden>
+              Downgrade to Free
+            </s-button>
+          </s-stack>
+        </s-card>
 
-        </div>
+        <!-- PRO PLAN -->
+        <s-card>
+          <s-stack gap="200">
+            <s-badge tone="success">MOST POPULAR</s-badge>
 
-        <!-- Pro Plan -->
-        <div class="border-2 border-green-500 rounded-xl p-6 hover:shadow-xl transition duration-200 relative">
+            <s-text variant="headingMd">Pro Plan</s-text>
+            <s-text tone="subdued">Full schema access</s-text>
+            <s-text variant="headingLg">$5 / month</s-text>
 
-            <span class="absolute top-0 right-0 bg-green-500 text-white text-xs px-3 py-1 rounded-bl-xl rounded-tr-xl">
-                MOST POPULAR
-            </span>
-
-            <h3 class="text-xl font-semibold mb-2 text-green-700">Pro Plan</h3>
-            <p class="text-gray-600 mb-4">Full schema access</p>
-            <p class="text-gray-800 font-bold text-2xl mb-4">$5 / month</p>
-
-            <ul class="text-left mb-6 space-y-2 text-gray-600">
-                <li>✅ Unlimited Custom Schemas Fields</li>
-                <li>✅ Collection Schemas (coming soon)</li>
-                <li>✅ Priority support</li>
+            <ul>
+              <li>✅ Unlimited Custom Schemas Fields</li>
+              <li>✅ Collection Schemas (coming soon)</li>
+              <li>✅ Priority support</li>
             </ul>
 
-            <a id="goUpgradeBtnMain"
-               class="block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg">
-                Upgrade to Pro
-            </a>
-        </div>
+            <!-- KEEP ID -->
+            <s-button id="goUpgradeBtnMain" variant="primary">
+              Upgrade to Pro
+            </s-button>
+          </s-stack>
+        </s-card>
 
-    </div>
+      </s-grid>
 
-    <button id="backToAppBtn" 
-            class="mt-8 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg">
+      <s-button id="backToAppBtn" tone="subdued">
         Back to App
-    </button>
+      </s-button>
 
+    </s-stack>
+  </s-card>
+</s-page>
 
-<div class="mt-6 flex justify-end">
-    <p class="text-gray-400 text-sm">
-        FetchSchema by Brandography
-    </p>
-</div>
-
-</div>
 
 
 <!-- MAIN APP CONTAINER -->
