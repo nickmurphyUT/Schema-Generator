@@ -1875,7 +1875,7 @@ appContainer.style.display = "block";
     /* ================= ACCESS CONTROL ================= */
     if (!hasActiveSubscription && trialExpired) {
         if (appContainer) appContainer.style.display = "none";
-        if (subscriptionView) subscriptionView.classList.remove("hidden");
+        if (subscriptionView) subscriptionView.removeAttribute("hidden");
     } else {
         if (subscriptionView) subscriptionView.classList.add("hidden");
     }
@@ -1887,7 +1887,7 @@ appContainer.style.display = "block";
 
         toggleBtn.addEventListener("click", () => {
             appContainer.style.display = "none";
-            subscriptionView.classList.remove("hidden");
+            subscriptionView.removeAttribute("hidden");
         });
     }
         if (toggleBtnPage  && subscriptionView && appContainer) {
@@ -1896,7 +1896,7 @@ appContainer.style.display = "block";
 
         toggleBtnPage.addEventListener("click", () => {
             appContainer.style.display = "none";
-            subscriptionView.classList.remove("hidden");
+            subscriptionView.removeAttribute("hidden");
         });
     }
         if (toggleBtnProduct  && subscriptionView && appContainer) {
@@ -1905,7 +1905,7 @@ appContainer.style.display = "block";
 
         toggleBtnProduct.addEventListener("click", () => {
             appContainer.style.display = "none";
-            subscriptionView.classList.remove("hidden");
+            subscriptionView.removeAttribute("hidden");
         });
     }
 
