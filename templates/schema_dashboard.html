@@ -384,13 +384,15 @@
 </div>
 
 <div id="schema-mapping-container" class="space-y-4 mb-6"></div>
-
-        <button id="addMappingBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
-        <button id="sendToBackendBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Schema Metafields</button>
-                <button id="resetProductSchemaBtn"
-        class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
-    Reset to Default
-</button>
+                  <s-button id="addMappingBtn" variant="primary" fullWidth>
+                  + Add Schema Mapping
+                </s-button>
+                  <s-button id="sendToBackendBtn" variant="primary" fullWidth>
+                  Save & Generate Schema Metafields
+                </s-button>
+                  <s-button id="resetProductSchemaBtn" variant="secondary" fullWidth>
+                      Reset to Default
+                </s-button>
         <div id="metafields-preview" class="mt-4 text-sm text-gray-500"></div>
 <div class="mt-6 flex justify-end">
 
@@ -439,11 +441,11 @@ publish dates.
 </p>
         </p>
 <td>
-                <button id="toggleSubscriptionBtnBlog" class="bg-purple-600 text-white px-4 py-2 rounded-lg mb-4">
-                Manage Subscription
-            </button>
+                  <s-button id="toggleSubscriptionBtnBlog" variant="primary" fullWidth>
+                  Manage Subscription
+                </s-button>
 <div id="freePlanWidgetBlogs"
-     class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+     class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm" style="margin-top: 2em;">
 
     <div>
         <strong>Free Plan:</strong> You can add <strong>2 additional schema fields</strong>.
@@ -456,12 +458,15 @@ publish dates.
 
 </div>
         <div id="blog-mapping-container" class="space-y-4 mb-6"></div>
-        <button id="addBlogBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow">+ Add Schema Mapping</button>
-        <button id="saveBlogBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg shadow mt-4">Save & Generate Blog Schema Metafields</button>
-     <button id="resetBlogSchemaBtn"
-        class="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
-    Reset to Default
-</button>
+                  <s-button id="addBlogBtn" variant="primary" fullWidth>
+                 + Add Schema Mapping
+                </s-button>
+                  <s-button id="saveBlogBtn" variant="primary" fullWidth>
+                  Save & Generate Blog Schema Metafields
+                </s-button>
+                  <s-button id="resetBlogSchemaBtn" variant="secondary" fullWidth>
+                 Reset to Default
+                </s-button>
         <div id="metafields-preview-blog" class="mt-4 text-sm text-gray-500"></div>
 <div class="mt-6 flex justify-end">
 
@@ -489,7 +494,7 @@ or metafields directly to schema fields with no coding required.
                   Manage Subscription
                 </s-button>
     <div id="freePlanWidgetPages"
-     class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm">
+     class="hidden mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm" style="margin-top: 2em;">
     <div>
         <strong>Free Plan:</strong> You can add <strong>2 additional schema fields</strong>.
     </div>
@@ -1921,11 +1926,11 @@ console.log("section change");
 
         // Update tab styling
         document.querySelectorAll(".schema-tab").forEach(b => {
-            b.classList.remove("bg-blue-600","text-white");
+            b.classList.remove("bg-black-600","text-white");
             b.classList.add("hover:bg-gray-100");
         });
 
-        btn.classList.add("bg-blue-600","text-white");
+        btn.classList.add("bg-black-600","text-white");
         btn.classList.remove("hover:bg-gray-100");
 
     });
