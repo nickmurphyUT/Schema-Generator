@@ -1589,7 +1589,7 @@ document.getElementById("saveBlogBtn").onclick = async () => {
             }
         }
 
-        const resp = await fetch("/verify_and_create_metafields", {
+        const resp = await fetch("https://schema-resource-c80feca18260.herokuapp.com/verify_and_create_metafields", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1625,7 +1625,7 @@ document.getElementById("saveBlogBtn").onclick = async () => {
     preview.innerHTML = "Saving…";
 
     try {
-        const resp = await fetch("/verify_and_create_metafields", {
+        const resp = await fetch("https://schema-resource-c80feca18260.herokuapp.com/verify_and_create_metafields", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -1657,7 +1657,7 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
     preview.innerHTML = "Saving…";
 
     try {
-        const resp = await fetch("/verify_and_create_metafields", {
+        const resp = await fetch("https://schema-resource-c80feca18260.herokuapp.com/verify_and_create_metafields", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -1684,7 +1684,7 @@ document.getElementById("saveCollectionBtn").onclick = async () => {
   preview.innerHTML = "Saving…";
 
   try {
-    const resp = await fetch("/verify_and_create_metafields", {
+    const resp = await fetch("https://schema-resource-c80feca18260.herokuapp.com/verify_and_create_metafields", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -1715,7 +1715,7 @@ document.getElementById("saveHomepageBtn").onclick = async () => {
   preview.innerHTML = "Saving…";
 
   try {
-    const resp = await fetch("/verify_and_create_metafields", {
+    const resp = await fetch("https://schema-resource-c80feca18260.herokuapp.com/verify_and_create_metafields", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -1751,7 +1751,7 @@ document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
     preview.innerHTML = 'Saving…';
 
     try {
-        const resp = await fetch("/verify_and_create_metafields", {
+        const resp = await fetch("https://schema-resource-c80feca18260.herokuapp.com/verify_and_create_metafields", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
