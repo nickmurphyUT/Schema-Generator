@@ -1610,7 +1610,7 @@ document.getElementById("saveBlogBtn").onclick = async () => {
     }
 };
 
-     document.getElementById("savePageBtn").onclick = async () => {
+     document.getElementById("savePageBtn")   ?.addEventListener("click", async () => {
     updateMappings(); // make sure mappings is current
 
     const validation = validateFreePlanLimits();
