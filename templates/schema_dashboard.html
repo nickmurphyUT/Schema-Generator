@@ -1568,7 +1568,9 @@ function showUpgradeModal(section = "product") {
 
 
 /* ================= SAVE HANDLERS ================= */
-document.getElementById("saveBlogBtn").onclick = async () => {
+document.getElementById("saveBlogBtn")
+  ?.addEventListener("click", async () => {
+
     updateMappings(); // keep your current mapping logic
 
     const validation = validateFreePlanLimits();
@@ -1610,7 +1612,7 @@ document.getElementById("saveBlogBtn").onclick = async () => {
     }
 };
 
-     document.getElementById("savePageBtn")   ?.addEventListener("click", async () => {
+     document.getElementById("savePageBtn").onclick = async () => {
     updateMappings(); // make sure mappings is current
 
     const validation = validateFreePlanLimits();
@@ -1641,7 +1643,9 @@ document.getElementById("saveBlogBtn").onclick = async () => {
         preview.innerHTML = "Network Error";
     }
 };
-document.getElementById("sendToBackendBtn").onclick = async () => {
+document.getElementById("sendToBackendBtn")
+  ?.addEventListener("click", async () => {
+
 
     updateMappings(); // make sure mappings is current
 
@@ -1678,7 +1682,9 @@ document.getElementById("sendToBackendBtn").onclick = async () => {
 
 
 // Collection Save Only
-document.getElementById("saveCollectionBtn").onclick = async () => {
+document.getElementById("saveCollectionBtn")
+  ?.addEventListener("click", async () => {
+
   const payload = buildFullPayload();
   const preview = document.getElementById("collection-preview");
   preview.innerHTML = "Saving…";
@@ -1709,7 +1715,9 @@ updateFreeCounterFor(
     // Collection Save Only
 
 
-document.getElementById("saveHomepageBtn").onclick = async () => {
+document.getElementById("saveHomepageBtn")
+  ?.addEventListener("click", async () => {
+
   const payload = buildFullPayload();
   const preview = document.getElementById("homepage-preview");
   preview.innerHTML = "Saving…";
