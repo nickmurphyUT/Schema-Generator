@@ -1610,7 +1610,7 @@ document.getElementById("saveBlogBtn")
         console.error(e);
         preview.innerHTML = "Network Error";
     }
-};
+};);
 
 document.getElementById("savePageBtn")
   ?.addEventListener("click", async () => {
@@ -1643,7 +1643,7 @@ document.getElementById("savePageBtn")
     } catch {
         preview.innerHTML = "Network Error";
     }
-};
+};);
 document.getElementById("sendToBackendBtn")
   ?.addEventListener("click", async () => {
 
@@ -1677,7 +1677,7 @@ document.getElementById("sendToBackendBtn")
     } catch {
         preview.innerHTML = "Network Error";
     }
-};
+};);
 
 
 
@@ -1704,7 +1704,7 @@ document.getElementById("saveCollectionBtn")
   } catch {
     preview.innerHTML = "Network Error";
   }
-};
+};);
 updateFreeCounterFor(
     "schema-mapping-container",
     CORE_PRODUCT_FIELDS,
@@ -1737,7 +1737,7 @@ document.getElementById("saveHomepageBtn")
   } catch {
     preview.innerHTML = "Network Error";
   }
-};
+};);
 
 // Optional Combined Save (if you ever add a "Save Both" button)
 document.getElementById("saveBothBtn")?.addEventListener("click", async () => {
