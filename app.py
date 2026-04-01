@@ -142,7 +142,37 @@ def fetch_organization_schema_properties():
             ]
 
     # ---------------------------------
-    # 4. Prepare fields + domain mapping
+    # 4. Build property inheritance graph 🔥
+    # ---------------------------------
+    prop_parents = {}
+
+    for node in graph:
+        if node.get("@type") == "rdf:Property":
+            node_id = node.get("@id")
+            parents = node.get("rdfs:subPropertyOf", [])
+            parents = parents if isinstance(parents, list) else [parents]
+
+            prop_parents[node_id] = [
+                p.get("@id") for p in parents if isinstance(p, dict)
+            ]
+
+    def get_all_prop_parents(prop_id):
+        visited = set()
+        stack = [prop_id]
+
+        while stack:
+            current = stack.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+
+            for parent in prop_parents.get(current, []):
+                stack.append(parent)
+
+        return visited
+
+    # ---------------------------------
+    # 5. Prepare fields + domain mapping
     # ---------------------------------
     fields = {
         "org_schema_fields": [],
@@ -165,7 +195,7 @@ def fetch_organization_schema_properties():
     TARGET_TYPES = set(domain_map.keys())
 
     # ---------------------------------
-    # 5. Expand domain map with inheritance
+    # 6. Expand domain map with inheritance
     # ---------------------------------
     expanded_domain_map = {}
 
@@ -177,45 +207,55 @@ def fetch_organization_schema_properties():
             expanded_domain_map.setdefault(t, set()).add(field_key)
 
     # ---------------------------------
-    # 6. Extract properties (domain + range)
+    # 7. Extract properties (domain + range + subProperty)
     # ---------------------------------
     properties = [p for p in graph if p.get("@type") == "rdf:Property"]
 
     for prop in properties:
-        prop_name = prop["@id"].split(":")[-1]
+        prop_id = prop["@id"]
+        prop_name = prop_id.split(":")[-1]
+
         matched_keys = set()
 
-        # -----------------------------
-        # DOMAIN MATCH (forward)
-        # -----------------------------
-        domain = prop.get("schema:domainIncludes")
-        if domain:
-            domain_list = domain if isinstance(domain, list) else [domain]
+        # Include inherited properties 🔥
+        all_prop_ids = get_all_prop_parents(prop_id)
+        all_prop_ids.add(prop_id)
 
-            for d in domain_list:
-                domain_id = d.get("@id")
-                if not domain_id:
-                    continue
+        for pid in all_prop_ids:
+            node = next((p for p in properties if p["@id"] == pid), None)
+            if not node:
+                continue
 
-                keys = expanded_domain_map.get(domain_id, [])
-                matched_keys.update(keys)
+            # -----------------------------
+            # DOMAIN MATCH
+            # -----------------------------
+            domain = node.get("schema:domainIncludes")
+            if domain:
+                domain_list = domain if isinstance(domain, list) else [domain]
 
-        # -----------------------------
-        # RANGE MATCH (reverse 🔥)
-        # -----------------------------
-        range_ = prop.get("schema:rangeIncludes")
-        if range_:
-            range_list = range_ if isinstance(range_, list) else [range_]
+                for d in domain_list:
+                    domain_id = d.get("@id")
+                    if not domain_id:
+                        continue
 
-            for r in range_list:
-                range_id = r.get("@id")
-                if not range_id:
-                    continue
-
-                # Only include if relevant to our schema targets
-                if range_id in TARGET_TYPES or range_id in expanded_domain_map:
-                    keys = expanded_domain_map.get(range_id, [])
+                    keys = expanded_domain_map.get(domain_id, [])
                     matched_keys.update(keys)
+
+            # -----------------------------
+            # RANGE MATCH (reverse)
+            # -----------------------------
+            range_ = node.get("schema:rangeIncludes")
+            if range_:
+                range_list = range_ if isinstance(range_, list) else [range_]
+
+                for r in range_list:
+                    range_id = r.get("@id")
+                    if not range_id:
+                        continue
+
+                    if range_id in TARGET_TYPES or range_id in expanded_domain_map:
+                        keys = expanded_domain_map.get(range_id, [])
+                        matched_keys.update(keys)
 
         # -----------------------------
         # Assign matches
@@ -224,7 +264,7 @@ def fetch_organization_schema_properties():
             fields[key].append(prop_name)
 
     # ---------------------------------
-    # 7. Deduplicate + sort + cache
+    # 8. Deduplicate + sort + cache
     # ---------------------------------
     for k, v in fields.items():
         fields[k] = sorted(set(v))
@@ -233,6 +273,23 @@ def fetch_organization_schema_properties():
     SCHEMA_CACHE["fields"] = fields
 
     return fields
+
+
+def get_all_prop_parents(prop_id, prop_parents):
+    visited = set()
+    stack = [prop_id]
+
+    while stack:
+        current = stack.pop()
+        if current in visited:
+            continue
+        visited.add(current)
+
+        for parent in prop_parents.get(current, []):
+            if parent:
+                stack.append(parent)
+
+    return visited
 
 
 def get_all_parents(type_id, type_parents):
