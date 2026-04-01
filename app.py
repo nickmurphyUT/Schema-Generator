@@ -103,8 +103,13 @@ class StoreToken(db.Model):
 def fetch_organization_schema_properties():
     """
     Fetches and caches Schema.org properties for all schema types
-    used by the app. Returns flat lists so the frontend does not
-    need to change.
+    used by the app.
+
+    Returns:
+    {
+        "fields": { ... },          # main properties (domainIncludes + inheritance)
+        "reverse_fields": { ... }   # properties where type appears as a value (rangeIncludes)
+    }
     """
 
     now = time.time()
@@ -113,7 +118,10 @@ def fetch_organization_schema_properties():
     # 1. Return cached if fresh
     # ---------------------------------
     if now - SCHEMA_CACHE.get("timestamp", 0) < CACHE_TTL:
-        return SCHEMA_CACHE["fields"]
+        return {
+            "fields": SCHEMA_CACHE["fields"],
+            "reverse_fields": SCHEMA_CACHE.get("reverse_fields", {})
+        }
 
     # ---------------------------------
     # 2. Fetch Schema.org vocabulary
@@ -152,6 +160,15 @@ def fetch_organization_schema_properties():
         "homepage_schema_fields": [],
     }
 
+    reverse_fields = {
+        "org_schema_fields": [],
+        "product_schema_fields": [],
+        "collection_schema_fields": [],
+        "page_schema_fields": [],
+        "blog_schema_fields": [],
+        "homepage_schema_fields": [],
+    }
+
     domain_map = {
         "schema:Organization": "org_schema_fields",
         "schema:Product": "product_schema_fields",
@@ -160,8 +177,6 @@ def fetch_organization_schema_properties():
         "schema:BlogPosting": "blog_schema_fields",
         "schema:WebSite": "homepage_schema_fields",
     }
-
-    TARGET_TYPES = set(domain_map.keys())
 
     # ---------------------------------
     # 5. Expand domain map with inheritance
@@ -176,16 +191,15 @@ def fetch_organization_schema_properties():
             expanded_domain_map.setdefault(t, set()).add(field_key)
 
     # ---------------------------------
-    # 6. Extract properties (domain + range)
+    # 6. Extract properties
     # ---------------------------------
     properties = [p for p in graph if p.get("@type") == "rdf:Property"]
 
     for prop in properties:
         prop_name = prop["@id"].split(":")[-1]
-        matched_keys = set()
 
         # -----------------------------
-        # DOMAIN MATCH (forward)
+        # MAIN: domainIncludes only ✅
         # -----------------------------
         domain = prop.get("schema:domainIncludes")
         if domain:
@@ -197,10 +211,11 @@ def fetch_organization_schema_properties():
                     continue
 
                 keys = expanded_domain_map.get(domain_id, [])
-                matched_keys.update(keys)
+                for key in keys:
+                    fields[key].append(prop_name)
 
         # -----------------------------
-        # RANGE MATCH (reverse 🔥)
+        # REVERSE: rangeIncludes (separate) 🔁
         # -----------------------------
         range_ = prop.get("schema:rangeIncludes")
         if range_:
@@ -211,27 +226,30 @@ def fetch_organization_schema_properties():
                 if not range_id:
                     continue
 
-                # Only include if relevant to our schema targets
-                if range_id in TARGET_TYPES or range_id in expanded_domain_map:
-                    keys = expanded_domain_map.get(range_id, [])
-                    matched_keys.update(keys)
-
-        # -----------------------------
-        # Assign matches
-        # -----------------------------
-        for key in matched_keys:
-            fields[key].append(prop_name)
+                key = domain_map.get(range_id)
+                if key:
+                    reverse_fields[key].append(prop_name)
 
     # ---------------------------------
-    # 7. Deduplicate + sort + cache
+    # 7. Deduplicate + sort
     # ---------------------------------
     for k, v in fields.items():
         fields[k] = sorted(set(v))
 
+    for k, v in reverse_fields.items():
+        reverse_fields[k] = sorted(set(v))
+
+    # ---------------------------------
+    # 8. Cache
+    # ---------------------------------
     SCHEMA_CACHE["timestamp"] = now
     SCHEMA_CACHE["fields"] = fields
+    SCHEMA_CACHE["reverse_fields"] = reverse_fields
 
-    return fields
+    return {
+        "fields": fields,
+        "reverse_fields": reverse_fields
+    }
 
 
 def get_all_parents(type_id, type_parents):
