@@ -124,8 +124,25 @@ def fetch_organization_schema_properties():
     data = resp.json()
 
     graph = data.get("@graph", [])
-    properties = [p for p in graph if p.get("@type") == "rdf:Property"]
 
+    # ---------------------------------
+    # 3. Build type hierarchy
+    # ---------------------------------
+    type_parents = {}
+
+    for node in graph:
+        if node.get("@type") == "rdfs:Class":
+            node_id = node.get("@id")
+            parents = node.get("rdfs:subClassOf", [])
+            parents = parents if isinstance(parents, list) else [parents]
+
+            type_parents[node_id] = [
+                p.get("@id") for p in parents if isinstance(p, dict)
+            ]
+
+    # ---------------------------------
+    # 4. Prepare fields + domain mapping
+    # ---------------------------------
     fields = {
         "org_schema_fields": [],
         "product_schema_fields": [],
@@ -144,6 +161,23 @@ def fetch_organization_schema_properties():
         "schema:WebSite": "homepage_schema_fields",
     }
 
+    # ---------------------------------
+    # 5. Expand domain map with inheritance
+    # ---------------------------------
+    expanded_domain_map = {}
+
+    for schema_type, field_key in domain_map.items():
+        all_types = get_all_parents(schema_type, type_parents)
+        all_types.add(schema_type)
+
+        for t in all_types:
+            expanded_domain_map.setdefault(t, set()).add(field_key)
+
+    # ---------------------------------
+    # 6. Extract properties
+    # ---------------------------------
+    properties = [p for p in graph if p.get("@type") == "rdf:Property"]
+
     for prop in properties:
         domain = prop.get("schema:domainIncludes")
         if not domain:
@@ -153,20 +187,40 @@ def fetch_organization_schema_properties():
         prop_name = prop["@id"].split(":")[-1]
 
         for d in domain_list:
-            key = domain_map.get(d.get("@id"))
-            if key:
+            domain_id = d.get("@id")
+            if not domain_id:
+                continue
+
+            keys = expanded_domain_map.get(domain_id, [])
+            for key in keys:
                 fields[key].append(prop_name)
 
     # ---------------------------------
-    # 3. Sort + cache
+    # 7. Deduplicate + sort + cache
     # ---------------------------------
-    for v in fields.values():
-        v.sort()
+    for k, v in fields.items():
+        fields[k] = sorted(set(v))
 
     SCHEMA_CACHE["timestamp"] = now
     SCHEMA_CACHE["fields"] = fields
 
     return fields
+
+
+def get_all_parents(type_id, type_parents):
+    visited = set()
+    stack = [type_id]
+
+    while stack:
+        current = stack.pop()
+        if current in visited:
+            continue
+        visited.add(current)
+
+        for parent in type_parents.get(current, []):
+            stack.append(parent)
+
+    return visited
 
 
 def graphql_request(shop, token, query, variables=None):
