@@ -161,6 +161,8 @@ def fetch_organization_schema_properties():
         "schema:WebSite": "homepage_schema_fields",
     }
 
+    TARGET_TYPES = set(domain_map.keys())
+
     # ---------------------------------
     # 5. Expand domain map with inheritance
     # ---------------------------------
@@ -174,26 +176,51 @@ def fetch_organization_schema_properties():
             expanded_domain_map.setdefault(t, set()).add(field_key)
 
     # ---------------------------------
-    # 6. Extract properties
+    # 6. Extract properties (domain + range)
     # ---------------------------------
     properties = [p for p in graph if p.get("@type") == "rdf:Property"]
 
     for prop in properties:
-        domain = prop.get("schema:domainIncludes")
-        if not domain:
-            continue
-
-        domain_list = domain if isinstance(domain, list) else [domain]
         prop_name = prop["@id"].split(":")[-1]
+        matched_keys = set()
 
-        for d in domain_list:
-            domain_id = d.get("@id")
-            if not domain_id:
-                continue
+        # -----------------------------
+        # DOMAIN MATCH (forward)
+        # -----------------------------
+        domain = prop.get("schema:domainIncludes")
+        if domain:
+            domain_list = domain if isinstance(domain, list) else [domain]
 
-            keys = expanded_domain_map.get(domain_id, [])
-            for key in keys:
-                fields[key].append(prop_name)
+            for d in domain_list:
+                domain_id = d.get("@id")
+                if not domain_id:
+                    continue
+
+                keys = expanded_domain_map.get(domain_id, [])
+                matched_keys.update(keys)
+
+        # -----------------------------
+        # RANGE MATCH (reverse 🔥)
+        # -----------------------------
+        range_ = prop.get("schema:rangeIncludes")
+        if range_:
+            range_list = range_ if isinstance(range_, list) else [range_]
+
+            for r in range_list:
+                range_id = r.get("@id")
+                if not range_id:
+                    continue
+
+                # Only include if relevant to our schema targets
+                if range_id in TARGET_TYPES or range_id in expanded_domain_map:
+                    keys = expanded_domain_map.get(range_id, [])
+                    matched_keys.update(keys)
+
+        # -----------------------------
+        # Assign matches
+        # -----------------------------
+        for key in matched_keys:
+            fields[key].append(prop_name)
 
     # ---------------------------------
     # 7. Deduplicate + sort + cache
