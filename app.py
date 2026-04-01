@@ -118,7 +118,8 @@ def fetch_organization_schema_properties():
     # ---------------------------------
     # 2. Fetch Schema.org vocabulary
     # ---------------------------------
-    url = "https://schema.org/version/latest/schemaorg-current-https.jsonld"
+    url = "https://schema.org/version/latest/schemaorg-all-https.jsonld"
+
     resp = requests.get(url, timeout=10)
     resp.raise_for_status()
     data = resp.json()
