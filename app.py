@@ -632,13 +632,12 @@ def home():
     collection_metafields = []
     page_metafields = []
     blog_metafields = []
-
     product_config = {}
     collection_config = {}
     page_config = {}
     blog_config = {}
     homepage_config = {}
-    organization_config = organization_config or {}
+    organization_config = {}
     if access_token and not needs_auth:
         try:
 
@@ -882,7 +881,8 @@ def home():
         subscription_info=subscription_info,
         billing_confirmation_url=billing_confirmation_url,
         shop_created_at=shop_created_at,
-        access_token=access_token,  
+        access_token=access_token,
+        organization_config=organization_config,
     )
 
 
