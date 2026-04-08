@@ -638,7 +638,7 @@ def home():
     page_config = {}
     blog_config = {}
     homepage_config = {}
-
+    organization_config = organization_config or {}
     if access_token and not needs_auth:
         try:
 
