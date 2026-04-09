@@ -2550,7 +2550,57 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 </script>
+<script>
+  document.getElementById("saveOrganizationBtn").addEventListener("click", async () => {
+    const rows = document.querySelectorAll("#organization-mapping-container > div");
 
+    const mappings = [];
+
+    rows.forEach(row => {
+        const schemaSelect = row.querySelector(".organization-schema-select");
+        const schemaInput = row.querySelector(".organization-schema-input");
+        const sourceSelect = row.querySelector(".organization-source");
+
+        const schemaField = schemaInput.value.trim() || schemaSelect.value;
+        const source = sourceSelect.value;
+
+        // skip empty rows
+        if (!schemaField || !source) return;
+
+        mappings.push({
+            schema: schemaField,
+            source: source
+        });
+    });
+
+    console.log("Sending:", mappings);
+
+    try {
+        const res = await fetch("/save-organization-schema", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                mappings: mappings
+            })
+        });
+
+        const data = await res.json();
+
+        document.getElementById("organization-preview").innerText =
+            "✅ Saved successfully";
+
+        console.log("Response:", data);
+
+    } catch (err) {
+        console.error("Error:", err);
+        document.getElementById("organization-preview").innerText =
+            "❌ Failed to save";
+    }
+});
+
+</script>
 
 </body>
 </html>
