@@ -4030,7 +4030,7 @@ def save_organization_schema():
     # -------------------------
     # Replace config (same pattern)
     # -------------------------
-    metaobject_type = "app_schema"
+    metaobject_type = "app_schema_org"
 
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
     for entry in existing_entries:
