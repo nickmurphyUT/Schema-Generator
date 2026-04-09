@@ -958,31 +958,38 @@ function updatePageMappings() {
 }
 function createOrganizationRow(defaultSchema = "", defaultSource = "") {
     const schemaOptions = [...commonSchemaFields];
+    if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) {
+        schemaOptions.push(defaultSchema);
+    }
+
     const sourceOptions = [...organizationFieldOptions];
+    if (defaultSource && !organizationFieldOptions.includes(defaultSource)) {
+        sourceOptions.push(defaultSource);
+    }
 
     const id = organizationRowId++;
     const container = document.getElementById("organization-mapping-container");
 
     const row = document.createElement("div");
     row.className = "flex gap-4 items-start bg-gray-50 p-4 rounded-lg border";
+    row.dataset.rowId = id;
 
     row.innerHTML = `
         <div class="flex-1 flex flex-col gap-2">
             <label class="text-sm text-gray-600 font-medium">Schema Field</label>
-            <input class="organization-schema-input p-2 border rounded" value="${defaultSchema}">
+            <select class="organization-schema-select p-2 border rounded bg-white">
+                <option value="">Select Schema Field</option>
+                ${schemaOptions.map(f => `<option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>`).join("")}
+            </select>
+            <input type="text" class="organization-schema-input p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
         </div>
 
         <div class="flex-1 flex flex-col gap-2">
             <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
-<select class="organization-source p-2 border rounded bg-white">
-    <option value="">Select Source</option>
-    ${sourceOptions.map(o => `
-        <option value="${o}" ${o === defaultSource ? "selected" : ""}>
-            ${o}
-        </option>
-    `).join("")}
-</select>
-
+            <select class="organization-source p-2 border rounded bg-white">
+                <option value="">Select Source</option>
+                ${sourceOptions.map(o => `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`).join("")}
+            </select>
         </div>
 
         <button class="delete-org-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
@@ -993,11 +1000,14 @@ function createOrganizationRow(defaultSchema = "", defaultSource = "") {
         updateOrganizationMappings();
     };
 
+    row.querySelector(".organization-schema-select").onchange = updateOrganizationMappings;
+    row.querySelector(".organization-schema-input").oninput = updateOrganizationMappings;
     row.querySelector(".organization-source").onchange = updateOrganizationMappings;
 
     container.appendChild(row);
     updateOrganizationMappings();
 }
+
 
 function updateOrganizationMappings() {
     organizationMappings = [
