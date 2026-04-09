@@ -1566,8 +1566,10 @@ const rawCollectionConfig = {{ collection_config | tojson }};
 const rawBlogConfig = {{ blog_config | tojson }};    
 const rawPageConfig = {{ page_config | tojson }};
     const rawHomepageConfig = {{ homepage_config | tojson }};
-const rawOrganizationConfig = {{ organization_config | tojson }};
+const rawOrganizationConfig = {{ organization_config.organization_schema_mappings | tojson }};
+const organizationMappings = {{ organization_config.organization_schema_mappings|tojson }};
 
+  
 console.log("raw collection config:", JSON.stringify(rawCollectionConfig, null, 2));
     console.log("raw blog config:", JSON.stringify(rawBlogConfig, null, 2));
     console.log("raw page config:", JSON.stringify(rawPageConfig, null, 2));
