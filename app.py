@@ -3963,6 +3963,103 @@ def shop_redact():
     return "", 200
     
 
+
+@app.route("/save-organization-schema", methods=["POST"])
+def save_organization_schema():
+    data = request.json
+    logging.info("INPUT (organization): %s", json.dumps(data, indent=2))
+
+    # -------------------------
+    # AUTH (same as your other route)
+    # -------------------------
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        return jsonify({"error": "Missing Authorization header"}), 401
+
+    try:
+        token = auth_header.split(" ")[1]
+    except IndexError:
+        return jsonify({"error": "Invalid Authorization format"}), 401
+
+    decoded = verify_shopify_token(token)
+    if not decoded:
+        return jsonify({"error": "Invalid token"}), 401
+
+    shop = data.get("shop") or session.get("shop")
+    access_token = get_access_token_for_shop(shop)
+
+    if not access_token:
+        return jsonify({"error": "No access token for shop"}), 400
+
+    # -------------------------
+    # Incoming
+    # -------------------------
+    incoming_org = data.get("organization_schema_mappings")
+
+    def normalize_list(value):
+        return value if isinstance(value, list) else []
+
+    # -------------------------
+    # Load existing
+    # -------------------------
+    existing_org = fetch_schema_config_entry(
+        shop,
+        access_token,
+        "organization_schema_mappings"
+    )
+
+    organization_schema_mappings = normalize_list(
+        existing_org.get("organization_schema_mappings")
+        if isinstance(existing_org, dict)
+        else existing_org
+    )
+
+    # -------------------------
+    # Replace if sent
+    # -------------------------
+    if incoming_org is not None:
+        organization_schema_mappings = normalize_list(incoming_org)
+
+    organization_schema_mappings = dedupe_mappings(organization_schema_mappings)
+
+    # -------------------------
+    # Ensure metaobject definition exists
+    # -------------------------
+    ensure_metaobject_definition(shop, access_token)
+
+    # -------------------------
+    # Replace config (same pattern)
+    # -------------------------
+    metaobject_type = "app_schema"
+
+    existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
+    for entry in existing_entries:
+        delete_metaobject(shop, access_token, entry["id"])
+
+    resp = create_config_entry(
+        shop,
+        access_token,
+        {
+            "schema_type": metaobject_type,
+            "organization_schema_mappings": organization_schema_mappings
+        }
+    )
+
+    node = resp.get("data", {}).get("metaobjectCreate")
+    if not node:
+        raise Exception("MetaobjectCreate returned null")
+
+    if node.get("userErrors"):
+        raise Exception(node["userErrors"])
+
+    logging.info("Created org config entry: %s", node["metaobject"]["id"])
+
+    return jsonify({
+        "message": "Organization schema saved"
+    })
+
+
+
 def register_gdpr_webhooks(shop, access_token):
     url = f"https://{shop}/admin/api/2024-10/webhooks.json"
 
