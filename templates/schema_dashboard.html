@@ -679,6 +679,9 @@ or metafields directly to schema fields with no coding required.
 </div>
     
 <script>
+  const PRODUCT_FREE_LIMIT = 10;
+const DEFAULT_FREE_LIMIT = 2;
+
     /* ================= PLAN STATE ================= */
 const subscriptionInfo = {{ subscription_info | tojson | safe }};
 let isPro =
@@ -1382,6 +1385,10 @@ function updateFreeCounterFor(containerId, coreFields, counterId) {
 
     if (!isFree) return;
 
+    const limit = containerId === "schema-mapping-container"
+        ? PRODUCT_FREE_LIMIT
+        : DEFAULT_FREE_LIMIT;
+
     const rows = [...document.querySelectorAll(`#${containerId} > div`)];
     let extraCount = 0;
 
@@ -1403,12 +1410,11 @@ function updateFreeCounterFor(containerId, coreFields, counterId) {
     });
 
     const counter = document.getElementById(counterId);
-
     if (!counter) return;
 
-    counter.textContent = `${extraCount} / 2 used`;
+    counter.textContent = `${extraCount} / ${limit} used`;
 
-    if (extraCount >= 2) {
+    if (extraCount >= limit) {
         counter.classList.remove("bg-blue-200","text-blue-900");
         counter.classList.add("bg-red-200","text-red-800");
     } else {
@@ -1416,6 +1422,7 @@ function updateFreeCounterFor(containerId, coreFields, counterId) {
         counter.classList.add("bg-blue-200","text-blue-900");
     }
 }
+
 
 
 function updateMappings() {
