@@ -28,6 +28,7 @@ from math import ceil
 import smtplib
 from email.mime.text import MIMEText
 import secrets
+from org_routes import org_bp
 SCHEMA_CACHE = {
     "timestamp": 0,
     "fields": {}  # e.g. { "Organization": [...], "Product": [...] }
@@ -41,6 +42,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
+app.register_blueprint(org_bp)
 
 BATCH_SIZE = 10  # Number of products/collections per batch
 SLEEP_BETWEEN_REQUESTS = 0.2  # Delay between Shopify requests to avoid rate limits
