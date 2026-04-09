@@ -800,6 +800,7 @@ def home():
             raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
             raw_homepage = fetch_schema_config_entry(shop, access_token, "homepage_schema_config")
             raw_organization = fetch_schema_config_entry(shop, access_token, "organization_schema_mappings")
+            const rawOrganizationConfig = {{ organization_config.organization_schema_mappings | tojson }};
 
             # -----------------------
             # Normalization helper
