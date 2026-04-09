@@ -841,7 +841,7 @@ def home():
     page_schema_fields = schema_fields.get("page_schema_fields", [])
     blog_schema_fields = schema_fields.get("blog_schema_fields", [])
     homepage_schema_fields = schema_fields.get("homepage_schema_fields", [])
-
+    logging.info("ORG SCHEMA FIELDS RAW: %s", json.dumps(schema_fields, indent=2, default=str))
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
         {"title": "Homepage Schema", "url": "/app/homepage-schema-builder"},
