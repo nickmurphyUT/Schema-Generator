@@ -1567,8 +1567,8 @@ const rawBlogConfig = {{ blog_config | tojson }};
 const rawPageConfig = {{ page_config | tojson }};
     const rawHomepageConfig = {{ homepage_config | tojson }};
 const rawOrganizationConfig = {{ organization_config | tojson }};
-const organizationMappings = {{ organization_config.organization_schema_mappings|tojson }};
-console.log("organizationMappings from backend:", organizationMappings);
+const organizationMappingsB = {{ organization_config.organization_schema_mappings|tojson }};
+console.log("organizationMappings from backend:", organizationMappingsB);
   
 console.log("raw collection config:", JSON.stringify(rawCollectionConfig, null, 2));
     console.log("raw blog config:", JSON.stringify(rawBlogConfig, null, 2));
