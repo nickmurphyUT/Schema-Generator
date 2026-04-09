@@ -799,6 +799,7 @@ def home():
             raw_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
             raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
             raw_homepage = fetch_schema_config_entry(shop, access_token, "homepage_schema_config")
+            raw_organization = fetch_schema_config_entry(shop, access_token, "organization_schema_mappings")
 
             # -----------------------
             # Normalization helper
@@ -3147,6 +3148,11 @@ def verify_and_create_metafields():
     existing_blog = fetch_schema_config_entry(
         shop, access_token, "blog_schema_mappings"
     )
+    raw_organization = fetch_schema_config_entry(
+    shop,
+    access_token,
+    "organization_schema_mappings"
+)
 
     # ✅ NEW: existing homepage config
     existing_homepage = fetch_schema_config_entry(
