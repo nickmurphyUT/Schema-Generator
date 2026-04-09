@@ -820,6 +820,13 @@ def home():
             page_config = {"page_schema_mappings": normalize(raw_page, "page_schema_mappings") or normalize(raw_product, "page_schema_mappings")}
             blog_config = {"blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings") or normalize(raw_product, "blog_schema_mappings")}
             homepage_config = {"homepage_schema_mappings": normalize(raw_homepage, "homepage_schema_mappings") or normalize(raw_product, "homepage_schema_mappings")}
+            organization_config = {
+                "organization_schema_mappings": normalize(
+                    raw_organization,
+                    "organization_schema_mappings"
+                )
+            }
+
 
         except Exception:
             logging.exception("Home route failed safely")
@@ -853,8 +860,10 @@ def home():
             "page_config": page_config,
             "blog_config": blog_config,
             "homepage_config": homepage_config,
+            "organization_config": organization_config,  # ✅ ADD THIS
         }, indent=2, default=str),
     )
+    
 
     return render_template(
         "schema_dashboard.html",
