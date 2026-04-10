@@ -2414,6 +2414,74 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
 
     return data
 
+def upsert_org_metafield(shop, access_token, owner_gid, value_dict):
+    """
+    Upsert a structured JSON metafield using Shopify GraphQL (metafieldsSet).
+    Works with metafield definitions (structured metafields).
+    """
+
+    METAFIELD_NAMESPACE = "app_schema"
+    METAFIELD_KEY = "prod_schema"
+
+    url = f"https://{shop}/admin/api/2026-01/graphql.json"
+
+    query = """
+    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+      metafieldsSet(metafields: $metafields) {
+        metafields {
+          id
+          namespace
+          key
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
+
+    variables = {
+        "metafields": [
+            {
+                "ownerId": owner_gid,  # MUST be full GID
+                "namespace": METAFIELD_NAMESPACE,
+                "key": METAFIELD_KEY,
+                "type": "json",  # MUST match your definition
+                "value": json.dumps(value_dict)  # MUST be string
+            }
+        ]
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
+
+    logging.info(f"GraphQL metafieldsSet → {owner_gid}")
+    logging.debug(f"Payload: {json.dumps(variables, indent=2)}")
+
+    resp = requests.post(
+        url,
+        headers=headers,
+        json={
+            "query": query,
+            "variables": variables
+        }
+    )
+
+    resp.raise_for_status()
+    data = resp.json()
+
+    user_errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors")
+    if user_errors:
+        logging.error(f"Metafield userErrors: {user_errors}")
+        raise Exception(f"Metafield write failed: {user_errors}")
+
+    logging.info(f"Upserted {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}")
+
+    return data
+
 
 
 
