@@ -827,11 +827,14 @@ def home():
             homepage_config = {"homepage_schema_mappings": normalize(raw_homepage, "homepage_schema_mappings") or normalize(raw_product, "homepage_schema_mappings")}
             organization_config = {
                 "organization_schema_mappings": (
-                    raw_organization.get("organization_schema_mappings", [])
+                    raw_organization
+                    if isinstance(raw_organization, list)
+                    else raw_organization.get("organization_schema_mappings", [])
                     if isinstance(raw_organization, dict)
                     else []
                 )
             }
+
 
 
 
