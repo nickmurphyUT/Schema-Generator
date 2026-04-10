@@ -803,7 +803,7 @@ def home():
             raw_page = fetch_schema_config_entry(shop, access_token, "page_schema_mappings")
             raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
             raw_homepage = fetch_schema_config_entry(shop, access_token, "homepage_schema_config")
-            raw_organization = fetch_schema_config_entry(shop, access_token, "organization_schema_mappings")
+            raw_organization = fetch_schema_config_entry_org(shop, access_token, "organization_schema_mappings")
 
             # -----------------------
             # Normalization helper
@@ -1791,6 +1791,51 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
 
     return []
 
+        
+def fetch_schema_config_entry_org(shop, access_token, schema_type):
+    """
+    Returns a parsed config value for the requested schema_type.
+
+    schema_type should be one of:
+      - "product_schema_mappings"
+      - "collection_schema_mappings"
+
+    Returns:
+      [] or {} if missing
+    """
+
+    query = """
+    query {
+      metaobjects(type: "org_schema", first: 1) {
+        edges {
+          node {
+            id
+            fields {
+              key
+              value
+            }
+          }
+        }
+      }
+    }
+    """
+
+    resp = query_shopify_graphql(shop, access_token, query)
+
+    edges = resp.get("data", {}).get("metaobjects", {}).get("edges", [])
+    if not edges:
+        return []
+
+    fields = edges[0]["node"].get("fields", [])
+
+    for f in fields:
+        if f.get("key") == schema_type:
+            try:
+                return json.loads(f.get("value") or "[]")
+            except Exception:
+                return []
+
+    return []
 
 def update_metaobject_entry(shop, access_token, config_id, fields):
     try:
