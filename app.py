@@ -1,3 +1,4 @@
+
 import os
 import requests, json, time
 from flask import Flask, request, jsonify, render_template_string, render_template, redirect, session
@@ -4093,140 +4094,50 @@ def shop_redact():
     return "", 200
     
 
-def upsert_org_metafield(shop, access_token, owner_gid, organization_schema_mappings):
-    """
-    Writes organization schema to a dedicated metafield (org_schema)
-    across Product, Page, and Article using GraphQL.
-    """
-
-    METAFIELD_NAMESPACE = "app_schema"
-    METAFIELD_KEY = "org_schema"
-
-    url = f"https://{shop}/admin/api/2026-01/graphql.json"
-
-    query = """
-    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
-      metafieldsSet(metafields: $metafields) {
-        metafields {
-          id
-          namespace
-          key
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }
-    """
-
-    value_dict = {
-        "organization": organization_schema_mappings
-    }
-
-    variables = {
-        "metafields": [
-            {
-                "ownerId": owner_gid,
-                "namespace": METAFIELD_NAMESPACE,
-                "key": METAFIELD_KEY,
-                "type": "json",
-                "value": json.dumps(value_dict)
-            }
-        ]
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": access_token
-    }
-
-    logging.info(f"[ORG] Writing org_schema → {owner_gid}")
-
-    resp = requests.post(
-        url,
-        headers=headers,
-        json={
-            "query": query,
-            "variables": variables
-        }
-    )
-
-    resp.raise_for_status()
-    data = resp.json()
-
-    user_errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors")
-    if user_errors:
-        logging.error(f"[ORG] Metafield userErrors: {user_errors}")
-        raise Exception(f"Org metafield write failed: {user_errors}")
-
-    return data
 
 @app.route("/save-organization-schema", methods=["POST"])
 def save_organization_schema():
-    logging.info("🔥 HIT /save-organization-schema")
-
     data = request.json
-    logging.info("📥 RAW BODY: %s", json.dumps(data, indent=2))
+    logging.info("INPUT (organization): %s", json.dumps(data, indent=2))
 
     # -------------------------
-    # AUTH
+    # AUTH (same as your other route)
     # -------------------------
     auth_header = request.headers.get("Authorization")
-    logging.info("🔐 Authorization header present: %s", bool(auth_header))
-
     if not auth_header:
-        logging.error("❌ Missing Authorization header")
         return jsonify({"error": "Missing Authorization header"}), 401
 
     try:
         token = auth_header.split(" ")[1]
-        logging.info("🔑 Token extracted")
     except IndexError:
-        logging.error("❌ Invalid Authorization format")
         return jsonify({"error": "Invalid Authorization format"}), 401
 
     decoded = verify_shopify_token(token)
-    logging.info("🔍 Token decoded: %s", bool(decoded))
-
     if not decoded:
-        logging.error("❌ Invalid token")
         return jsonify({"error": "Invalid token"}), 401
 
-    # -------------------------
-    # SHOP + TOKEN
-    # -------------------------
     shop = data.get("shop") or session.get("shop")
-    logging.info("🏪 Shop: %s", shop)
-
     access_token = get_access_token_for_shop(shop)
-    logging.info("🔑 Access token found: %s", bool(access_token))
 
     if not access_token:
-        logging.error("❌ No access token for shop")
         return jsonify({"error": "No access token for shop"}), 400
 
     # -------------------------
-    # INCOMING
+    # Incoming
     # -------------------------
     incoming_org = data.get("organization_schema_mappings")
-    logging.info("📦 Incoming org mappings: %s", json.dumps(incoming_org, indent=2))
 
     def normalize_list(value):
         return value if isinstance(value, list) else []
 
     # -------------------------
-    # LOAD EXISTING
+    # Load existing
     # -------------------------
-    logging.info("📥 Fetching existing org config...")
-
     existing_org = fetch_schema_config_entry(
         shop,
         access_token,
         "organization_schema_mappings"
     )
-
-    logging.info("📄 Existing org raw: %s", json.dumps(existing_org, indent=2))
 
     organization_schema_mappings = normalize_list(
         existing_org.get("organization_schema_mappings")
@@ -4234,39 +4145,27 @@ def save_organization_schema():
         else existing_org
     )
 
-    logging.info("📄 Existing normalized: %s", json.dumps(organization_schema_mappings, indent=2))
-
     # -------------------------
-    # REPLACE IF SENT
+    # Replace if sent
     # -------------------------
     if incoming_org is not None:
-        logging.info("✏️ Replacing org mappings with incoming")
         organization_schema_mappings = normalize_list(incoming_org)
 
     organization_schema_mappings = dedupe_mappings(organization_schema_mappings)
 
-    logging.info("✅ Final org mappings: %s", json.dumps(organization_schema_mappings, indent=2))
-
     # -------------------------
-    # ENSURE METAOBJECT DEF
+    # Ensure metaobject definition exists
     # -------------------------
-    logging.info("🧱 Ensuring org metaobject definition exists...")
     ensure_metaobject_definition_org(shop, access_token)
 
     # -------------------------
-    # REPLACE CONFIG
+    # Replace config (same pattern)
     # -------------------------
     metaobject_type = "app_schema_org"
 
-    logging.info("🧹 Deleting existing metaobjects of type: %s", metaobject_type)
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
-    logging.info("🗑 Found %s existing entries", len(existing_entries))
-
     for entry in existing_entries:
-        logging.info("🗑 Deleting entry: %s", entry["id"])
         delete_metaobject(shop, access_token, entry["id"])
-
-    logging.info("🆕 Creating new org config entry...")
 
     resp = create_config_entry_org(
         shop,
@@ -4277,81 +4176,17 @@ def save_organization_schema():
         }
     )
 
-    logging.info("📡 MetaobjectCreate response: %s", json.dumps(resp, indent=2))
-
     node = resp.get("data", {}).get("metaobjectCreate")
-
     if not node:
-        logging.error("❌ MetaobjectCreate returned null")
         raise Exception("MetaobjectCreate returned null")
 
     if node.get("userErrors"):
-        logging.error("❌ MetaobjectCreate userErrors: %s", json.dumps(node["userErrors"], indent=2))
         raise Exception(node["userErrors"])
 
-    logging.info("✅ Created org config entry: %s", node["metaobject"]["id"])
-
-    # -------------------------
-    # BACKGROUND PROPAGATION
-    # -------------------------
-    def process_org_everywhere():
-        logging.info("🚀 Starting org schema propagation")
-
-        try:
-            # PRODUCTS
-            products = fetch_all_products(shop, access_token)
-            logging.info("📦 Products fetched: %s", len(products))
-
-            for product in products:
-                logging.info("➡️ Product: %s", product.get("id"))
-                upsert_org_metafield(
-                    shop,
-                    access_token,
-                    product["id"],
-                    organization_schema_mappings
-                )
-
-            # PAGES
-            pages = fetch_all_pages(shop, access_token)
-            logging.info("📄 Pages fetched: %s", len(pages))
-
-            for page in pages:
-                logging.info("➡️ Page: %s", page.get("id"))
-                upsert_org_metafield(
-                    shop,
-                    access_token,
-                    page["id"],
-                    organization_schema_mappings
-                )
-
-            # BLOG ARTICLES
-            articles = fetch_all_blog_articles(shop, access_token)
-            logging.info("📝 Articles fetched: %s", len(articles))
-
-            for article in articles:
-                logging.info("➡️ Article: %s", article.get("id"))
-                upsert_org_metafield(
-                    shop,
-                    access_token,
-                    article["id"],
-                    organization_schema_mappings
-                )
-
-            logging.info("✅ Finished org schema propagation")
-
-        except Exception as e:
-            logging.error("💥 Org propagation FAILED: %s", str(e), exc_info=True)
-
-    logging.info("🧵 Spawning background thread for org propagation")
-    threading.Thread(target=process_org_everywhere, daemon=True).start()
-
-    # -------------------------
-    # RESPONSE
-    # -------------------------
-    logging.info("🎉 Returning success response")
+    logging.info("Created org config entry: %s", node["metaobject"]["id"])
 
     return jsonify({
-        "message": "Organization schema saved + propagating"
+        "message": "Organization schema saved"
     })
 
 
