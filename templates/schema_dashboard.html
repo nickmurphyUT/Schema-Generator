@@ -5,12 +5,39 @@
 <head>
   <meta name="shopify-api-key" content="6ffa33279f9441b59c495f01ba90ebe6" />
   <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+  <script src="https://unpkg.com/@shopify/app-bridge-utils"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "Schema App Dashboard" }}</title>
     <!-- Load Tailwind CSS via CDN -->
       <meta charset="utf-8">
   <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+  <script>
+let app;
+
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 Initializing App Bridge");
+
+  const apiKey = document.querySelector('meta[name="shopify-api-key"]')?.content;
+  const host = new URLSearchParams(window.location.search).get("host");
+
+  console.log("API KEY:", apiKey);
+  console.log("HOST:", host);
+
+  if (!apiKey || !host) {
+    console.error("❌ Missing apiKey or host");
+    return;
+  }
+
+  app = window["app-bridge"].createApp({
+    apiKey,
+    host
+  });
+
+  console.log("✅ App Bridge initialized");
+});
+</script>
+
 <script>
 let app;
 
