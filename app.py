@@ -4093,6 +4093,74 @@ def shop_redact():
     return "", 200
     
 
+def upsert_org_metafield(shop, access_token, owner_gid, organization_schema_mappings):
+    """
+    Writes organization schema to a dedicated metafield (org_schema)
+    across Product, Page, and Article using GraphQL.
+    """
+
+    METAFIELD_NAMESPACE = "app_schema"
+    METAFIELD_KEY = "org_schema"
+
+    url = f"https://{shop}/admin/api/2026-01/graphql.json"
+
+    query = """
+    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+      metafieldsSet(metafields: $metafields) {
+        metafields {
+          id
+          namespace
+          key
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
+
+    value_dict = {
+        "organization": organization_schema_mappings
+    }
+
+    variables = {
+        "metafields": [
+            {
+                "ownerId": owner_gid,
+                "namespace": METAFIELD_NAMESPACE,
+                "key": METAFIELD_KEY,
+                "type": "json",
+                "value": json.dumps(value_dict)
+            }
+        ]
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": access_token
+    }
+
+    logging.info(f"[ORG] Writing org_schema → {owner_gid}")
+
+    resp = requests.post(
+        url,
+        headers=headers,
+        json={
+            "query": query,
+            "variables": variables
+        }
+    )
+
+    resp.raise_for_status()
+    data = resp.json()
+
+    user_errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors")
+    if user_errors:
+        logging.error(f"[ORG] Metafield userErrors: {user_errors}")
+        raise Exception(f"Org metafield write failed: {user_errors}")
+
+    return data
 
 @app.route("/save-organization-schema", methods=["POST"])
 def save_organization_schema():
@@ -4100,7 +4168,7 @@ def save_organization_schema():
     logging.info("INPUT (organization): %s", json.dumps(data, indent=2))
 
     # -------------------------
-    # AUTH (same as your other route)
+    # AUTH
     # -------------------------
     auth_header = request.headers.get("Authorization")
     if not auth_header:
@@ -4158,7 +4226,7 @@ def save_organization_schema():
     ensure_metaobject_definition_org(shop, access_token)
 
     # -------------------------
-    # Replace config (same pattern)
+    # Replace config
     # -------------------------
     metaobject_type = "app_schema_org"
 
@@ -4184,8 +4252,49 @@ def save_organization_schema():
 
     logging.info("Created org config entry: %s", node["metaobject"]["id"])
 
+    # =========================================================
+    # 🔥 PROPAGATE ORG SCHEMA TO ALL RESOURCES
+    # =========================================================
+    def process_org_everywhere():
+        logging.info("Starting org schema propagation")
+
+        # PRODUCTS
+        products = fetch_all_products(shop, access_token)
+        for product in products:
+            upsert_org_metafield(
+                shop,
+                access_token,
+                product["id"],
+                organization_schema_mappings
+            )
+
+        # PAGES
+        pages = fetch_all_pages(shop, access_token)
+        for page in pages:
+            upsert_org_metafield(
+                shop,
+                access_token,
+                page["id"],
+                organization_schema_mappings
+            )
+
+        # BLOG ARTICLES
+        articles = fetch_all_blog_articles(shop, access_token)
+        for article in articles:
+            upsert_org_metafield(
+                shop,
+                access_token,
+                article["id"],
+                organization_schema_mappings
+            )
+
+        logging.info("Finished org schema propagation")
+
+    # ✅ Run async (non-blocking)
+    threading.Thread(target=process_org_everywhere, daemon=True).start()
+
     return jsonify({
-        "message": "Organization schema saved"
+        "message": "Organization schema saved and propagating"
     })
 
 
