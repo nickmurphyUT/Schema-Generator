@@ -4102,7 +4102,7 @@ def save_organization_schema():
     logging.info("INPUT (organization): %s", json.dumps(data, indent=2))
 
     # -------------------------
-    # AUTH (same as your other route)
+    # AUTH
     # -------------------------
     auth_header = request.headers.get("Authorization")
     if not auth_header:
@@ -4160,7 +4160,7 @@ def save_organization_schema():
     ensure_metaobject_definition_org(shop, access_token)
 
     # -------------------------
-    # Replace config (same pattern)
+    # Replace config
     # -------------------------
     metaobject_type = "app_schema_org"
 
@@ -4186,8 +4186,49 @@ def save_organization_schema():
 
     logging.info("Created org config entry: %s", node["metaobject"]["id"])
 
+    # =========================================================
+    # 🔥 PROPAGATE ORG SCHEMA TO ALL RESOURCES
+    # =========================================================
+    def process_org_everywhere():
+        logging.info("Starting org schema propagation")
+
+        # PRODUCTS
+        products = fetch_all_products(shop, access_token)
+        for product in products:
+            upsert_org_metafield(
+                shop,
+                access_token,
+                product["id"],
+                organization_schema_mappings
+            )
+
+        # PAGES
+        pages = fetch_all_pages(shop, access_token)
+        for page in pages:
+            upsert_org_metafield(
+                shop,
+                access_token,
+                page["id"],
+                organization_schema_mappings
+            )
+
+        # BLOG ARTICLES
+        articles = fetch_all_blog_articles(shop, access_token)
+        for article in articles:
+            upsert_org_metafield(
+                shop,
+                access_token,
+                article["id"],
+                organization_schema_mappings
+            )
+
+        logging.info("Finished org schema propagation")
+
+    # ✅ Run async (non-blocking)
+    threading.Thread(target=process_org_everywhere, daemon=True).start()
+
     return jsonify({
-        "message": "Organization schema saved"
+        "message": "Organization schema saved and propagating"
     })
 
 
