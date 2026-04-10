@@ -41,6 +41,34 @@ document.addEventListener("DOMContentLoaded", () => {
 <script>
 let app;
 
+
+  <script>
+let app;
+
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 App Bridge init start");
+
+  const apiKey = document.querySelector('meta[name="shopify-api-key"]')?.content;
+  const host = new URLSearchParams(window.location.search).get("host");
+
+  console.log("apiKey:", apiKey);
+  console.log("host:", host);
+
+  if (!apiKey || !host) {
+    console.error("❌ Missing apiKey or host");
+    return;
+  }
+
+  app = window["app-bridge"].createApp({
+    apiKey,
+    host
+  });
+
+  console.log("✅ App Bridge ready");
+});
+</script>
+
+  
 document.addEventListener("DOMContentLoaded", () => {
   console.log("🚀 Initializing App Bridge");
 
