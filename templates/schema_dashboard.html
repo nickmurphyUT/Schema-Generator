@@ -1810,13 +1810,16 @@ document.getElementById("saveBlogBtn")
     try {
         // ✅ Get Shopify session token
         let token = null;
-        if (window.shopify?.idToken) {
-            try {
-                token = await window.shopify.idToken();
-            } catch (e) {
-                console.error("Token fetch failed:", e);
-            }
-        }
+if (window.shopify?.idToken) {
+  console.log("🔑 Fetching Shopify token...");
+  try {
+    token = await getSessionToken();   // 👈 THIS IS THE FIX
+    console.log("✅ Token received:", token?.slice(0, 20) + "...");
+  } catch (e) {
+    console.error("❌ Token fetch failed:", e);
+  }
+}
+
 
         const resp = await fetch("https://schema-resource-c80feca18260.herokuapp.com/verify_and_create_metafields", {
             method: "POST",
