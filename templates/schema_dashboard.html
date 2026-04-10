@@ -11,17 +11,52 @@
     <!-- Load Tailwind CSS via CDN -->
       <meta charset="utf-8">
   <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-  <script>
-  async function getSessionToken() {
-    const app = window.shopify.createApp({
-      apiKey: document.querySelector('meta[name="6ffa33279f9441b59c495f01ba90ebe6"]').content,
-      host: new URLSearchParams(window.location.search).get("host"),
-    });
+<script>
+let app;
+
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🚀 Initializing App Bridge");
+
+  const apiKey = document.querySelector('meta[name="shopify-api-key"]')?.content;
+  const host = new URLSearchParams(window.location.search).get("host");
+
+  console.log("API KEY:", apiKey);
+  console.log("HOST:", host);
+
+  if (!apiKey || !host) {
+    console.error("❌ Missing apiKey or host");
+    return;
+  }
+
+  app = window.shopify.createApp({
+    apiKey,
+    host
+  });
+
+  console.log("✅ App Bridge initialized");
+});
+
+async function getSessionTokenSafe() {
+  if (!app) {
+    console.error("❌ App Bridge not initialized");
+    return null;
+  }
+
+  try {
+    console.log("🔑 Requesting session token...");
 
     const token = await window.shopify.getSessionToken(app);
+
+    console.log("✅ Token OK:", token?.slice(0, 25) + "...");
     return token;
+
+  } catch (e) {
+    console.error("❌ Token fetch failed:", e);
+    return null;
   }
+}
 </script>
+
 <head>
   <meta name="shopify-api-key" content="6ffa33279f9441b59c495f01ba90ebe6" />
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
@@ -2639,7 +2674,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (window.shopify?.idToken) {
         console.log("🔑 Fetching Shopify token...");
         try {
-          token = getSessionToken();
+          token = await getSessionTokenSafe();
           console.log("✅ Token received:", token);
         } catch (e) {
           console.error("❌ Token fetch failed:", e);
