@@ -1,3 +1,5 @@
+
+
 import os
 import requests, json, time
 from flask import Flask, request, jsonify, render_template_string, render_template, redirect, session
@@ -2744,6 +2746,115 @@ def ensure_metaobject_definition(shop, access_token):
         raise Exception(f"Metaobject definition errors: {node['userErrors']}")
 
     return node["metaobjectDefinition"]["id"]
+def ensure_metaobject_definition(shop, access_token):
+    """
+    Ensures the app_schema metaobject definition exists.
+    """
+    query = """
+    query {
+      metaobjectDefinitionByType(type: "app_schema") {
+        id
+      }
+    }
+    """
+
+    resp = query_shopify_graphql(shop, access_token, query)
+    existing = resp.get("data", {}).get("metaobjectDefinitionByType")
+
+    if existing and existing.get("id"):
+        logging.info(f"Metaobject definition exists: {existing['id']}")
+        return existing["id"]
+
+    logging.info("Creating app_schema metaobject definition")
+
+    mutation = """
+    mutation {
+      metaobjectDefinitionCreate(definition: {
+        name: "App Schema Config",
+        type: "app_schema",
+        fieldDefinitions: [
+          {
+            name: "Schema Type",
+            key: "product_schema_mappings",
+            type: "single_line_text_field",
+            required: true
+          },
+          {
+            name: "Mappings",
+            key: "mappings",
+            type: "single_line_text_field",
+            required: false
+          }
+        ]
+      }) {
+        metaobjectDefinition { id }
+        userErrors { field message }
+      }
+    }
+    """
+
+    resp = query_shopify_graphql(shop, access_token, mutation)
+    node = resp.get("data", {}).get("metaobjectDefinitionCreate", {})
+
+    if node.get("userErrors"):
+        raise Exception(f"Metaobject definition errors: {node['userErrors']}")
+
+    return node["metaobjectDefinition"]["id"]
+
+def ensure_metaobject_definition_org(shop, access_token):
+    """
+    Ensures the app_schema metaobject definition exists.
+    """
+    query = """
+    query {
+      metaobjectDefinitionByType(type: "org_schema") {
+        id
+      }
+    }
+    """
+
+    resp = query_shopify_graphql(shop, access_token, query)
+    existing = resp.get("data", {}).get("metaobjectDefinitionByType")
+
+    if existing and existing.get("id"):
+        logging.info(f"Metaobject definition exists: {existing['id']}")
+        return existing["id"]
+
+    logging.info("Creating app_schema metaobject definition")
+
+    mutation = """
+    mutation {
+      metaobjectDefinitionCreate(definition: {
+        name: "org Schema Config",
+        type: "org_schema",
+        fieldDefinitions: [
+          {
+            name: "Schema Type",
+            key: "org_schema_mappings",
+            type: "single_line_text_field",
+            required: true
+          },
+          {
+            name: "Mappings",
+            key: "mappings",
+            type: "single_line_text_field",
+            required: false
+          }
+        ]
+      }) {
+        metaobjectDefinition { id }
+        userErrors { field message }
+      }
+    }
+    """
+
+    resp = query_shopify_graphql(shop, access_token, mutation)
+    node = resp.get("data", {}).get("metaobjectDefinitionCreate", {})
+
+    if node.get("userErrors"):
+        raise Exception(f"Metaobject definition errors: {node['userErrors']}")
+
+    return node["metaobjectDefinition"]["id"]
 
 def ensure_app_schema_definition(shop, access_token):
     query = """
@@ -2925,7 +3036,28 @@ def create_config_entry(shop, access_token, mappings_json):
     )
     return query_shopify_graphql(shop, access_token, mutation)
 
+def create_config_entry_org(shop, access_token, mappings_json):
+    mappings_str = json.dumps(mappings_json)
+    quoted = json.dumps(mappings_str)
 
+    mutation = (
+        "mutation {"
+        "  metaobjectCreate(metaobject: {"
+        '    type: "org_schema"'
+        "    fields: ["
+        "      {"
+        '        key: "org_schema_mappings"'
+        "        value: " + quoted +
+        "      }"
+        "    ]"
+        "  }) {"
+        "    metaobject { id }"
+        "    userErrors { field message }"
+        "  }"
+        "}"
+    )
+    return query_shopify_graphql(shop, access_token, mutation)
+    
 def update_config_entry(shop, access_token, entry_id, mappings_json, field_key=None):
     """
     Update the config metaobject.
@@ -4025,7 +4157,7 @@ def save_organization_schema():
     # -------------------------
     # Ensure metaobject definition exists
     # -------------------------
-    ensure_metaobject_definition(shop, access_token)
+    ensure_metaobject_definition_org(shop, access_token)
 
     # -------------------------
     # Replace config (same pattern)
@@ -4036,7 +4168,7 @@ def save_organization_schema():
     for entry in existing_entries:
         delete_metaobject(shop, access_token, entry["id"])
 
-    resp = create_config_entry(
+    resp = create_config_entry_org(
         shop,
         access_token,
         {
