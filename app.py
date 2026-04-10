@@ -825,11 +825,13 @@ def home():
             blog_config = {"blog_schema_mappings": normalize(raw_blog, "blog_schema_mappings") or normalize(raw_product, "blog_schema_mappings")}
             homepage_config = {"homepage_schema_mappings": normalize(raw_homepage, "homepage_schema_mappings") or normalize(raw_product, "homepage_schema_mappings")}
             organization_config = {
-                "organization_schema_mappings": normalize(
-                    raw_organization,
-                    "organization_schema_mappings"
+                "organization_schema_mappings": (
+                    raw_organization.get("organization_schema_mappings", [])
+                    if isinstance(raw_organization, dict)
+                    else []
                 )
             }
+
 
 
         except Exception:
