@@ -1,11 +1,9 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta name="shopify-api-key" content="6ffa33279f9441b59c495f01ba90ebe6" />
   <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-  <script src="https://unpkg.com/@shopify/app-bridge-utils"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "Schema App Dashboard" }}</title>
@@ -13,83 +11,16 @@
       <meta charset="utf-8">
   <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
   <script>
-let app;
+  async function getSessionToken() {
+    const app = window.shopify.createApp({
+      apiKey: document.querySelector('meta[name="6ffa33279f9441b59c495f01ba90ebe6]').content,
+      host: new URLSearchParams(window.location.search).get("host"),
+    });
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 Initializing App Bridge");
-
-  const apiKey = document.querySelector('meta[name="shopify-api-key"]')?.content;
-  const host = new URLSearchParams(window.location.search).get("host");
-
-  console.log("API KEY:", apiKey);
-  console.log("HOST:", host);
-
-  if (!apiKey || !host) {
-    console.error("❌ Missing apiKey or host");
-    return;
+    const token = await window.shopify.getSessionToken(app);
+    return token;
   }
-
-  app = window["app-bridge"].createApp({
-    apiKey,
-    host
-  });
-
-  console.log("✅ App Bridge initialized");
-});
-
-let app;
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 App Bridge init start");
-
-  const apiKey = document.querySelector('meta[name="shopify-api-key"]')?.content;
-  const host = new URLSearchParams(window.location.search).get("host");
-
-  console.log("apiKey:", apiKey);
-  console.log("host:", host);
-
-  if (!apiKey || !host) {
-    console.error("❌ Missing apiKey or host");
-    return;
-  }
-
-  app = window["app-bridge"].createApp({
-    apiKey,
-    host
-  });
-
-  console.log("✅ App Bridge ready");
-});
-
-
-  
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 Initializing App Bridge");
-
-  const apiKey = document.querySelector('meta[name="shopify-api-key"]')?.content;
-  const host = new URLSearchParams(window.location.search).get("host");
-
-  console.log("API KEY:", apiKey);
-  console.log("HOST:", host);
-
-  if (!apiKey || !host) {
-    console.error("❌ Missing apiKey or host");
-    return;
-  }
-
-  app = window.shopify.createApp({
-    apiKey,
-    host
-  });
-
-  console.log("✅ App Bridge initialized");
-});
-
-
-
-}
-
 </script>
-
 <head>
   <meta name="shopify-api-key" content="6ffa33279f9441b59c495f01ba90ebe6" />
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
@@ -1785,16 +1716,13 @@ document.getElementById("saveBlogBtn")
     try {
         // ✅ Get Shopify session token
         let token = null;
-if (window.shopify?.idToken) {
-  console.log("🔑 Fetching Shopify token...");
-  try {
-    token = await getSessionToken();   // 👈 THIS IS THE FIX
-    console.log("✅ Token received:", token?.slice(0, 20) + "...");
-  } catch (e) {
-    console.error("❌ Token fetch failed:", e);
-  }
-}
-
+        if (window.shopify?.idToken) {
+            try {
+                token = await window.shopify.idToken();
+            } catch (e) {
+                console.error("Token fetch failed:", e);
+            }
+        }
 
         const resp = await fetch("https://schema-resource-c80feca18260.herokuapp.com/verify_and_create_metafields", {
             method: "POST",
@@ -2623,165 +2551,81 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script>
-console.log("📦 Organization script loaded");
-async function getSessionTokenSafe() {
-  if (!app) {
-    console.error("❌ App Bridge not ready");
-    return null;
-  }
+document.getElementById("saveOrganizationBtn")
+  ?.addEventListener("click", async () => {
 
-  try {
-    console.log("🔑 Getting session token...");
+    updateMappings(); // keep consistency
 
-    const token = await window["app-bridge-utils"].getSessionToken(app);
+    const validation = validateFreePlanLimits();
+    if (!validation.valid) return;
 
-    console.log("✅ Token:", token?.slice(0, 25) + "...");
-    return token;
+    const preview = document.getElementById("organization-preview");
 
-  } catch (e) {
-    console.error("❌ Token error:", e);
-    return null;
-  }
-}
+    // 🔥 start from your shared payload
+    const payload = buildFullPayload();
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🌐 DOM fully loaded");
+    // --------------------------------------------------
+    // ADD ORGANIZATION DATA INTO PAYLOAD
+    // --------------------------------------------------
+    const rows = document.querySelectorAll("#organization-mapping-container > div");
 
-  const btn = document.getElementById("saveOrganizationBtn");
+    const orgMappings = [];
 
-  if (!btn) {
-    console.error("❌ saveOrganizationBtn NOT FOUND");
-    return;
-  }
-
-  console.log("✅ saveOrganizationBtn found:", btn);
-
-  btn.addEventListener("click", async () => {
-    console.log("🔥 CLICKED SAVE ORGANIZATION");
-
-    try {
-      console.log("🔄 Running updateMappings()");
-      updateMappings();
-
-      console.log("🔍 Running validateFreePlanLimits()");
-      const validation = validateFreePlanLimits();
-      console.log("📊 Validation result:", validation);
-
-      if (!validation.valid) {
-        console.warn("⚠️ Validation failed, aborting");
-        return;
-      }
-
-      const preview = document.getElementById("organization-preview");
-      console.log("🧾 Preview element:", preview);
-
-      console.log("📦 Building base payload");
-      const payload = buildFullPayload();
-      console.log("📦 Base payload:", payload);
-
-      // --------------------------------------------------
-      // BUILD ORG MAPPINGS
-      // --------------------------------------------------
-      console.log("🔍 Finding mapping rows...");
-      const rows = document.querySelectorAll("#organization-mapping-container > div");
-      console.log(`📊 Found ${rows.length} rows`);
-
-      const orgMappings = [];
-
-      rows.forEach((row, i) => {
-        console.log(`➡️ Processing row ${i}`, row);
-
+    rows.forEach(row => {
         const schemaSelect = row.querySelector(".organization-schema-select");
         const schemaInput = row.querySelector(".organization-schema-input");
         const sourceSelect = row.querySelector(".organization-source");
 
-        console.log("   schemaSelect:", schemaSelect?.value);
-        console.log("   schemaInput:", schemaInput?.value);
-        console.log("   sourceSelect:", sourceSelect?.value);
+        const schemaField = schemaInput.value.trim() || schemaSelect.value;
+        const source = sourceSelect.value;
 
-        const schemaField = (schemaInput?.value || "").trim() || schemaSelect?.value;
-        const source = sourceSelect?.value;
+        if (!schemaField || !source) return;
 
-        if (!schemaField || !source) {
-          console.warn("⚠️ Skipping row (missing data)");
-          return;
+        orgMappings.push({
+            schema: schemaField,
+            source: source
+        });
+    });
+
+    // ✅ attach to payload EXACTLY how backend expects
+    payload.organization_schema_mappings = orgMappings;
+
+    preview.innerHTML = "Saving…";
+
+    try {
+        // ✅ SAME TOKEN LOGIC as your blog handler
+        let token = null;
+        if (window.shopify?.idToken) {
+            try {
+                token = await window.shopify.idToken();
+            } catch (e) {
+                console.error("Token fetch failed:", e);
+            }
         }
 
-        const mapping = { schema: schemaField, source };
-        console.log("✅ Adding mapping:", mapping);
+        const resp = await fetch(
+            "https://schema-resource-c80feca18260.herokuapp.com/save-organization-schema",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(payload)
+            }
+        );
 
-        orgMappings.push(mapping);
-      });
+        const result = await resp.json();
 
-      console.log("📦 Final orgMappings:", orgMappings);
-
-      payload.organization_schema_mappings = orgMappings;
-
-      console.log("🚀 FINAL PAYLOAD:", JSON.stringify(payload, null, 2));
-
-      preview.innerHTML = "Saving…";
-
-      // --------------------------------------------------
-      // TOKEN
-      // --------------------------------------------------
-      let token = null;
-
-      if (window.shopify?.idToken) {
-        console.log("🔑 Fetching Shopify token...");
-        try {
-          token = await getSessionTokenSafe();
-          console.log("✅ Token received:", token);
-        } catch (e) {
-          console.error("❌ Token fetch failed:", e);
-        }
-      } else {
-        console.warn("⚠️ window.shopify.idToken NOT available");
-      }
-
-      // --------------------------------------------------
-      // FETCH
-      // --------------------------------------------------
-      console.log("📡 Sending request to backend...");
-
-      const resp = await fetch(
-        "https://schema-resource-c80feca18260.herokuapp.com/save-organization-schema",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify(payload)
-        }
-      );
-
-      console.log("📡 Response received:", resp);
-      console.log("📡 Status:", resp.status);
-
-      let result;
-
-      try {
-        result = await resp.json();
-        console.log("📡 JSON response:", result);
-      } catch (e) {
-        console.error("❌ Failed to parse JSON:", e);
-        const text = await resp.text();
-        console.log("📡 Raw response text:", text);
-      }
-
-      preview.innerHTML = resp.ok
-        ? "Saved!"
-        : `Error: ${result?.error || JSON.stringify(result)}`;
-
-      console.log("✅ UI updated");
+        preview.innerHTML = resp.ok
+            ? "Saved!"
+            : `Error: ${result.error || JSON.stringify(result)}`;
 
     } catch (e) {
-      console.error("💥 FULL HANDLER CRASH:", e);
-      document.getElementById("organization-preview").innerHTML = "Network Error";
+        console.error(e);
+        preview.innerHTML = "Network Error";
     }
-  });
 });
-
 
 
 </script>
