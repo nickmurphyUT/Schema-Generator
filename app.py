@@ -3751,13 +3751,13 @@ def get_app_schema_metafield():
     # Decide metafield key based on gid prefix
     metafield_key = None
     if "gid://shopify/Product/" in gid:
-        metafield_key = "prod_schema"
+        metafield_key = "org_schema"
     elif "gid://shopify/Collection/" in gid:
-        metafield_key = "coll_schema"
+        metafield_key = "org_schema"
     elif "gid://shopify/Article/" in gid or "gid://shopify/Blog/" in gid:
-        metafield_key = "blog_schema"
+        metafield_key = "org_schema"
     elif "gid://shopify/Page/" in gid:
-        metafield_key = "page_schema"
+        metafield_key = "org_schema"
     else:
         print(f"[Error] Could not determine metafield key from gid={gid}")
         return jsonify({"error": "Invalid or unsupported gid"}), 400
@@ -3768,11 +3768,11 @@ def get_app_schema_metafield():
     query = """
     query getAppSchema($id: ID!) {
       node(id: $id) {
-        ... on Product  { metafield(namespace:"app_schema", key:"prod_schema") { value } }
-        ... on Collection { metafield(namespace:"app_schema", key:"coll_schema") { value } }
-        ... on Blog { metafield(namespace:"app_schema", key:"blog_schema") { value } }
-        ... on Article { metafield(namespace:"app_schema", key:"blog_schema") { value } }
-        ... on Page { metafield(namespace:"app_schema", key:"page_schema") { value } }
+        ... on Product  { metafield(namespace:"app_schema", key:"org_schema") { value } }
+        ... on Collection { metafield(namespace:"app_schema", key:"org_schema") { value } }
+        ... on Blog { metafield(namespace:"app_schema", key:"org_schema") { value } }
+        ... on Article { metafield(namespace:"app_schema", key:"org_schema") { value } }
+        ... on Page { metafield(namespace:"app_schema", key:"org_schema") { value } }
       }
     }
     """
