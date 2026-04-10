@@ -9,58 +9,16 @@
     <title>{{ title or "Schema App Dashboard" }}</title>
     <!-- Load Tailwind CSS via CDN -->
       <meta charset="utf-8">
-<meta name="shopify-api-key" content="6ffa33279f9441b59c495f01ba90ebe6">
-
-<script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-
-<script>
-  let app;
-
-  document.addEventListener("DOMContentLoaded", () => {
-    console.log("🚀 Initializing App Bridge");
-
-    const apiKey = document.querySelector('meta[name="shopify-api-key"]')?.content;
-    const host = new URLSearchParams(window.location.search).get("host");
-
-    console.log("API KEY:", apiKey);
-    console.log("HOST:", host);
-
-    if (!apiKey || !host) {
-      console.error("❌ Missing apiKey or host");
-      return;
-    }
-
-    app = window.shopify.createApp({
-      apiKey,
-      host
+  <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+  <script>
+  async function getSessionToken() {
+    const app = window.shopify.createApp({
+      apiKey: document.querySelector('meta[name="6ffa33279f9441b59c495f01ba90ebe6]').content,
+      host: new URLSearchParams(window.location.search).get("host"),
     });
 
-    console.log("✅ App Bridge initialized", app);
-  });
-
-  async function getSessionTokenSafe() {
-    if (!app) {
-      console.error("❌ App Bridge not initialized");
-      return null;
-    }
-
-    try {
-      console.log("🔑 Requesting session token...");
-
-      const token = await Promise.race([
-        window.shopify.getSessionToken(app),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Token timeout")), 2000)
-        )
-      ]);
-
-      console.log("✅ Token received:", token?.slice(0, 20) + "...");
-      return token;
-
-    } catch (e) {
-      console.error("❌ Token failed:", e);
-      return null;
-    }
+    const token = await window.shopify.getSessionToken(app);
+    return token;
   }
 </script>
 
