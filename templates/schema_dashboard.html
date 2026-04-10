@@ -65,26 +65,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function getSessionTokenSafe() {
   if (!app) {
-    console.error("❌ App Bridge not initialized");
-    return null;
-  }
-
-  try {
-    console.log("🔑 Requesting session token...");
-
-    const token = await window.shopify.getSessionToken(app);
-
-    console.log("✅ Token OK:", token?.slice(0, 25) + "...");
-    return token;
-
-  } catch (e) {
-    console.error("❌ Token fetch failed:", e);
-    return null;
-  }
-}
-
-  async function getSessionTokenSafe() {
-  if (!app) {
     console.error("❌ App Bridge not ready");
     return null;
   }
@@ -101,6 +81,8 @@ async function getSessionTokenSafe() {
     console.error("❌ Token error:", e);
     return null;
   }
+}
+
 }
 
 </script>
@@ -2636,6 +2618,25 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 <script>
 console.log("📦 Organization script loaded");
+async function getSessionTokenSafe() {
+  if (!app) {
+    console.error("❌ App Bridge not ready");
+    return null;
+  }
+
+  try {
+    console.log("🔑 Getting session token...");
+
+    const token = await window["app-bridge-utils"].getSessionToken(app);
+
+    console.log("✅ Token:", token?.slice(0, 25) + "...");
+    return token;
+
+  } catch (e) {
+    console.error("❌ Token error:", e);
+    return null;
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("🌐 DOM fully loaded");
