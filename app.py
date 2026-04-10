@@ -804,6 +804,7 @@ def home():
             raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
             raw_homepage = fetch_schema_config_entry(shop, access_token, "homepage_schema_config")
             raw_organization = fetch_schema_config_entry_org(shop, access_token, "organization_schema_mappings")
+            logging.info("RAW ORG VALUE: %s", raw_organization)
 
             # -----------------------
             # Normalization helper
