@@ -1796,17 +1796,6 @@ def fetch_schema_config_entry(shop, access_token, schema_type):
 
         
 def fetch_schema_config_entry_org(shop, access_token, schema_type):
-    """
-    Returns a parsed config value for the requested schema_type.
-
-    schema_type should be one of:
-      - "product_schema_mappings"
-      - "collection_schema_mappings"
-
-    Returns:
-      [] or {} if missing
-    """
-
     query = """
     query {
       metaobjects(type: "org_schema", first: 1) {
@@ -1832,13 +1821,19 @@ def fetch_schema_config_entry_org(shop, access_token, schema_type):
     fields = edges[0]["node"].get("fields", [])
 
     for f in fields:
-        if f.get("key") == schema_type:
+        # 👇 THIS is the actual field you stored JSON in
+        if f.get("key") == "org_schema_mappings":
             try:
-                return json.loads(f.get("value") or "[]")
+                parsed = json.loads(f.get("value") or "{}")
+
+                # 👇 NOW extract what you actually want
+                return parsed.get(schema_type, [])
+
             except Exception:
                 return []
 
     return []
+
 
 def update_metaobject_entry(shop, access_token, config_id, fields):
     try:
