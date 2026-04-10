@@ -84,25 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ App Bridge initialized");
 });
 
-async function getSessionTokenSafe() {
-  if (!app) {
-    console.error("❌ App Bridge not ready");
-    return null;
-  }
 
-  try {
-    console.log("🔑 Getting session token...");
-
-    const token = await window["app-bridge-utils"].getSessionToken(app);
-
-    console.log("✅ Token:", token?.slice(0, 25) + "...");
-    return token;
-
-  } catch (e) {
-    console.error("❌ Token error:", e);
-    return null;
-  }
-}
 
 }
 
