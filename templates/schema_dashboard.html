@@ -2551,6 +2551,26 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script>
+
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("📦 Raw org config:", rawOrganizationConfig);
+
+    if (!Array.isArray(rawOrganizationConfig) || rawOrganizationConfig.length === 0) {
+        console.log("⚠️ No saved org mappings, creating empty row");
+        createOrganizationRow();
+        return;
+    }
+
+    // Clear existing (important if you have a default row)
+    const container = document.getElementById("organization-mapping-container");
+    container.innerHTML = "";
+
+    rawOrganizationConfig.forEach(mapping => {
+        createOrganizationRow(mapping.schema, mapping.source);
+    });
+});
+
+  
 document.getElementById("saveOrganizationBtn")
   ?.addEventListener("click", async () => {
 
