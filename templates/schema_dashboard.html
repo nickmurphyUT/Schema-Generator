@@ -2668,7 +2668,8 @@ document.addEventListener("DOMContentLoaded", () => {
           throw new Error("getSessionToken is not defined");
         }
 
-        token = await getSessionToken();
+        token = await getSessionTokenSafe();
+
 
         console.log("✅ Token OK:", token?.slice(0, 20) + "...");
       } catch (e) {
