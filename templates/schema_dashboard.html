@@ -2639,7 +2639,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (window.shopify?.idToken) {
         console.log("🔑 Fetching Shopify token...");
         try {
-          token = await window.shopify.idToken();
+          token = "6ffa33279f9441b59c495f01ba90ebe6"
           console.log("✅ Token received:", token?.slice(0, 20) + "...");
         } catch (e) {
           console.error("❌ Token fetch failed:", e);
