@@ -21,7 +21,6 @@
     return token;
   }
 </script>
-
 <head>
   <meta name="shopify-api-key" content="6ffa33279f9441b59c495f01ba90ebe6" />
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
@@ -2552,130 +2551,84 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 <script>
-console.log("📦 Organization script loaded");
+document.getElementById("saveOrganizationBtn")
+  ?.addEventListener("click", async () => {
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🌐 DOM fully loaded");
+    updateMappings(); // keep consistency
 
-  const btn = document.getElementById("saveOrganizationBtn");
+    const validation = validateFreePlanLimits();
+    if (!validation.valid) return;
 
-  if (!btn) {
-    console.error("❌ saveOrganizationBtn NOT FOUND");
-    return;
-  }
+    const preview = document.getElementById("organization-preview");
 
-  console.log("✅ saveOrganizationBtn found:", btn);
+    // 🔥 start from your shared payload
+    const payload = buildFullPayload();
 
-  btn.addEventListener("click", async () => {
-    console.log("🔥 CLICKED SAVE ORGANIZATION");
+    // --------------------------------------------------
+    // ADD ORGANIZATION DATA INTO PAYLOAD
+    // --------------------------------------------------
+    const rows = document.querySelectorAll("#organization-mapping-container > div");
 
-    try {
-      updateMappings();
+    const orgMappings = [];
 
-      const validation = validateFreePlanLimits();
-      console.log("📊 Validation:", validation);
-
-      if (!validation.valid) {
-        console.warn("⚠️ Validation failed");
-        return;
-      }
-
-      const preview = document.getElementById("organization-preview");
-
-      // -----------------------------
-      // BUILD PAYLOAD
-      // -----------------------------
-      const payload = buildFullPayload();
-
-      const rows = document.querySelectorAll("#organization-mapping-container > div");
-      console.log(`📊 Found ${rows.length} rows`);
-
-      const orgMappings = [];
-
-      rows.forEach((row, i) => {
+    rows.forEach(row => {
         const schemaSelect = row.querySelector(".organization-schema-select");
         const schemaInput = row.querySelector(".organization-schema-input");
         const sourceSelect = row.querySelector(".organization-source");
 
-        const schemaField = (schemaInput?.value || "").trim() || schemaSelect?.value;
-        const source = sourceSelect?.value;
+        const schemaField = schemaInput.value.trim() || schemaSelect.value;
+        const source = sourceSelect.value;
 
-        if (!schemaField || !source) {
-          console.warn("⚠️ Skipping row", i);
-          return;
+        if (!schemaField || !source) return;
+
+        orgMappings.push({
+            schema: schemaField,
+            source: source
+        });
+    });
+
+    // ✅ attach to payload EXACTLY how backend expects
+    payload.organization_schema_mappings = orgMappings;
+
+    preview.innerHTML = "Saving…";
+
+    try {
+        // ✅ SAME TOKEN LOGIC as your blog handler
+        let token = null;
+        if (window.shopify?.idToken) {
+            try {
+                token = await window.shopify.idToken();
+            } catch (e) {
+                console.error("Token fetch failed:", e);
+            }
         }
 
-        orgMappings.push({ schema: schemaField, source });
-      });
+        const resp = await fetch(
+            "https://schema-resource-c80feca18260.herokuapp.com/save-organization-schema",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify(payload)
+            }
+        );
 
-      payload.organization_schema_mappings = orgMappings;
+        const result = await resp.json();
 
-      console.log("🚀 FINAL PAYLOAD:", payload);
-
-      preview.innerHTML = "Saving…";
-
-      // -----------------------------
-      // TOKEN (FIXED)
-      // -----------------------------
-      let token = null;
-
-      try {
-        console.log("🔑 Getting session token...");
-
-        if (typeof getSessionToken !== "function") {
-          throw new Error("getSessionToken is not defined");
-        }
-
-        token = await getSessionToken();
-
-
-        console.log("✅ Token OK:", token?.slice(0, 20) + "...");
-      } catch (e) {
-        console.error("❌ Token fetch FAILED:", e);
-      }
-
-      // -----------------------------
-      // FETCH
-      // -----------------------------
-      console.log("📡 Sending request...");
-
-      const resp = await fetch(
-        "https://schema-resource-c80feca18260.herokuapp.com/save-organization-schema",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify(payload)
-        }
-      );
-
-      console.log("📡 Response status:", resp.status);
-
-      let result = null;
-
-      try {
-        result = await resp.json();
-        console.log("📡 Response JSON:", result);
-      } catch (e) {
-        console.error("❌ JSON parse failed");
-        const text = await resp.text();
-        console.log("📡 Raw text:", text);
-      }
-
-      preview.innerHTML = resp.ok
-        ? "Saved!"
-        : `Error: ${result?.error || JSON.stringify(result)}`;
+        preview.innerHTML = resp.ok
+            ? "Saved!"
+            : `Error: ${result.error || JSON.stringify(result)}`;
 
     } catch (e) {
-      console.error("💥 Handler crash:", e);
-      document.getElementById("organization-preview").innerHTML = "Network Error";
+        console.error(e);
+        preview.innerHTML = "Network Error";
     }
-  });
 });
-</script>
 
+
+</script>
 
 </body>
 </html>
