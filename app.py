@@ -2421,7 +2421,7 @@ def upsert_org_metafield(shop, access_token, owner_gid, value_dict):
     """
 
     METAFIELD_NAMESPACE = "app_schema"
-    METAFIELD_KEY = "prod_schema"
+    METAFIELD_KEY = "org_schema"
 
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
 
