@@ -2800,6 +2800,61 @@ def ensure_metaobject_definition_org(shop, access_token):
 
     return node["metaobjectDefinition"]["id"]
 
+def ensure_metaobject_definition_org(shop, access_token):
+    """
+    Ensures the app_schema metaobject definition exists.
+    """
+    query = """
+    query {
+      metaobjectDefinitionByType(type: "app_schema_org") {
+        id
+      }
+    }
+    """
+
+    resp = query_shopify_graphql(shop, access_token, query)
+    existing = resp.get("data", {}).get("metaobjectDefinitionByType")
+
+    if existing and existing.get("id"):
+        logging.info(f"Metaobject definition exists: {existing['id']}")
+        return existing["id"]
+
+    logging.info("Creating app_schema metaobject definition")
+
+    mutation = """
+    mutation {
+      metaobjectDefinitionCreate(definition: {
+        name: "org Schema Config",
+        type: "org_schema",
+        fieldDefinitions: [
+          {
+            name: "Schema Type",
+            key: "org_schema_mappings",
+            type: "single_line_text_field",
+            required: true
+          },
+          {
+            name: "Mappings",
+            key: "mappings",
+            type: "single_line_text_field",
+            required: false
+          }
+        ]
+      }) {
+        metaobjectDefinition { id }
+        userErrors { field message }
+      }
+    }
+    """
+
+    resp = query_shopify_graphql(shop, access_token, mutation)
+    node = resp.get("data", {}).get("metaobjectDefinitionCreate", {})
+
+    if node.get("userErrors"):
+        raise Exception(f"Metaobject definition errors: {node['userErrors']}")
+
+    return node["metaobjectDefinition"]["id"]
+
 def ensure_app_schema_definition(shop, access_token):
     query = """
     query {
