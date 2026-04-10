@@ -3035,7 +3035,28 @@ def create_config_entry(shop, access_token, mappings_json):
     )
     return query_shopify_graphql(shop, access_token, mutation)
 
+def create_config_entry_org(shop, access_token, mappings_json):
+    mappings_str = json.dumps(mappings_json)
+    quoted = json.dumps(mappings_str)
 
+    mutation = (
+        "mutation {"
+        "  metaobjectCreate(metaobject: {"
+        '    type: "org_schema"'
+        "    fields: ["
+        "      {"
+        '        key: "org_schema_mappings"'
+        "        value: " + quoted +
+        "      }"
+        "    ]"
+        "  }) {"
+        "    metaobject { id }"
+        "    userErrors { field message }"
+        "  }"
+        "}"
+    )
+    return query_shopify_graphql(shop, access_token, mutation)
+    
 def update_config_entry(shop, access_token, entry_id, mappings_json, field_key=None):
     """
     Update the config metaobject.
@@ -4146,7 +4167,7 @@ def save_organization_schema():
     for entry in existing_entries:
         delete_metaobject(shop, access_token, entry["id"])
 
-    resp = create_config_entry(
+    resp = create_config_entry_org(
         shop,
         access_token,
         {
