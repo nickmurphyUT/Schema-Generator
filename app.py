@@ -2744,14 +2744,13 @@ def ensure_metaobject_definition(shop, access_token):
         raise Exception(f"Metaobject definition errors: {node['userErrors']}")
 
     return node["metaobjectDefinition"]["id"]
-
-def ensure_metaobject_definition_org(shop, access_token):
+def ensure_metaobject_definition(shop, access_token):
     """
     Ensures the app_schema metaobject definition exists.
     """
     query = """
     query {
-      metaobjectDefinitionByType(type: "app_schema_org") {
+      metaobjectDefinitionByType(type: "app_schema") {
         id
       }
     }
@@ -2806,7 +2805,7 @@ def ensure_metaobject_definition_org(shop, access_token):
     """
     query = """
     query {
-      metaobjectDefinitionByType(type: "app_schema_org") {
+      metaobjectDefinitionByType(type: "org_schema") {
         id
       }
     }
