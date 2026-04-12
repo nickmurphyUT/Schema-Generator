@@ -2466,11 +2466,48 @@ def upsert_org_metafield(shop, access_token, owner_gid, value_dict):
     Works with metafield definitions (structured metafields).
     """
 
+    import json
+
     METAFIELD_NAMESPACE = "app_schema"
     METAFIELD_KEY = "org_schema"
 
     url = f"https://{shop}/admin/api/2026-01/graphql.json"
 
+    # =========================================================
+    # 🔥 TRANSFORM MAPPINGS → STRUCTURED DATA (THE FIX)
+    # =========================================================
+    def build_org_schema(value):
+        # If already a dict with @type, assume it's valid JSON-LD
+        if isinstance(value, dict) and "@type" in value:
+            return value
+
+        # If it's a list (your current mappings)
+        if isinstance(value, list):
+            schema = {
+                "@context": "https://schema.org",
+                "@type": "Organization"
+            }
+
+            for m in value:
+                key = m.get("schema")
+                val = m.get("value") or m.get("source")
+
+                if key and val:
+                    schema[key] = val
+
+            return schema
+
+        # fallback
+        return {
+            "@context": "https://schema.org",
+            "@type": "Organization"
+        }
+
+    final_value = build_org_schema(value_dict)
+
+    # =========================================================
+    # GraphQL
+    # =========================================================
     query = """
     mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) {
@@ -2490,11 +2527,11 @@ def upsert_org_metafield(shop, access_token, owner_gid, value_dict):
     variables = {
         "metafields": [
             {
-                "ownerId": owner_gid,  # MUST be full GID
+                "ownerId": owner_gid,
                 "namespace": METAFIELD_NAMESPACE,
                 "key": METAFIELD_KEY,
-                "type": "json",  # MUST match your definition
-                "value": json.dumps(value_dict)  # MUST be string
+                "type": "json",
+                "value": json.dumps(final_value)  # ✅ NOW CLEAN JSON-LD
             }
         ]
     }
@@ -2527,6 +2564,7 @@ def upsert_org_metafield(shop, access_token, owner_gid, value_dict):
     logging.info(f"Upserted {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}")
 
     return data
+
 
 
 
