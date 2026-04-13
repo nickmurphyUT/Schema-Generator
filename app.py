@@ -1,5 +1,6 @@
 
 
+
 import os
 import requests, json, time
 from flask import Flask, request, jsonify, render_template_string, render_template, redirect, session
@@ -4247,7 +4248,6 @@ def shop_redact():
     return "", 200
     
 
-
 @app.route("/save-organization-schema", methods=["POST"])
 def save_organization_schema():
     data = request.json
@@ -4309,52 +4309,58 @@ def save_organization_schema():
     # -------------------------
     # Ensure metaobject definition exists
     # -------------------------
-    ensure_metaobject_definition(shop, access_token)
+    ensure_metaobject_definition_org(shop, access_token)
 
-    # =========================================================
-    # 🔥 HARD RESET (USES SAME TYPE AS WORKING ROUTE)
-    # =========================================================
-    metaobject_type = "app_schema"
+    # -------------------------
+    # HARD DELETE + VERIFY
+    # -------------------------
+    metaobject_type = "app_schema_org"
 
-    logging.info("Fetching ALL existing metaobjects...")
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
 
-    logging.info("Found %s existing entries", len(existing_entries))
+    logging.info("ORG METAOBJECTS FOUND: %s", len(existing_entries))
+    for e in existing_entries:
+        logging.info("ORG ENTRY: %s", json.dumps(e, indent=2))
 
     # 🔥 DELETE ALL
     for entry in existing_entries:
-        entry_id = entry["id"]
+        entry_id = entry.get("id")
+
+        if not entry_id:
+            logging.error("Missing ID on entry: %s", entry)
+            continue
 
         # Ensure proper GID format
         if not entry_id.startswith("gid://"):
             entry_id = f"gid://shopify/Metaobject/{entry_id}"
 
-        delete_metaobject(shop, access_token, entry_id)
-        logging.info("Deleted metaobject: %s", entry_id)
+        try:
+            delete_metaobject(shop, access_token, entry_id)
+            logging.info("Deleted metaobject: %s", entry_id)
+        except Exception as e:
+            logging.error("FAILED deleting %s: %s", entry_id, str(e))
 
-    # 🔍 WAIT (Shopify consistency)
+    # 🔥 WAIT for Shopify consistency
     import time
     time.sleep(1.5)
 
     # 🔍 VERIFY DELETE
     remaining = list_all_metaobjects(shop, access_token, metaobject_type)
-    logging.info("Remaining after delete: %s", len(remaining))
+
+    logging.info("REMAINING AFTER DELETE: %s", len(remaining))
+    for r in remaining:
+        logging.error("STILL EXISTS: %s", r["id"])
 
     if remaining:
-        logging.error("❌ STILL EXISTS AFTER DELETE")
-        for r in remaining:
-            logging.error("STILL: %s", r["id"])
         return jsonify({
-            "error": "Failed to delete all metaobjects",
-            "remaining": [r["id"] for r in remaining]
+            "error": "Delete failed — metaobjects still exist",
+            "remaining_ids": [r["id"] for r in remaining]
         }), 500
 
     # -------------------------
     # CREATE NEW ENTRY
     # -------------------------
-    logging.info("Creating fresh org config entry")
-
-    resp = create_config_entry(
+    resp = create_config_entry_org(
         shop,
         access_token,
         {
@@ -4370,8 +4376,8 @@ def save_organization_schema():
     if node.get("userErrors"):
         raise Exception(node["userErrors"])
 
-    new_id = node["metaobject"]["id"]
-    logging.info("✅ Created new org config entry: %s", new_id)
+    logging.info("Created org config entry: %s", node["metaobject"]["id"])
+    logging.info("FULL CREATED NODE: %s", json.dumps(node["metaobject"], indent=2))
 
     # =========================================================
     # 🔥 PROPAGATE ORG SCHEMA TO ALL RESOURCES
@@ -4379,7 +4385,6 @@ def save_organization_schema():
     def process_org_everywhere():
         logging.info("Starting org schema propagation")
 
-        # PRODUCTS
         products = fetch_all_products(shop, access_token)
         for product in products:
             upsert_org_metafield(
@@ -4389,7 +4394,6 @@ def save_organization_schema():
                 organization_schema_mappings
             )
 
-        # PAGES
         pages = fetch_all_pages(shop, access_token)
         for page in pages:
             upsert_org_metafield(
@@ -4399,7 +4403,6 @@ def save_organization_schema():
                 organization_schema_mappings
             )
 
-        # BLOG ARTICLES
         articles = fetch_all_blog_articles(shop, access_token)
         for article in articles:
             upsert_org_metafield(
@@ -4411,14 +4414,11 @@ def save_organization_schema():
 
         logging.info("Finished org schema propagation")
 
-    # ✅ Run async
     threading.Thread(target=process_org_everywhere, daemon=True).start()
 
     return jsonify({
-        "message": "Organization schema reset and propagating",
-        "new_metaobject_id": new_id
+        "message": "Organization schema saved and propagating"
     })
-
 
 
 
