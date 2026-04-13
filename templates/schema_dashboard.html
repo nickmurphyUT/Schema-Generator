@@ -956,15 +956,10 @@ function updatePageMappings() {
 );
 
 }
-function createOrganizationRow(defaultSchema = "", defaultSource = "") {
+function createOrganizationRow(defaultSchema = "", defaultValue = "") {
     const schemaOptions = [...commonSchemaFields];
     if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) {
         schemaOptions.push(defaultSchema);
-    }
-
-    const sourceOptions = [...organizationFieldOptions];
-    if (defaultSource && !organizationFieldOptions.includes(defaultSource)) {
-        sourceOptions.push(defaultSource);
     }
 
     const id = organizationRowId++;
@@ -981,17 +976,18 @@ function createOrganizationRow(defaultSchema = "", defaultSource = "") {
                 <option value="">Select Schema Field</option>
                 ${schemaOptions.map(f => `<option value="${f}" ${f === defaultSchema ? "selected" : ""}>${f}</option>`).join("")}
             </select>
-            <input type="text" class="organization-schema-input p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
+            <input type="text" class="organization-schema-input p-2 border rounded"
+                placeholder="Or write your own…"
+                value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
         </div>
 
-<div class="flex-1 flex flex-col gap-2">
-    <label class="text-sm text-gray-600 font-medium">Value</label>
-    <input type="text"
-           class="organization-value p-2 border rounded"
-           placeholder="Enter value (e.g. support@store.com)"
-           value="${defaultSource || ""}">
-</div>
-
+        <div class="flex-1 flex flex-col gap-2">
+            <label class="text-sm text-gray-600 font-medium">Value</label>
+            <input type="text"
+                class="organization-value p-2 border rounded"
+                placeholder="Enter value (e.g. support@store.com)"
+                value="${defaultValue || ""}">
+        </div>
 
         <button class="delete-org-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
     `;
@@ -1003,7 +999,7 @@ function createOrganizationRow(defaultSchema = "", defaultSource = "") {
 
     row.querySelector(".organization-schema-select").onchange = updateOrganizationMappings;
     row.querySelector(".organization-schema-input").oninput = updateOrganizationMappings;
-    row.querySelector(".organization-source").onchange = updateOrganizationMappings;
+    row.querySelector(".organization-value").oninput = updateOrganizationMappings;
 
     container.appendChild(row);
     updateOrganizationMappings();
