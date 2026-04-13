@@ -2654,30 +2654,63 @@ def build_app_schema_json(schema_definition, existing_mfs, mappings):
 
     return schema_json
 
+def resolve_path(obj, path):
+    """
+    Safely resolve nested dictionary paths like:
+    selected_variant.price or first_image
+    """
+    if not path:
+        return None
+
+    keys = path.split(".")
+    val = obj
+
+    for key in keys:
+        if val is None:
+            return None
+
+        if isinstance(val, dict):
+            val = val.get(key)
+        else:
+            return None
+
+    return val
 
 
 def build_schema_from_mappings(product_data, existing_mfs, mappings):
     """
     Build a schema JSON containing fields selected on the frontend.
-    Ensures that product attributes like 'title' are always included, even if empty.
+    Ensures product attributes and computed fields are always included.
     """
     schema_json = {}
 
     for mapping in mappings:
         schema_field = mapping.get("schemaField")
         source_field = mapping.get("sourceField")
+
         if not schema_field or not source_field:
             continue
 
         value = None
 
-        if source_field.startswith("metafield: "):
-            mf_key = source_field.replace("metafield: ", "").strip()
+        # ---------------------------------------------------------
+        # 1. Metafields
+        # ---------------------------------------------------------
+        if source_field.startswith("metafield:"):
+            mf_key = source_field.replace("metafield:", "").strip()
             value = existing_mfs.get(mf_key, "")
+
+        # ---------------------------------------------------------
+        # 2. Nested / computed fields (NEW)
+        # ---------------------------------------------------------
         else:
-            # Handle standard product attributes
-            value = extract_product_attribute(product_data, source_field)
-            # Force inclusion: if value is None, default to empty string
+            value = resolve_path(product_data, source_field)
+
+            # fallback to legacy extractor if needed
+            if value is None:
+                value = extract_product_attribute(product_data, source_field)
+
+            # ensure consistency
             if value is None:
                 value = ""
 
