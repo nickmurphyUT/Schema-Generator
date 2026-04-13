@@ -4284,7 +4284,7 @@ def save_organization_schema():
         return value if isinstance(value, list) else []
 
     # -------------------------
-    # Load existing
+    # Load existing (optional, but keeps behavior consistent)
     # -------------------------
     existing_org = fetch_schema_config_entry(
         shop,
@@ -4311,49 +4311,59 @@ def save_organization_schema():
     # -------------------------
     ensure_metaobject_definition_org(shop, access_token)
 
-    # -------------------------
-    # UPDATE or CREATE (🔥 FIXED)
-    # -------------------------
+    # =========================================================
+    # 🔥 HARD RESET METAOBJECTS (DELETE ALL → VERIFY → CREATE)
+    # =========================================================
     metaobject_type = "app_schema_org"
 
+    logging.info("Fetching ALL existing metaobjects...")
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
 
-    if existing_entries:
-        # ✅ Update existing entry
-        entry_id = existing_entries[0]["id"]
+    logging.info("Found %s existing entries", len(existing_entries))
 
-        logging.info("Updating existing org config: %s", entry_id)
+    # 🔥 DELETE ALL
+    for entry in existing_entries:
+        entry_id = entry["id"]
+        try:
+            delete_metaobject(shop, access_token, entry_id)
+            logging.info("Deleted metaobject: %s", entry_id)
+        except Exception as e:
+            logging.error("FAILED deleting %s: %s", entry_id, str(e))
 
-        update_metaobject(
-            shop,
-            access_token,
-            entry_id,
-            {
-                "organization_schema_mappings": organization_schema_mappings
-            }
-        )
+    # 🔍 VERIFY deletion
+    remaining = list_all_metaobjects(shop, access_token, metaobject_type)
+    logging.info("Remaining after delete: %s", len(remaining))
 
-    else:
-        # ✅ Create new if none exists
-        logging.info("No existing org config found, creating new")
+    if remaining:
+        logging.error("❌ DELETE FAILED — STILL HAVE METAOBJECTS")
+        for r in remaining:
+            logging.error("STILL EXISTS: %s", r["id"])
+        return jsonify({
+            "error": "Failed to fully delete existing metaobjects",
+            "remaining_ids": [r["id"] for r in remaining]
+        }), 500
 
-        resp = create_config_entry_org(
-            shop,
-            access_token,
-            {
-                "schema_type": metaobject_type,
-                "organization_schema_mappings": organization_schema_mappings
-            }
-        )
+    # ✅ CREATE fresh entry
+    logging.info("Creating fresh org config entry")
 
-        node = resp.get("data", {}).get("metaobjectCreate")
-        if not node:
-            raise Exception("MetaobjectCreate returned null")
+    resp = create_config_entry_org(
+        shop,
+        access_token,
+        {
+            "schema_type": metaobject_type,
+            "organization_schema_mappings": organization_schema_mappings
+        }
+    )
 
-        if node.get("userErrors"):
-            raise Exception(node["userErrors"])
+    node = resp.get("data", {}).get("metaobjectCreate")
+    if not node:
+        raise Exception("MetaobjectCreate returned null")
 
-        logging.info("Created org config entry: %s", node["metaobject"]["id"])
+    if node.get("userErrors"):
+        raise Exception(node["userErrors"])
+
+    new_id = node["metaobject"]["id"]
+    logging.info("✅ Created new org config entry: %s", new_id)
 
     # =========================================================
     # 🔥 PROPAGATE ORG SCHEMA TO ALL RESOURCES
@@ -4397,8 +4407,10 @@ def save_organization_schema():
     threading.Thread(target=process_org_everywhere, daemon=True).start()
 
     return jsonify({
-        "message": "Organization schema saved and propagating"
+        "message": "Organization schema reset and propagating",
+        "new_metaobject_id": new_id
     })
+
 
 
 
