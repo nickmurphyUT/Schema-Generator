@@ -4312,31 +4312,48 @@ def save_organization_schema():
     ensure_metaobject_definition_org(shop, access_token)
 
     # -------------------------
-    # Replace config
+    # UPDATE or CREATE (🔥 FIXED)
     # -------------------------
     metaobject_type = "app_schema_org"
 
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
-    for entry in existing_entries:
-        delete_metaobject(shop, access_token, entry["id"])
 
-    resp = create_config_entry_org(
-        shop,
-        access_token,
-        {
-            "schema_type": metaobject_type,
-            "organization_schema_mappings": organization_schema_mappings
-        }
-    )
+    if existing_entries:
+        # ✅ Update existing entry
+        entry_id = existing_entries[0]["id"]
 
-    node = resp.get("data", {}).get("metaobjectCreate")
-    if not node:
-        raise Exception("MetaobjectCreate returned null")
+        logging.info("Updating existing org config: %s", entry_id)
 
-    if node.get("userErrors"):
-        raise Exception(node["userErrors"])
+        update_metaobject(
+            shop,
+            access_token,
+            entry_id,
+            {
+                "organization_schema_mappings": organization_schema_mappings
+            }
+        )
 
-    logging.info("Created org config entry: %s", node["metaobject"]["id"])
+    else:
+        # ✅ Create new if none exists
+        logging.info("No existing org config found, creating new")
+
+        resp = create_config_entry_org(
+            shop,
+            access_token,
+            {
+                "schema_type": metaobject_type,
+                "organization_schema_mappings": organization_schema_mappings
+            }
+        )
+
+        node = resp.get("data", {}).get("metaobjectCreate")
+        if not node:
+            raise Exception("MetaobjectCreate returned null")
+
+        if node.get("userErrors"):
+            raise Exception(node["userErrors"])
+
+        logging.info("Created org config entry: %s", node["metaobject"]["id"])
 
     # =========================================================
     # 🔥 PROPAGATE ORG SCHEMA TO ALL RESOURCES
