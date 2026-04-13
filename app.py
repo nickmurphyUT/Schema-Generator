@@ -4284,7 +4284,7 @@ def save_organization_schema():
         return value if isinstance(value, list) else []
 
     # -------------------------
-    # Load existing (optional, but keeps behavior consistent)
+    # Load existing
     # -------------------------
     existing_org = fetch_schema_config_entry(
         shop,
@@ -4309,12 +4309,12 @@ def save_organization_schema():
     # -------------------------
     # Ensure metaobject definition exists
     # -------------------------
-    ensure_metaobject_definition_org(shop, access_token)
+    ensure_metaobject_definition(shop, access_token)
 
     # =========================================================
-    # 🔥 HARD RESET METAOBJECTS (DELETE ALL → VERIFY → CREATE)
+    # 🔥 HARD RESET (USES SAME TYPE AS WORKING ROUTE)
     # =========================================================
-    metaobject_type = "app_schema_org"
+    metaobject_type = "app_schema"
 
     logging.info("Fetching ALL existing metaobjects...")
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
@@ -4324,29 +4324,37 @@ def save_organization_schema():
     # 🔥 DELETE ALL
     for entry in existing_entries:
         entry_id = entry["id"]
-        try:
-            delete_metaobject(shop, access_token, entry_id)
-            logging.info("Deleted metaobject: %s", entry_id)
-        except Exception as e:
-            logging.error("FAILED deleting %s: %s", entry_id, str(e))
 
-    # 🔍 VERIFY deletion
+        # Ensure proper GID format
+        if not entry_id.startswith("gid://"):
+            entry_id = f"gid://shopify/Metaobject/{entry_id}"
+
+        delete_metaobject(shop, access_token, entry_id)
+        logging.info("Deleted metaobject: %s", entry_id)
+
+    # 🔍 WAIT (Shopify consistency)
+    import time
+    time.sleep(1.5)
+
+    # 🔍 VERIFY DELETE
     remaining = list_all_metaobjects(shop, access_token, metaobject_type)
     logging.info("Remaining after delete: %s", len(remaining))
 
     if remaining:
-        logging.error("❌ DELETE FAILED — STILL HAVE METAOBJECTS")
+        logging.error("❌ STILL EXISTS AFTER DELETE")
         for r in remaining:
-            logging.error("STILL EXISTS: %s", r["id"])
+            logging.error("STILL: %s", r["id"])
         return jsonify({
-            "error": "Failed to fully delete existing metaobjects",
-            "remaining_ids": [r["id"] for r in remaining]
+            "error": "Failed to delete all metaobjects",
+            "remaining": [r["id"] for r in remaining]
         }), 500
 
-    # ✅ CREATE fresh entry
+    # -------------------------
+    # CREATE NEW ENTRY
+    # -------------------------
     logging.info("Creating fresh org config entry")
 
-    resp = create_config_entry_org(
+    resp = create_config_entry(
         shop,
         access_token,
         {
@@ -4403,13 +4411,14 @@ def save_organization_schema():
 
         logging.info("Finished org schema propagation")
 
-    # ✅ Run async (non-blocking)
+    # ✅ Run async
     threading.Thread(target=process_org_everywhere, daemon=True).start()
 
     return jsonify({
         "message": "Organization schema reset and propagating",
         "new_metaobject_id": new_id
     })
+
 
 
 
