@@ -4314,7 +4314,7 @@ def save_organization_schema():
     # -------------------------
     # HARD DELETE + VERIFY
     # -------------------------
-    metaobject_type = "app_schema"
+    metaobject_type = "org_schema"
     
     # 🔍 DEBUG: find where your entries actually are
     logging.info("=== FINDING METAOBJECT TYPES ===")
