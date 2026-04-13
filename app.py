@@ -3604,15 +3604,35 @@ def verify_and_create_metafields():
 
     def process_products():
         products = fetch_all_products(shop, access_token)
+    
         for product in products:
-            mfs = fetch_product_metafields(shop, access_token, product["id"].split("/")[-1])
-            schema = build_schema_from_mappings(product, mfs, product_schema_mappings)
+            mfs = fetch_product_metafields(
+                shop, access_token, product["id"].split("/")[-1]
+            )
+    
+            selected_variant = get_selected_or_first_available_variant(product)
+            first_image = get_first_product_image(product)
+    
+            # 👇 Inject into context
+            enriched_product = {
+                **product,
+                "selected_variant": selected_variant,
+                "first_image": first_image
+            }
+    
+            schema = build_schema_from_mappings(
+                enriched_product,
+                mfs,
+                product_schema_mappings
+            )
+    
             upsert_app_metafield(
                 shop,
                 access_token,
                 product["id"],
                 wrap_flattened_json_in_schema(schema, "Product")
             )
+
 
     def process_collections():
         collections = fetch_all_collections(shop, access_token)
@@ -4548,6 +4568,41 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
             logging.info("%s metafield %s.%s created successfully", owner_type, NAMESPACE, KEY)
     except Exception as e:
         logging.exception("Exception creating %s metafield: %s", owner_type, str(e))
+
+
+def get_selected_or_first_available_variant(product):
+    variants = product.get("variants", [])
+    
+    if not variants:
+        return None
+
+    # Prefer first available variant
+    for v in variants:
+        if v.get("availableForSale") or v.get("available"):
+            return v
+
+    # fallback to first variant
+    return variants[0]
+
+
+def get_first_product_image(product):
+    images = product.get("images", [])
+    
+    if not images:
+        return None
+    
+    # GraphQL structure
+    if isinstance(images, dict) and "edges" in images:
+        edges = images.get("edges", [])
+        if edges:
+            return edges[0]["node"].get("url")
+    
+    # REST fallback
+    if isinstance(images, list):
+        return images[0].get("src")
+    
+    return None
+
 
 def verify_shopify_token(token):
     try:
