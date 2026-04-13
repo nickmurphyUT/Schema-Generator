@@ -1013,11 +1013,22 @@ function createOrganizationRow(defaultSchema = "", defaultSource = "") {
 function updateOrganizationMappings() {
     organizationMappings = [
         ...document.querySelectorAll("#organization-mapping-container > div")
-    ].map(row => ({
-        schemaField: row.querySelector(".organization-schema-input")?.value.trim(),
-        sourceField: row.querySelector(".organization-source")?.value.trim()
-    })).filter(m => m.schemaField && m.sourceField);
+    ].map(row => {
+        const schemaInput = row.querySelector(".organization-schema-input");
+        const schemaSelect = row.querySelector(".organization-schema-select");
+        const value = row.querySelector(".organization-value")?.value.trim();
+
+        const schemaField = schemaInput?.value.trim() || schemaSelect?.value;
+
+        if (!schemaField || !value) return null;
+
+        return {
+            schema: schemaField,
+            value: value
+        };
+    }).filter(Boolean);
 }
+
 
 
 function createBlogRow(defaultSchema = "", defaultSource = "") {
@@ -2567,7 +2578,7 @@ document.addEventListener("DOMContentLoaded", function () {
     container.innerHTML = "";
 
     rawOrganizationConfig.forEach(mapping => {
-        createOrganizationRow(mapping.schema, mapping.source);
+        createOrganizationRow(mapping.schema, "", mapping.value);
     });
 });
 
@@ -2595,17 +2606,18 @@ document.getElementById("saveOrganizationBtn")
     rows.forEach(row => {
         const schemaSelect = row.querySelector(".organization-schema-select");
         const schemaInput = row.querySelector(".organization-schema-input");
-        const sourceSelect = row.querySelector(".organization-source");
-
+        const valueInput = row.querySelector(".organization-value");
+        
         const schemaField = schemaInput.value.trim() || schemaSelect.value;
-        const source = sourceSelect.value;
-
-        if (!schemaField || !source) return;
-
+        const value = valueInput.value.trim();
+        
+        if (!schemaField || !value) return;
+        
         orgMappings.push({
             schema: schemaField,
-            source: source
+            value: value
         });
+
     });
 
     // ✅ attach to payload EXACTLY how backend expects
