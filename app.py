@@ -4315,8 +4315,24 @@ def save_organization_schema():
     # HARD DELETE + VERIFY
     # -------------------------
     metaobject_type = "app_schema_org"
-
+    
+    # 🔍 DEBUG: find where your entries actually are
+    logging.info("=== FINDING METAOBJECT TYPES ===")
+    
+    types_to_check = [
+        "app_schema_org",
+        "app_schema",
+        "app_schema_config",
+        "organization"
+    ]
+    
+    for t in types_to_check:
+        entries = list_all_metaobjects(shop, access_token, t)
+        logging.info("TYPE %s COUNT: %s", t, len(entries))
+    
+    # 👉 your original line continues below
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
+
 
     logging.info("ORG METAOBJECTS FOUND: %s", len(existing_entries))
     for e in existing_entries:
