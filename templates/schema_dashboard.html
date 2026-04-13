@@ -956,7 +956,7 @@ function updatePageMappings() {
 );
 
 }
-function createOrganizationRow(defaultSchema = "", defaultSource = "") {
+function createOrganizationRow(defaultSchema = "", defaultSource = "", defaultValue = "") {
     const schemaOptions = [...commonSchemaFields];
     if (defaultSchema && !commonSchemaFields.includes(defaultSchema)) {
         schemaOptions.push(defaultSchema);
@@ -984,13 +984,20 @@ function createOrganizationRow(defaultSchema = "", defaultSource = "") {
             <input type="text" class="organization-schema-input p-2 border rounded" placeholder="Or write your own…" value="${defaultSchema && !commonSchemaFields.includes(defaultSchema) ? defaultSchema : ""}">
         </div>
 
-        <div class="flex-1 flex flex-col gap-2">
-            <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
-            <select class="organization-source p-2 border rounded bg-white">
-                <option value="">Select Source</option>
-                ${sourceOptions.map(o => `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`).join("")}
-            </select>
-        </div>
+<div class="flex-1 flex flex-col gap-2">
+    <label class="text-sm text-gray-600 font-medium">Shopify Source</label>
+    <select class="organization-source p-2 border rounded bg-white">
+        <option value="">Select Source</option>
+        ${sourceOptions.map(o => `<option value="${o}" ${o === defaultSource ? "selected" : ""}>${o}</option>`).join("")}
+    </select>
+
+    <label class="text-sm text-gray-600 font-medium mt-2">Custom Value</label>
+    <input type="text"
+           class="organization-value p-2 border rounded"
+           placeholder="Enter value (e.g. support@store.com)"
+           value="${defaultValue || ""}">
+</div>
+
 
         <button class="delete-org-row bg-red-500 text-white px-3 py-2 rounded self-center">X</button>
     `;
@@ -1003,19 +1010,39 @@ function createOrganizationRow(defaultSchema = "", defaultSource = "") {
     row.querySelector(".organization-schema-select").onchange = updateOrganizationMappings;
     row.querySelector(".organization-schema-input").oninput = updateOrganizationMappings;
     row.querySelector(".organization-source").onchange = updateOrganizationMappings;
+    row.querySelector(".organization-value").oninput = updateOrganizationMappings;
 
     container.appendChild(row);
     updateOrganizationMappings();
 }
 
-
 function updateOrganizationMappings() {
     organizationMappings = [
         ...document.querySelectorAll("#organization-mapping-container > div")
-    ].map(row => ({
-        schemaField: row.querySelector(".organization-schema-input")?.value.trim(),
-        sourceField: row.querySelector(".organization-source")?.value.trim()
-    })).filter(m => m.schemaField && m.sourceField);
+    ].map(row => {
+        const schemaInput = row.querySelector(".organization-schema-input");
+        const schemaSelect = row.querySelector(".organization-schema-select");
+        const source = row.querySelector(".organization-source")?.value.trim();
+        const value = row.querySelector(".organization-value")?.value.trim();
+
+        const schemaField = schemaInput?.value.trim() || schemaSelect?.value;
+
+        if (!schemaField) return null;
+
+        if (value) {
+            return {
+                schema: schemaField,
+                value: value
+            };
+        } else if (source) {
+            return {
+                schema: schemaField,
+                source: source
+            };
+        }
+
+        return null;
+    }).filter(Boolean);
 }
 
 
@@ -2566,7 +2593,12 @@ document.addEventListener("DOMContentLoaded", function () {
     container.innerHTML = "";
 
     rawOrganizationConfig.forEach(mapping => {
-        createOrganizationRow(mapping.schema, mapping.source);
+        createOrganizationRow(
+    mapping.schema,
+    mapping.source,
+    mapping.value
+);
+
     });
 });
 
@@ -2596,15 +2628,7 @@ document.getElementById("saveOrganizationBtn")
         const schemaInput = row.querySelector(".organization-schema-input");
         const sourceSelect = row.querySelector(".organization-source");
 
-        const schemaField = schemaInput.value.trim() || schemaSelect.value;
-        const source = sourceSelect.value;
-
-        if (!schemaField || !source) return;
-
-        orgMappings.push({
-            schema: schemaField,
-            source: source
-        });
+const source = sourceSelect.value;
     });
 
     // ✅ attach to payload EXACTLY how backend expects
