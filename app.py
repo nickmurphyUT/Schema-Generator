@@ -4629,18 +4629,11 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
 
 
 def get_selected_or_first_available_variant(product):
-    variants = product.get("variants", [])
-    
-    if not variants:
-        return None
+    try:
+        return product["variants"]["edges"][0]["node"]
+    except (KeyError, IndexError):
+        return {}
 
-    # Prefer first available variant
-    for v in variants:
-        if v.get("availableForSale") or v.get("available"):
-            return v
-
-    # fallback to first variant
-    return variants[0]
 
 
 def get_first_product_image(product):
