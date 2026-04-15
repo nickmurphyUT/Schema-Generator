@@ -2599,11 +2599,36 @@ def fetch_all_products(shop, access_token):
                         tags
                         createdAt
                         updatedAt
+        
+                        # 🔥 ADD THIS
+                        variants(first: 1) {
+                            edges {
+                                node {
+                                    id
+                                    sku
+                                    price
+                                    compareAtPrice
+                                    barcode
+                                    availableForSale
+                                }
+                            }
+                        }
+        
+                        # 🔥 ADD THIS (since you're using first_image)
+                        images(first: 1) {
+                            edges {
+                                node {
+                                    url
+                                    altText
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
         """
+
 
         resp = requests.post(
             url,
