@@ -764,14 +764,26 @@ const homepageFieldOptions = [
 ];
 
 const productFieldOptions = [
-    "product.title",
-    "product.vendor",
-    "product.handle",
-    "product.product_type",
-    "product.status",
-    "product.description",
+    "title",
+    "vendor",
+    "handle",
+    "product_type",
+    "status",
+    "description",
+
+    // 🔥 NEW (this is what you need for SKU)
+    "selected_variant.sku",
+
+    // Optional but useful:
+    "selected_variant.price",
+    "selected_variant.compare_at_price",
+    "selected_variant.barcode",
+
+    "first_image.url",
+
     {% for mf in product_metafields %}"metafield: {{ mf.node.namespace }}.{{ mf.node.key }}",{% endfor %}
 ];
+
 /* ================= PAGE FIELD OPTIONS ================= */
 const pageFieldOptions = [
     "page.title",
