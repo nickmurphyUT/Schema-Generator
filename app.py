@@ -4637,22 +4637,11 @@ def get_selected_or_first_available_variant(product):
 
 
 def get_first_product_image(product):
-    images = product.get("images", [])
-    
-    if not images:
-        return None
-    
-    # GraphQL structure
-    if isinstance(images, dict) and "edges" in images:
-        edges = images.get("edges", [])
-        if edges:
-            return edges[0]["node"].get("url")
-    
-    # REST fallback
-    if isinstance(images, list):
-        return images[0].get("src")
-    
-    return None
+    try:
+        return product["images"]["edges"][0]["node"]
+    except (KeyError, IndexError):
+        return {}
+
 
 
 def verify_shopify_token(token):
