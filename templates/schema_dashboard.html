@@ -2254,55 +2254,6 @@ appContainer.style.display = "block";
             trialEl.className = "ml-3 text-sm font-medium text-red-600";
         }
     }
-
-    /* ================= ACCESS CONTROL ================= */
-    if (!hasActiveSubscription && trialExpired) {
-        appContainer.style.display = "none";
-        subscriptionView.removeAttribute("hidden"); // show
-    } else {
-        subscriptionView.setAttribute("hidden", ""); // hide ✅
-    }
-
-
-    /* ================= TOGGLE ================= */
-    if (toggleBtn && subscriptionView && appContainer) {
-        toggleBtn.disabled = false;
-        toggleBtn.classList.remove("opacity-50", "cursor-not-allowed");
-
-        toggleBtn.addEventListener("click", () => {
-            appContainer.style.display = "none";
-            subscriptionView.removeAttribute("hidden");
-        });
-    }
-        if (toggleBtnPage  && subscriptionView && appContainer) {
-        toggleBtnPage.disabled = false;
-        toggleBtnPage.classList.remove("opacity-50", "cursor-not-allowed");
-
-        toggleBtnPage.addEventListener("click", () => {
-            appContainer.style.display = "none";
-            subscriptionView.removeAttribute("hidden");
-        });
-    }
-        if (toggleBtnProduct  && subscriptionView && appContainer) {
-        toggleBtnProduct.disabled = false;
-        toggleBtnProduct.classList.remove("opacity-50", "cursor-not-allowed");
-
-        toggleBtnProduct.addEventListener("click", () => {
-            appContainer.style.display = "none";
-            subscriptionView.removeAttribute("hidden");
-        });
-    }
-
-    if (backBtn && subscriptionView && appContainer) {
-backBtn.addEventListener("click", () => {
-    subscriptionView.setAttribute("hidden", ""); // hide ✅
-    appContainer.style.display = "block";
-});
-
-    }
-
-
-
     /* ================= MODAL EVENTS ================= */
 
 const closeUpgradeBtn = document.getElementById("closeUpgradeModal");
