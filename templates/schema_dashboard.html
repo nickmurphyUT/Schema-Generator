@@ -417,7 +417,9 @@
         Generate structured data for your business, including name, logo,
         contact info, and social profiles to improve brand visibility in search.
     </p>
-
+                      <s-button id="toggleSubscriptionBtnOrg" variant="primary" fullWidth>
+                  Manage Subscription
+                </s-button>
     <div id="organization-mapping-container" class="space-y-4 mb-6"></div>
 
     <s-button id="addOrganizationBtn" variant="primary" fullWidth>
@@ -2044,9 +2046,24 @@ document.addEventListener("DOMContentLoaded", function () {
     const authBlock = document.getElementById("auth-block");
     const appContainer = document.getElementById("app-container");
     const subscriptionView = document.getElementById("subscription-view");
-    const toggleBtn = document.getElementById("toggleSubscriptionBtn");
-    const toggleBtnPage = document.getElementById("toggleSubscriptionBtnPage");
-    const toggleBtnProduct = document.getElementById("toggleSubscriptionBtnBlog");
+const toggleBtn = document.getElementById("toggleSubscriptionBtn");
+const toggleBtnPage = document.getElementById("toggleSubscriptionBtnPage");
+const toggleBtnProduct = document.getElementById("toggleSubscriptionBtnBlog");
+const toggleBtnProduct = document.getElementById("toggleSubscriptionBtnOrg");
+[toggleBtn, toggleBtnPage, toggleBtnProduct, toggleSubscriptionBtnOrg].forEach(btn => {
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    if (!isSubscribed && payLink) {
+      // Go to Shopify billing page
+      window.top.location.href = payLink;
+    } else {
+      console.log("User already subscribed");
+      // Optional: do nothing OR show a message
+    }
+  });
+});
+
     const backBtn = document.getElementById("backToAppBtn");
     const trialEl = document.getElementById("trial-status");
 
