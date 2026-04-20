@@ -595,7 +595,7 @@ def get_shop_subscription_info(shop, access_token):
 
 def get_billing_redirect_url(shop):
     store_handle = shop.replace(".myshopify.com", "")
-    app_handle = "YOUR_APP_HANDLE"  # ← replace this
+    app_handle = "full-schema-app"  # ← replace this
 
     return f"https://admin.shopify.com/store/{store_handle}/charges/{app_handle}/pricing_plans"
     
