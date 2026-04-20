@@ -673,10 +673,9 @@ or metafields directly to schema fields with no coding required.
 </div>
 </div>
 <script>
-  console.log("is_subscribed:", {{ is_subscribed | tojson }});
-  console.log("billing_confirmation_url:", {{ billing_confirmation_url | tojson }});
-</script>
-<script>
+  const isSubscribed = {{ is_subscribed | tojson }};
+  const payLink = {{ billing_confirmation_url | tojson }};
+
   const PRODUCT_FREE_LIMIT = 2;
 const DEFAULT_FREE_LIMIT = 2;
 
@@ -2037,7 +2036,6 @@ function hideUpgradeModal() {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const payLink = {{ billing_confirmation_url | tojson | safe}};
     console.log('URL TEST ' + payLink);
     const initDate = {{ shop_created_at | tojson }};
     const subscriptionInfo = {{ subscription_info | tojson | safe }};
