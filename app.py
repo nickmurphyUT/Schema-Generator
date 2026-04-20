@@ -593,6 +593,12 @@ def get_shop_subscription_info(shop, access_token):
         logging.exception("Failed to generate payment URL")
         return {"subscribed": False, "payment_url": None}
 
+def get_billing_redirect_url(shop):
+    store_handle = shop.replace(".myshopify.com", "")
+    app_handle = "YOUR_APP_HANDLE"  # ← replace this
+
+    return f"https://admin.shopify.com/store/{store_handle}/charges/{app_handle}/pricing_plans"
+    
 
 @app.route("/")
 def home():
@@ -668,69 +674,14 @@ def home():
             
             logging.info("Shop created at: %s", shop_created_at)
 
-            # 🔥 Check active subscription
-            sub_query = """
-            {
-              currentAppInstallation {
-                activeSubscriptions {
-                  id
-                  status
-                }
-              }
-            }
-            """
+            # 🔥 Determine subscription status
+            is_subscribed = bool(active_subs and active_subs[0]["status"] == "ACTIVE")
             
-            sub_response = query_shopify_graphql(shop, access_token, sub_query)
-            
-            active_subs = (
-                sub_response.get("data", {})
-                .get("currentAppInstallation", {})
-                .get("activeSubscriptions", [])
-            )
-            
-            # 🔥 Check active subscription
-            if not active_subs or active_subs[0]["status"] != "ACTIVE":
-                mutation = """
-                mutation {
-                  appSubscriptionCreate(
-                    name: "Pro Plan",
-                    returnUrl: "https://schema-resource-c80feca18260.herokuapp.com/",
-                    test: false,
-                    lineItems: [
-                      {
-                        plan: {
-                          appRecurringPricingDetails: {
-                            price: { amount: 19.99, currencyCode: USD }
-                          }
-                        }
-                      }
-                    ]
-                  ) {
-                    confirmationUrl
-                    userErrors {
-                      field
-                      message
-                    }
-                  }
-                }
-                """
-                try:
-                    billing_response = query_shopify_graphql(shop, access_token, mutation)
-                    logging.info("Billing: appSubscriptionCreate response:\n%s", json.dumps(billing_response, indent=2, default=str))
-            
-                    billing_confirmation_url = (
-                        billing_response.get("data", {})
-                        .get("appSubscriptionCreate", {})
-                        .get("confirmationUrl")
-                    )
-            
-                    # Fallback to placeholder if Shopify fails
-                    if not billing_confirmation_url:
-                        billing_confirmation_url = "https://www.linkfailure.com/"
-            
-                except Exception:
-                    logging.exception("Failed to create subscription")
-                    billing_confirmation_url = "https://www.linkfailure.com/"
+            # 🔥 Only generate billing link if NOT subscribed
+            billing_confirmation_url = None
+            if not is_subscribed:
+                billing_confirmation_url = get_billing_redirect_url(shop)
+
 
 
             # -----------------------
@@ -904,6 +855,7 @@ def home():
         shop_created_at=shop_created_at,
         access_token=access_token,
         organization_config=organization_config,
+        is_subscribed=is_subscribed,
     )
 
 
