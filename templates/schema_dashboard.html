@@ -672,7 +672,10 @@ or metafields directly to schema fields with no coding required.
 
 </div>
 </div>
-    
+<script>
+  console.log("is_subscribed:", {{ is_subscribed | tojson }});
+  console.log("billing_confirmation_url:", {{ billing_confirmation_url | tojson }});
+</script>
 <script>
   const PRODUCT_FREE_LIMIT = 2;
 const DEFAULT_FREE_LIMIT = 2;
@@ -2392,18 +2395,17 @@ if (continueFreeBtn && subscriptionView && appContainer) {
 }
 
 const goUpgradeBtn = document.getElementById("goUpgradeBtn");
-const goUpgradeBtnMain = document.getElementById("goUpgradeBtnMain");
+  const goUpgradeBtnMain = document.getElementById("goUpgradeBtnMain");
 
-// Use the dynamic payLink from your template
-if (payLink) {
+  if (!isSubscribed && payLink) {
     [goUpgradeBtn, goUpgradeBtnMain].forEach(btn => {
-        if (btn) {
-            btn.addEventListener("click", () => {
-                window.location.href = payLink;
-            });
-        }
+      if (btn) {
+        btn.addEventListener("click", () => {
+          window.top.location.href = payLink; // ✅ IMPORTANT
+        });
+      }
     });
-}
+  }
 
 
     
@@ -2665,10 +2667,5 @@ document.getElementById("saveOrganizationBtn")
 
 
 </script>
-<script>
-  console.log("is_subscribed:", {{ is_subscribed | tojson }});
-  console.log("billing_confirmation_url:", {{ billing_confirmation_url | tojson }});
-</script>
-
 </body>
 </html>
