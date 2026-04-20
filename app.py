@@ -614,6 +614,8 @@ def home():
     subscription_info = None
     needs_auth = False
     billing_confirmation_url = None
+    is_subscribed = False   # ✅ ADD THIS
+    active_subs = []        # ✅ ADD THIS
     # ---------- SIMPLE AUTH CHECK ----------
     needs_auth = False
     shop_created_at = None
