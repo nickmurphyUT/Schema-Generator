@@ -2665,6 +2665,10 @@ document.getElementById("saveOrganizationBtn")
 
 
 </script>
+<script>
+  console.log("is_subscribed:", {{ is_subscribed | tojson }});
+  console.log("billing_confirmation_url:", {{ billing_confirmation_url | tojson }});
+</script>
 
 </body>
 </html>
