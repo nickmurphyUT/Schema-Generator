@@ -639,18 +639,35 @@ def home():
 
     # ---------- LOGGING ----------
     logging.info("Subscription info for shop %s: %s", shop, subscription_info)
-
-    # ---------- INITIALIZE METAFIELDS & CONFIGS ----------
+    # ---------- INITIALIZE METAFIELDS ----------
     product_metafields = []
     collection_metafields = []
     page_metafields = []
     blog_metafields = []
-    product_config = {}
-    collection_config = {}
-    page_config = {}
-    blog_config = {}
-    homepage_config = {}
-    organization_config = {}
+    # ---------- INITIALIZE METAFIELDS & CONFIGS ----------
+    product_config = {
+        "product_schema_mappings": []
+    }
+    
+    collection_config = {
+        "collection_schema_mappings": []
+    }
+    
+    page_config = {
+        "page_schema_mappings": []
+    }
+    
+    blog_config = {
+        "blog_schema_mappings": []
+    }
+    
+    homepage_config = {
+        "homepage_schema_mappings": []
+    }
+    
+    organization_config = {
+        "organization_schema_mappings": []
+    }
     if access_token and not needs_auth:
         try:
 
