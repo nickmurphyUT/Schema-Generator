@@ -619,20 +619,25 @@ def home():
     # ---------- SIMPLE AUTH CHECK ----------
     needs_auth = False
     shop_created_at = None
+    
     if not access_token:
-        needs_auth = True
-    else:
-        try:
-            # 🔥 Smallest possible probe
-            query_shopify_graphql(
-                shop,
-                access_token,
-                "{ shop { name } }"
-            )
-        except Exception:
-            logging.warning("Token failed probe for %s", shop)
-            needs_auth = True
-            access_token = None
+        logging.info("No access token found. Redirecting to auth.")
+        return redirect(url_for("auth", shop=shop))
+    
+    try:
+        query_shopify_graphql(
+            shop,
+            access_token,
+            "{ shop { name } }"
+        )
+    except Exception:
+        logging.warning("Token failed probe for %s", shop)
+    
+        # Clear invalid token if needed
+        access_token = None
+    
+        # Re-auth automatically
+        return redirect(url_for("auth", shop=shop))
 
 
 
