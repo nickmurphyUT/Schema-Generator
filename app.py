@@ -622,7 +622,7 @@ def home():
     
     if not access_token:
         logging.info("No access token found. Redirecting to auth.")
-        return redirect(url_for("auth", shop=shop))
+        return redirect(url_for("authenticate", shop=shop))
     
     try:
         query_shopify_graphql(
@@ -633,12 +633,11 @@ def home():
     except Exception:
         logging.warning("Token failed probe for %s", shop)
     
-        # Clear invalid token if needed
+        # Optional: clear invalid token
         access_token = None
     
         # Re-auth automatically
-        return redirect(url_for("auth", shop=shop))
-
+        return redirect(url_for("authenticate", shop=shop))
 
 
 
