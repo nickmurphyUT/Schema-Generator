@@ -930,11 +930,13 @@ def verify_oauth_hmac(params, secret):
 def auth_callback():
     shop = request.args.get("shop")
     code = request.args.get("code")
+    host = request.args.get("host")
 
     if not shop or not code:
         return jsonify({"error": "Invalid request"}), 400
 
     token_url = f"https://{shop}/admin/oauth/access_token"
+
     payload = {
         "client_id": SHOPIFY_API_KEY,
         "client_secret": SHOPIFY_API_SECRET,
@@ -948,29 +950,30 @@ def auth_callback():
 
     access_token = response.json().get("access_token")
 
-    # Save token to DB
+    # Save token
     store = StoreToken.query.filter_by(shop=shop).first()
+
     if store:
         store.access_token = access_token
     else:
-        store = StoreToken(shop=shop, access_token=access_token)
+        store = StoreToken(
+            shop=shop,
+            access_token=access_token
+        )
         db.session.add(store)
 
     db.session.commit()
 
-    # 🔥 REGISTER GDPR WEBHOOKS HERE
+    # Register GDPR webhooks
     try:
         register_gdpr_webhooks(shop, access_token)
     except Exception as e:
         print(f"❌ Failed to register GDPR webhooks: {e}")
 
-    # 🔥 Extract store handle (remove .myshopify.com)
-    store_handle = shop.replace(".myshopify.com", "")
-
+    # Embedded app redirect
     return redirect(
-        f"https://admin.shopify.com/store/{store_handle}/apps/schema-test-1"
+        f"/?shop={shop}&host={host}&embedded=1"
     )
-
 
 #list of needed webhooks: products/update, products/create, products/delete, collections/create, collections/delete, collections/update no page/blog webhooks, maybe a sync button in the app interface?
 @app.route("/createWebhook", methods=["POST"])
