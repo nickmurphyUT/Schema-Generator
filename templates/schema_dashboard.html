@@ -1640,13 +1640,7 @@ const savedCollectionMappings = normalizeMappings(
 console.log("savedOrganizationMappings:", savedOrganizationMappings);
 
 /* ================= PREPOPULATE UI ================= */
-  if (savedOrganizationMappings.length > 0) {
-    savedOrganizationMappings.forEach(m =>
-        createOrganizationRow(m.schemaField || "", m.sourceField || "")
-    );
-} else {
-    createOrganizationRow();
-}
+
 
 if (savedBlogMappings.length > 0) {
     savedBlogMappings.forEach(m =>
@@ -2545,7 +2539,7 @@ document.addEventListener("DOMContentLoaded", function () {
     container.innerHTML = "";
 
     rawOrganizationConfig.forEach(mapping => {
-        createOrganizationRow(mapping.schema, "", mapping.value);
+        createOrganizationRow(mapping.schema, mapping.value);
     });
 });
 
