@@ -621,7 +621,7 @@ def home():
     shop_created_at = None
     
     if not access_token:
-        ##logging.info("No access token found. Redirecting to auth.")
+        logging.info("No access token found. Redirecting to auth.")
         return redirect(url_for("authenticate", shop=shop))
     
     try:
@@ -642,7 +642,7 @@ def home():
 
 
     # ---------- LOGGING ----------
-    #logging.info("Subscription info for shop %s: %s", shop, subscription_info)
+    logging.info("Subscription info for shop %s: %s", shop, subscription_info)
     # ---------- INITIALIZE METAFIELDS ----------
     product_metafields = []
     collection_metafields = []
@@ -695,7 +695,7 @@ def home():
                 .get("createdAt")
             )
             
-            #logging.info("Shop created at: %s", shop_created_at)
+            logging.info("Shop created at: %s", shop_created_at)
 
             # 🔥 Determine subscription status
             is_subscribed = bool(active_subs and active_subs[0]["status"] == "ACTIVE")
@@ -711,10 +711,10 @@ def home():
             # Metafield definitions
             # -----------------------
             meta_data = get_metafield_definitions(shop, access_token)
-            #logging.info(
-                #"RAW Shopify metafieldDefinitions response:\n%s",
-                #json.dumps(meta_data, indent=2, default=str),
-            #)
+            logging.info(
+                "RAW Shopify metafieldDefinitions response:\n%s",
+                json.dumps(meta_data, indent=2, default=str),
+            )
 
             if isinstance(meta_data, dict) and meta_data.get("errors"):
                 logging.error(
@@ -724,8 +724,8 @@ def home():
 
             data = meta_data.get("data", {}) if isinstance(meta_data, dict) else {}
 
-            #logging.info("GraphQL top-level keys: %s", list(meta_data.keys()) if isinstance(meta_data, dict) else type(meta_data))
-            #logging.info("GraphQL data keys: %s", list(data.keys()) if isinstance(data, dict) else type(data))
+            logging.info("GraphQL top-level keys: %s", list(meta_data.keys()) if isinstance(meta_data, dict) else type(meta_data))
+            logging.info("GraphQL data keys: %s", list(data.keys()) if isinstance(data, dict) else type(data))
 
             # Extract metafields
             product_metafields = data.get("productDefinitions", {}).get("edges", [])
@@ -753,17 +753,17 @@ def home():
 
 
 
-            #logging.info("Metafield definition counts:")
-            #logging.info("  PRODUCT: %d", len(product_metafields))
-            #logging.info("  COLLECTION: %d", len(collection_metafields))
-            #logging.info("  PAGE: %d", len(page_metafields))
-            #logging.info("  ARTICLE (blog): %d", len(blog_metafields))
+            logging.info("Metafield definition counts:")
+            logging.info("  PRODUCT: %d", len(product_metafields))
+            logging.info("  COLLECTION: %d", len(collection_metafields))
+            logging.info("  PAGE: %d", len(page_metafields))
+            logging.info("  ARTICLE (blog): %d", len(blog_metafields))
 
             def log_sample(label, edges):
                 if edges:
-                    #logging.info("%s sample node:\n%s", label, json.dumps(edges[0], indent=2, default=str))
+                    logging.info("%s sample node:\n%s", label, json.dumps(edges[0], indent=2, default=str))
                 else:
-                    #logging.info("%s has NO metafield definitions", label)
+                    logging.info("%s has NO metafield definitions", label)
 
             log_sample("PRODUCT", product_metafields)
             log_sample("COLLECTION", collection_metafields)
@@ -779,7 +779,7 @@ def home():
             raw_blog = fetch_schema_config_entry(shop, access_token, "blog_schema_mappings")
             raw_homepage = fetch_schema_config_entry(shop, access_token, "homepage_schema_config")
             raw_organization = fetch_schema_config_entry_org(shop, access_token, "organization_schema_mappings")
-            #logging.info("RAW ORG VALUE: %s", raw_organization)
+            logging.info("RAW ORG VALUE: %s", raw_organization)
 
             # -----------------------
             # Normalization helper
@@ -826,7 +826,7 @@ def home():
     page_schema_fields = schema_fields.get("page_schema_fields", [])
     blog_schema_fields = schema_fields.get("blog_schema_fields", [])
     homepage_schema_fields = schema_fields.get("homepage_schema_fields", [])
-    #logging.info("ORG SCHEMA FIELDS RAW: %s", json.dumps(schema_fields, indent=2, default=str))
+    logging.info("ORG SCHEMA FIELDS RAW: %s", json.dumps(schema_fields, indent=2, default=str))
     schemas = [
         {"title": "Organization Schema", "url": "/app/organization-schema-builder"},
         {"title": "Homepage Schema", "url": "/app/homepage-schema-builder"},
@@ -836,18 +836,18 @@ def home():
         {"title": "Blog Schema", "url": "/app/blog-schema-builder"},
     ]
 
-    #logging.info(
-        #"Rendering schema_dashboard.html:\n%s",
-        #json.dumps({
-            #"shop_name": shop,
-            #"product_config": product_config,
-            #"collection_config": collection_config,
-            #"page_config": page_config,
-            #"blog_config": blog_config,
-            #"homepage_config": homepage_config,
-            #"organization_config": organization_config,  # ✅ ADD THIS
-        #}, indent=2, default=str),
-    #)
+    logging.info(
+        "Rendering schema_dashboard.html:\n%s",
+        json.dumps({
+            "shop_name": shop,
+            "product_config": product_config,
+            "collection_config": collection_config,
+            "page_config": page_config,
+            "blog_config": blog_config,
+            "homepage_config": homepage_config,
+            "organization_config": organization_config,  # ✅ ADD THIS
+        }, indent=2, default=str),
+    )
     
 
     return render_template(
@@ -1819,15 +1819,15 @@ def fetch_schema_config_entry_org(shop, access_token, schema_type):
 
 def update_metaobject_entry(shop, access_token, config_id, fields):
     try:
-        #logging.info(
-            #"Updating metaobject entry %s with fields: %s",
-            #config_id,
-            #json.dumps(fields, indent=2)
-        #)
+        logging.info(
+            "Updating metaobject entry %s with fields: %s",
+            config_id,
+            json.dumps(fields, indent=2)
+        )
 
         # --- Build GraphQL URL dynamically ---
         graphql_url = f"https://{shop}/admin/api/2025-10/graphql.json"
-        #logging.info("Using Shopify GraphQL URL: %s", graphql_url)
+        logging.info("Using Shopify GraphQL URL: %s", graphql_url)
 
         # --- Properly encode fields for GraphQL ---
         fields_json = json.dumps(fields)  # safe JSON string
@@ -1848,7 +1848,7 @@ def update_metaobject_entry(shop, access_token, config_id, fields):
         }
         """ % (config_id, fields_json)
 
-        #logging.info("GraphQL mutation prepared: %s", mutation)
+        logging.info("GraphQL mutation prepared: %s", mutation)
 
         # --- Send request ---
         response = requests.post(
@@ -1866,7 +1866,7 @@ def update_metaobject_entry(shop, access_token, config_id, fields):
             logging.error("User errors updating metaobject: %s", user_errors)
             raise Exception(f"User errors updating metaobject: {user_errors}")
 
-        #logging.info("Metaobject entry %s updated successfully.", config_id)
+        logging.info("Metaobject entry %s updated successfully.", config_id)
         return response
 
     except Exception as e:
@@ -2101,7 +2101,7 @@ BATCH_SIZE = 20  # Number of products to upsert at once
 
 # Configure logging
 logging.basicConfig(
-    level=logging.info,
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.FileHandler("metafields.log"), logging.StreamHandler()]
 )
@@ -2239,7 +2239,7 @@ def upsert_collection_app_metafield(shop, access_token, collection_gid, value_di
     resp = method(url, headers=headers, json=payload)
     resp.raise_for_status()
 
-    #logging.info(f"{log} {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {collection_gid}")
+    logging.info(f"{log} {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {collection_gid}")
 
     return resp.json()
     
@@ -2415,7 +2415,7 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
         "X-Shopify-Access-Token": access_token
     }
 
-    #logging.info(f"GraphQL metafieldsSet → {owner_gid}")
+    logging.info(f"GraphQL metafieldsSet → {owner_gid}")
     logging.debug(f"Payload: {json.dumps(variables, indent=2)}")
 
     resp = requests.post(
@@ -2435,7 +2435,7 @@ def upsert_app_metafield(shop, access_token, owner_gid, value_dict):
         logging.error(f"Metafield userErrors: {user_errors}")
         raise Exception(f"Metafield write failed: {user_errors}")
 
-    #logging.info(f"Upserted {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}")
+    logging.info(f"Upserted {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}")
 
     return data
 
@@ -2520,7 +2520,7 @@ def upsert_org_metafield(shop, access_token, owner_gid, value_dict):
         "X-Shopify-Access-Token": access_token
     }
 
-    #logging.info(f"GraphQL metafieldsSet → {owner_gid}")
+    logging.info(f"GraphQL metafieldsSet → {owner_gid}")
     logging.debug(f"Payload: {json.dumps(variables, indent=2)}")
 
     resp = requests.post(
@@ -2540,7 +2540,7 @@ def upsert_org_metafield(shop, access_token, owner_gid, value_dict):
         logging.error(f"Metafield userErrors: {user_errors}")
         raise Exception(f"Metafield write failed: {user_errors}")
 
-    #logging.info(f"Upserted {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}")
+    logging.info(f"Upserted {METAFIELD_NAMESPACE}.{METAFIELD_KEY} for {owner_gid}")
 
     return data
 
@@ -2823,7 +2823,7 @@ def ensure_schema_config_entry(shop, access_token, schema_type):
     if entry:
         return entry["id"]
 
-    #logging.info("No schema_config metaobject found, creating singleton entry...")
+    logging.info("No schema_config metaobject found, creating singleton entry...")
 
     # --- Create ONE global entry ---
     new_entry_data = {
@@ -2840,7 +2840,7 @@ def ensure_schema_config_entry(shop, access_token, schema_type):
             f"{node.get('userErrors') if node else resp}"
         )
 
-    #logging.info(
+    logging.info(
         "Created SINGLE schema config entry with ID %s",
         node["metaobject"]["id"]
     )
@@ -2897,10 +2897,10 @@ def ensure_metaobject_definition(shop, access_token):
     existing = resp.get("data", {}).get("metaobjectDefinitionByType")
 
     if existing and existing.get("id"):
-        #logging.info(f"Metaobject definition exists: {existing['id']}")
+        logging.info(f"Metaobject definition exists: {existing['id']}")
         return existing["id"]
 
-    #logging.info("Creating app_schema metaobject definition")
+    logging.info("Creating app_schema metaobject definition")
 
     mutation = """
     mutation {
@@ -2951,10 +2951,10 @@ def ensure_metaobject_definition(shop, access_token):
     existing = resp.get("data", {}).get("metaobjectDefinitionByType")
 
     if existing and existing.get("id"):
-        #logging.info(f"Metaobject definition exists: {existing['id']}")
+        logging.info(f"Metaobject definition exists: {existing['id']}")
         return existing["id"]
 
-    #logging.info("Creating app_schema metaobject definition")
+    logging.info("Creating app_schema metaobject definition")
 
     mutation = """
     mutation {
@@ -3006,10 +3006,10 @@ def ensure_metaobject_definition_org(shop, access_token):
     existing = resp.get("data", {}).get("metaobjectDefinitionByType")
 
     if existing and existing.get("id"):
-        #logging.info(f"Metaobject definition exists: {existing['id']}")
+        logging.info(f"Metaobject definition exists: {existing['id']}")
         return existing["id"]
 
-    #logging.info("Creating app_schema metaobject definition")
+    logging.info("Creating app_schema metaobject definition")
 
     mutation = """
     mutation {
@@ -3104,10 +3104,10 @@ def ensure_config_entry(shop, access_token, metaobject_type, field_mappings=None
     node = resp.get("data", {}).get("metaobjectByHandle")
 
     if node and node.get("id"):
-        #logging.info("Reusing existing app_schema metaobject: %s", node["id"])
+        logging.info("Reusing existing app_schema metaobject: %s", node["id"])
         return node["id"]
 
-    #logging.info("No existing app_schema metaobject found — creating one")
+    logging.info("No existing app_schema metaobject found — creating one")
 
     # ------------------------------------------------------------------
     # 2️⃣ Build fields payload (JSON-safe)
@@ -3158,7 +3158,7 @@ def ensure_config_entry(shop, access_token, metaobject_type, field_mappings=None
         raise Exception("Metaobject create errors: {}".format(result["userErrors"]))
 
     metaobject_id = result["metaobject"]["id"]
-    #logging.info("Created new app_schema metaobject: %s", metaobject_id)
+    logging.info("Created new app_schema metaobject: %s", metaobject_id)
 
     return metaobject_id
 
@@ -3416,7 +3416,7 @@ def dedupe_mappings(mappings):
 @app.route("/verify_and_create_metafields", methods=["POST"])
 def verify_and_create_metafields():
     data = request.json
-    #logging.info("INPUT (schema save): %s", json.dumps(data, indent=2))
+    logging.info("INPUT (schema save): %s", json.dumps(data, indent=2))
 
     auth_header = request.headers.get("Authorization")
     
@@ -3522,10 +3522,10 @@ def verify_and_create_metafields():
     )
 
 
-    #logging.info("Existing PRODUCT mappings: %s", json.dumps(product_schema_mappings, indent=2))
-    #logging.info("Existing COLLECTION mappings: %s", json.dumps(collection_schema_mappings, indent=2))
-    #logging.info("Existing PAGE mappings: %s", json.dumps(page_schema_mappings, indent=2))
-    #logging.info("Existing BLOG mappings: %s", json.dumps(blog_schema_mappings, indent=2))
+    logging.info("Existing PRODUCT mappings: %s", json.dumps(product_schema_mappings, indent=2))
+    logging.info("Existing COLLECTION mappings: %s", json.dumps(collection_schema_mappings, indent=2))
+    logging.info("Existing PAGE mappings: %s", json.dumps(page_schema_mappings, indent=2))
+    logging.info("Existing BLOG mappings: %s", json.dumps(blog_schema_mappings, indent=2))
 
     # ---------------------------------------------------------
     # STEP 2: Replace ONLY what frontend sent
@@ -3547,16 +3547,16 @@ def verify_and_create_metafields():
         homepage_schema_mappings = normalize_list(incoming_homepage)
 
 
-    #logging.info(
-        #"Merged schema state (FINAL): %s",
-        #json.dumps({
-            #"product_schema_mappings": product_schema_mappings,
-            #"collection_schema_mappings": collection_schema_mappings,
-            #"page_schema_mappings": page_schema_mappings,
-            #"blog_schema_mappings": blog_schema_mappings,
-            #"homepage_schema_config": homepage_schema_mappings
-        #}, indent=2)
-    #)
+    logging.info(
+        "Merged schema state (FINAL): %s",
+        json.dumps({
+            "product_schema_mappings": product_schema_mappings,
+            "collection_schema_mappings": collection_schema_mappings,
+            "page_schema_mappings": page_schema_mappings,
+            "blog_schema_mappings": blog_schema_mappings,
+            "homepage_schema_config": homepage_schema_mappings
+        }, indent=2)
+    )
 
     # ---------------------------------------------------------
     # STEP 3: Replace config metaobject (SINGLE SOURCE OF TRUTH)
@@ -3598,7 +3598,7 @@ def verify_and_create_metafields():
         raise Exception(f"MetaobjectCreate failed: {user_errors}")
 
 
-    #logging.info("Created config entry: %s", node["metaobject"]["id"])
+    logging.info("Created config entry: %s", node["metaobject"]["id"])
 
     # ---------------------------------------------------------
     # STEP 4: Background updates (UNCHANGED — homepage excluded)
@@ -3616,13 +3616,13 @@ def verify_and_create_metafields():
             )
 
     def process_blogs():
-        #logging.info("Starting blog schema processing")
+        logging.info("Starting blog schema processing")
     
         articles = fetch_all_blog_articles(shop, access_token)
-        #logging.info(f"Fetched {len(articles)} blog articles")
+        logging.info(f"Fetched {len(articles)} blog articles")
     
         for article in articles:
-            #logging.info(f"Processing article {article.get('id')}")
+            logging.info(f"Processing article {article.get('id')}")
     
             mfs = fetch_blog_metafields(
                 shop, access_token, article["id"].split("/")[-1]
@@ -4307,7 +4307,7 @@ def shop_redact():
 @app.route("/save-organization-schema", methods=["POST"])
 def save_organization_schema():
     data = request.json
-    #logging.info("INPUT (organization): %s", json.dumps(data, indent=2))
+    logging.info("INPUT (organization): %s", json.dumps(data, indent=2))
 
     # -------------------------
     # AUTH
@@ -4373,7 +4373,7 @@ def save_organization_schema():
     metaobject_type = "org_schema"
     
     # 🔍 DEBUG: find where your entries actually are
-    #logging.info("=== FINDING METAOBJECT TYPES ===")
+    logging.info("=== FINDING METAOBJECT TYPES ===")
     
     types_to_check = [
         "app_schema_org",
@@ -4384,15 +4384,15 @@ def save_organization_schema():
     
     for t in types_to_check:
         entries = list_all_metaobjects(shop, access_token, t)
-        #logging.info("TYPE %s COUNT: %s", t, len(entries))
+        logging.info("TYPE %s COUNT: %s", t, len(entries))
     
     # 👉 your original line continues below
     existing_entries = list_all_metaobjects(shop, access_token, metaobject_type)
 
 
-    #logging.info("ORG METAOBJECTS FOUND: %s", len(existing_entries))
+    logging.info("ORG METAOBJECTS FOUND: %s", len(existing_entries))
     for e in existing_entries:
-        #logging.info("ORG ENTRY: %s", json.dumps(e, indent=2))
+        logging.info("ORG ENTRY: %s", json.dumps(e, indent=2))
 
     # 🔥 DELETE ALL
     for entry in existing_entries:
@@ -4408,7 +4408,7 @@ def save_organization_schema():
 
         try:
             delete_metaobject(shop, access_token, entry_id)
-            #logging.info("Deleted metaobject: %s", entry_id)
+            logging.info("Deleted metaobject: %s", entry_id)
         except Exception as e:
             logging.error("FAILED deleting %s: %s", entry_id, str(e))
 
@@ -4419,7 +4419,7 @@ def save_organization_schema():
     # 🔍 VERIFY DELETE
     remaining = list_all_metaobjects(shop, access_token, metaobject_type)
 
-    #logging.info("REMAINING AFTER DELETE: %s", len(remaining))
+    logging.info("REMAINING AFTER DELETE: %s", len(remaining))
     for r in remaining:
         logging.error("STILL EXISTS: %s", r["id"])
 
@@ -4448,14 +4448,14 @@ def save_organization_schema():
     if node.get("userErrors"):
         raise Exception(node["userErrors"])
 
-    #logging.info("Created org config entry: %s", node["metaobject"]["id"])
-    #logging.info("FULL CREATED NODE: %s", json.dumps(node["metaobject"], indent=2))
+    logging.info("Created org config entry: %s", node["metaobject"]["id"])
+    logging.info("FULL CREATED NODE: %s", json.dumps(node["metaobject"], indent=2))
 
     # =========================================================
     # 🔥 PROPAGATE ORG SCHEMA TO ALL RESOURCES
     # =========================================================
     def process_org_everywhere():
-        #logging.info("Starting org schema propagation")
+        logging.info("Starting org schema propagation")
 
         products = fetch_all_products(shop, access_token)
         for product in products:
@@ -4484,7 +4484,7 @@ def save_organization_schema():
                 organization_schema_mappings
             )
 
-        #logging.info("Finished org schema propagation")
+        logging.info("Finished org schema propagation")
 
     threading.Thread(target=process_org_everywhere, daemon=True).start()
 
@@ -4565,10 +4565,10 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
         for e in existing_edges
     )
     if exists:
-        #logging.info("Metafield %s.%s already exists for %s", NAMESPACE, KEY, owner_type)
+        logging.info("Metafield %s.%s already exists for %s", NAMESPACE, KEY, owner_type)
         return
 
-    #logging.info("Creating %s unstructured JSON metafield %s.%s", owner_type, NAMESPACE, KEY)
+    logging.info("Creating %s unstructured JSON metafield %s.%s", owner_type, NAMESPACE, KEY)
 
     # GraphQL mutation with variables
     mutation = """
@@ -4601,7 +4601,7 @@ def ensure_metafield(shop, access_token, existing_edges, owner_type):
         if errors:
             logging.error("%s metafield creation failed: %s", owner_type, errors)
         else:
-            #logging.info("%s metafield %s.%s created successfully", owner_type, NAMESPACE, KEY)
+            logging.info("%s metafield %s.%s created successfully", owner_type, NAMESPACE, KEY)
     except Exception as e:
         logging.exception("Exception creating %s metafield: %s", owner_type, str(e))
 
